@@ -44,12 +44,13 @@ The system is designed to be easy to run on different machines without committin
 
 ## 📂 Project Structure
 
+---
 
-## Backend
+### Backend
 cd backend
 go run ./cmd/main.go
 
-## Frontend
+### Frontend
 cd frontend
 npm install
 npm run dev
