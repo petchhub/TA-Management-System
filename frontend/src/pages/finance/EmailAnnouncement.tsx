@@ -1,0 +1,362 @@
+import { useState } from "react";
+import {
+  Mail,
+  Send,
+  Users,
+  BookOpen,
+  User,
+  Clock,
+} from "lucide-react";
+
+interface EmailLog {
+  id: string;
+  date: string;
+  recipients: string;
+  subject: string;
+  status: "sent" | "failed";
+}
+
+export function EmailAnnouncement() {
+  const [recipientType, setRecipientType] = useState<
+    "all" | "course" | "individual"
+  >("all");
+  const [selectedCourse, setSelectedCourse] = useState("");
+  const [selectedIndividual, setSelectedIndividual] =
+    useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [emailLogs] = useState<EmailLog[]>([
+    {
+      id: "1",
+      date: "13 ธ.ค. 2567 14:30",
+      recipients: "ผู้ช่วยสอนทั้งหมด (32 คน)",
+      subject:
+        "แจ้งเตือน: กรุณามาเซ็นชื่อเบิกจ่ายค่าตอบแทนประจำเดือนธันวาคม",
+      status: "sent",
+    },
+    {
+      id: "2",
+      date: "11 ธ.ค. 2567 10:15",
+      recipients: "01076103 - Programming Fundamentals (4 คน)",
+      subject: "แจ้งปัญหาชั่วโมงงาน - ต้องแก้ไข",
+      status: "sent",
+    },
+    {
+      id: "3",
+      date: "10 ธ.ค. 2567 16:45",
+      recipients: "สมชาย ใจดี",
+      subject: "แจ้งแก้ไขเอกสารเบิกจ่าย",
+      status: "sent",
+    },
+  ]);
+
+  const courses = [
+    "01076103 - Programming Fundamentals",
+    "01076109 - Data Structures",
+    "01076564 - Algorithms",
+    "01076112 - Digital System Fundamentals",
+    "01076035 - Software Development Process in Practice",
+  ];
+
+  const individuals = [
+    "สมชาย ใจดี",
+    "สมหญิง รักเรียน",
+    "วิชัย มานะ",
+    "ประภา สุขสันต์",
+    "ธนากร วิทยา",
+  ];
+
+  const handleSendEmail = () => {
+    if (!subject || !message) {
+      alert("กรุณากรอกหัวข้อและข้อความ");
+      return;
+    }
+
+    if (recipientType === "course" && !selectedCourse) {
+      alert("กรุณาเลือกรายวิชา");
+      return;
+    }
+
+    if (recipientType === "individual" && !selectedIndividual) {
+      alert("กรุณาเลือกผู้รับ");
+      return;
+    }
+
+    // Mock send email
+    let recipients = "";
+    switch (recipientType) {
+      case "all":
+        recipients = "ผู้ช่วยสอนทั้งหมด";
+        break;
+      case "course":
+        recipients = selectedCourse;
+        break;
+      case "individual":
+        recipients = selectedIndividual;
+        break;
+    }
+
+    alert(
+      `ส่งอีเมลสำเร็จ\n\nถึง: ${recipients}\nหัวข้อ: ${subject}`,
+    );
+
+    // Clear form
+    setSubject("");
+    setMessage("");
+    setSelectedCourse("");
+    setSelectedIndividual("");
+  };
+
+  return (
+    <div>
+      <div className="mb-8">
+        <h2 className="text-2xl mb-2">ส่งอีเมลประกาศ</h2>
+        <p className="text-gray-600">
+          ส่งประกาศและแจ้งเตือนให้กับผู้ช่วยสอนผ่านทางอีเมล
+        </p>
+      </div>
+
+      {/* Email Composition */}
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-center gap-2 mb-6">
+          <Mail size={20} className="text-gray-600" />
+          <h3 className="text-lg">สร้างอีเมลใหม่</h3>
+        </div>
+
+        {/* Recipient Type Selection */}
+        <div className="mb-6">
+          <label className="block text-sm text-gray-600 mb-3">
+            เลือกผู้รับ
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              onClick={() => setRecipientType("all")}
+              className={`p-4 border-2 rounded-lg flex items-center gap-3 transition-colors ${recipientType === "all"
+                ? "border-[var(--color-primary-600)] bg-[var(--color-primary-50)]"
+                : "border-gray-200 hover:border-gray-300"
+                }`}
+            >
+              <Users
+                size={20}
+                className={
+                  recipientType === "all"
+                    ? "text-[var(--color-primary-600)]"
+                    : "text-gray-600"
+                }
+              />
+              <div className="text-left">
+                <p className="font-medium">ส่งถึงทั้งหมด</p>
+                <p className="text-xs text-gray-600">
+                  ผู้ช่วยสอนทุกคน
+                </p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setRecipientType("course")}
+              className={`p-4 border-2 rounded-lg flex items-center gap-3 transition-colors ${recipientType === "course"
+                ? "border-[var(--color-primary-600)] bg-[var(--color-primary-50)]"
+                : "border-gray-200 hover:border-gray-300"
+                }`}
+            >
+              <BookOpen
+                size={20}
+                className={
+                  recipientType === "course"
+                    ? "text-[var(--color-primary-600)]"
+                    : "text-gray-600"
+                }
+              />
+              <div className="text-left">
+                <p className="font-medium">ส่งเฉพาะรายวิชา</p>
+                <p className="text-xs text-gray-600">
+                  เลือกตามรายวิชา
+                </p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setRecipientType("individual")}
+              className={`p-4 border-2 rounded-lg flex items-center gap-3 transition-colors ${recipientType === "individual"
+                ? "border-[var(--color-primary-600)] bg-[var(--color-primary-50)]"
+                : "border-gray-200 hover:border-gray-300"
+                }`}
+            >
+              <User
+                size={20}
+                className={
+                  recipientType === "individual"
+                    ? "text-[var(--color-primary-600)]"
+                    : "text-gray-600"
+                }
+              />
+              <div className="text-left">
+                <p className="font-medium">ส่งเฉพาะบุคคล</p>
+                <p className="text-xs text-gray-600">
+                  เลือกรายบุคคล
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Course Selection */}
+        {recipientType === "course" && (
+          <div className="mb-6">
+            <label className="block text-sm text-gray-600 mb-2">
+              เลือกรายวิชา
+            </label>
+            <select
+              value={selectedCourse}
+              onChange={(e) =>
+                setSelectedCourse(e.target.value)
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+            >
+              <option value="">-- เลือกรายวิชา --</option>
+              {courses.map((course) => (
+                <option key={course} value={course}>
+                  {course}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Individual Selection */}
+        {recipientType === "individual" && (
+          <div className="mb-6">
+            <label className="block text-sm text-gray-600 mb-2">
+              เลือกผู้ช่วยสอน
+            </label>
+            <select
+              value={selectedIndividual}
+              onChange={(e) =>
+                setSelectedIndividual(e.target.value)
+              }
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+            >
+              <option value="">-- เลือกผู้ช่วยสอน --</option>
+              {individuals.map((individual) => (
+                <option key={individual} value={individual}>
+                  {individual}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Subject */}
+        <div className="mb-6">
+          <label className="block text-sm text-gray-600 mb-2">
+            หัวข้อ
+          </label>
+          <input
+            type="text"
+            placeholder="เช่น แจ้งเตือนการเซ็นชื่อเบิกจ่ายค่าตอบแทน"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+          />
+        </div>
+
+        {/* Message Body */}
+        <div className="mb-6">
+          <label className="block text-sm text-gray-600 mb-2">
+            ข้อความ
+          </label>
+          <textarea
+            rows={6}
+            placeholder="พิมพ์ข้อความที่ต้องการส่ง..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+          />
+        </div>
+
+        {/* Quick Templates */}
+        <div className="mb-6">
+          <label className="block text-sm text-gray-600 mb-2">
+            เทมเพลตด่วน
+          </label>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => {
+                setSubject(
+                  "แจ้งเตือน: มาเซ็นชื่อเบิกจ่ายค่าตอบแทน",
+                );
+                setMessage(
+                  "เรียน ผู้ช่วยสอน\n\nกรุณามาเซ็นชื่อเบิกจ่ายค่าตอบแทนประจำเดือน ณ สำนักงานคณะ\n\nขอบคุณครับ/ค่ะ",
+                );
+              }}
+              className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              เซ็นชื่อเบิกจ่าย
+            </button>
+            <button
+              onClick={() => {
+                setSubject("แจ้งแก้ไขเอกสาร");
+                setMessage(
+                  "เรียน ผู้ช่วยสอน\n\nพบปัญหาในเอกสารหรือชั่วโมงงาน กรุณาติดต่อสำนักงานเพื่อดำเนินการแก้ไข\n\nขอบคุณครับ/ค่ะ",
+                );
+              }}
+              className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              แจ้งแก้ไขเอกสาร
+            </button>
+          </div>
+        </div>
+
+        {/* Send Button */}
+        <button
+          onClick={handleSendEmail}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)] transition-colors"
+        >
+          <Send size={18} />
+          ส่งอีเมล
+        </button>
+      </div>
+
+      {/* Email Log */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Clock size={20} className="text-gray-600" />
+          <h3 className="text-lg">ประวัติการส่งอีเมล</h3>
+        </div>
+        <div className="space-y-3">
+          {emailLogs.map((log) => (
+            <div
+              key={log.id}
+              className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="font-medium mb-1">
+                    {log.subject}
+                  </p>
+                  <p className="text-sm text-gray-600 mb-2">
+                    ถึง: {log.recipients}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {log.date}
+                  </p>
+                </div>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs ${log.status === "sent"
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                    }`}
+                >
+                  {log.status === "sent"
+                    ? "ส่งสำเร็จ"
+                    : "ส่งไม่สำเร็จ"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,19 @@
+package request
+
+import "time"
+
+type CreateCourse struct {
+	CourseName      string    `json:"courseName"`
+	CourseID        string    `json:"courseID"`
+	ProfessorID     int       `json:"professorID"`
+	CourseProgramID int       `json:"courseProgramID"`
+	CourseProgram   string    `json:"courseProgram"`
+	Sec             string    `json:"sec"`
+	SemesterID      int       `json:"semesterID"`
+	Semester        string    `json:"semester"`
+	ClassdayID      int       `json:"classdayID"`
+	Classday        string    `json:"classday"`
+	ClassStart      time.Time `json:"classStart"`
+	ClassEnd        time.Time `json:"classEnd"`
+	CreatedDate     time.Time `json:"-"`
+}
