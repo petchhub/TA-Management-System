@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"unicode"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -71,4 +75,35 @@ func DecodeToken(tokenString string, jwtSecret []byte) (*AppClaims, error) {
 		return claims, nil
 	}
 	return nil, errors.New("could not assert claims type")
+}
+
+func ValidateParam(ctx *gin.Context, paramName string) (int, bool) {
+	paramValue := ctx.Param(paramName)
+	if paramValue == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": paramName + "is required"})
+		return 0, false
+	}
+
+	id, err := strconv.Atoi(paramValue)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": paramName + "must be a valid integer"})
+	}
+
+	return id, true
+}
+
+func ExtractDigits(s string) (int, bool) {
+	var sb strings.Builder
+	for _, r := range s {
+		if unicode.IsDigit(r) {
+			sb.WriteRune(r)
+		}
+	}
+
+	number, err := strconv.Atoi(sb.String())
+	if err != nil {
+		fmt.Printf("Failed to Extractdigits : %v\n", err)
+		return 0, false
+	}
+	return number, true
 }
