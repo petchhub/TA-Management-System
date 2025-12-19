@@ -46,12 +46,21 @@ The system is designed to be easy to run on different machines without committin
 
 ---
 
+## How to Run
+
 ### Backend
+
 cd backend
 go run ./cmd/main.go
 
+Backend server will run at:
+http://localhost:8084
+
 ### Frontend
+
 cd frontend
 npm install
 npm run dev
+Frontend application will run at:
+http://localhost:3000
 
