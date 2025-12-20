@@ -30,6 +30,9 @@ export interface CreateCourseRequest {
     classday: string;
     classStart: string; // ISO format datetime
     classEnd: string; // ISO format datetime
+    taAllocation: number;
+    gradeID: number;
+    task: string;
 }
 
 /**
@@ -72,8 +75,10 @@ export async function createCourseAnnouncement(data: {
     classTime: { startTime: string; endTime: string };
     numberOfTAs: number;
     minGrade: string;
+    gradeId?: number;
     requirements: string;
     professorID?: number; // Optional override
+    semesterId?: number;
 }): Promise<any> {
     try {
         // Map day names to IDs (based on typical database setup)
@@ -101,12 +106,15 @@ export async function createCourseAnnouncement(data: {
             courseProgramID: programMapping[data.programType] || 1,
             courseProgram: data.programType === 'international' ? 'International' : 'General',
             sec: data.section,
-            semesterID: 1, // TODO: Parse from term or get from lookup
+            semesterID: data.semesterId || 1, // Use resolved ID
             semester: data.term,
-            classdayID: dayMapping[data.workingDay] || 1,
+            classdayID: dayMapping[data.workingDay.toLowerCase()] || 1,
             classday: data.workingDay.charAt(0).toUpperCase() + data.workingDay.slice(1),
             classStart: `${data.classTime.startTime}:00`,
             classEnd: `${data.classTime.endTime}:00`,
+            taAllocation: data.numberOfTAs,
+            gradeID: data.gradeId || 1, // Use resolved ID or default
+            task: data.requirements,
         };
 
         console.log('Sending course announcement request:', requestData);

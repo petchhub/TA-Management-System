@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { getClassDays, getCourseProgram, getGrades, getSemesters, LookupItem } from '../../services/lookupService';
 
 interface CreateTAAnnouncementModalProps {
     onClose: () => void;
@@ -19,28 +20,12 @@ export interface TAAnnouncementData {
     };
     numberOfTAs: number;
     minGrade: string; // Added minimum grade
+    gradeId?: number;
     requirements: string;
+    semesterId?: number;
 }
 
-const DAYS_OF_WEEK = [
-    { value: 'monday', label: 'จันทร์' },
-    { value: 'tuesday', label: 'อังคาร' },
-    { value: 'wednesday', label: 'พุธ' },
-    { value: 'thursday', label: 'พฤหัสบดี' },
-    { value: 'friday', label: 'ศุกร์' },
-    { value: 'saturday', label: 'เสาร์' },
-    { value: 'sunday', label: 'อาทิตย์' },
-];
-
-const GRADE_OPTIONS = [
-    { value: 'A', label: 'A' },
-    { value: 'B+', label: 'B+' },
-    { value: 'B', label: 'B' },
-    { value: 'C+', label: 'C+' },
-    { value: 'C', label: 'C' },
-    { value: 'D+', label: 'D+' },
-    { value: 'D', label: 'D' },
-];
+// Removed hardcoded DAYS_OF_WEEK and GRADE_OPTIONS
 
 export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnouncementModalProps) {
     const [formData, setFormData] = useState<TAAnnouncementData>({
@@ -58,6 +43,30 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
         minGrade: 'C',
         requirements: '',
     });
+
+    const [daysOfWeek, setDaysOfWeek] = useState<LookupItem[]>([]);
+    const [gradeOptions, setGradeOptions] = useState<LookupItem[]>([]);
+    const [semesters, setSemesters] = useState<LookupItem[]>([]);
+    const [coursePrograms, setCoursePrograms] = useState<LookupItem[]>([]);
+
+    useEffect(() => {
+        const fetchLookupData = async () => {
+            try {
+                const days = await getClassDays();
+                const grades = await getGrades();
+                const semestersData = await getSemesters();
+                const courseProgramsData = await getCourseProgram();
+                setDaysOfWeek(days);
+                setGradeOptions(grades);
+                setSemesters(semestersData);
+                setCoursePrograms(courseProgramsData);
+            } catch (error) {
+                console.error("Failed to fetch lookup data", error);
+            }
+        };
+
+        fetchLookupData();
+    }, []);
 
     const [errors, setErrors] = useState<Partial<Record<keyof TAAnnouncementData, string>>>({});
 
@@ -97,7 +106,17 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validateForm()) {
-            onSubmit(formData);
+            // Resolve IDs
+            const selectedSemester = semesters.find(s => s.value === formData.term);
+            const selectedGrade = gradeOptions.find(g => g.value === formData.minGrade);
+
+            const submissionData = {
+                ...formData,
+                semesterId: selectedSemester?.id,
+                gradeId: selectedGrade?.id
+            };
+
+            onSubmit(submissionData);
             onClose();
         }
     };
@@ -187,14 +206,19 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     ภาคการศึกษา <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="text"
+                                <select
                                     value={formData.term}
                                     onChange={(e) => handleInputChange('term', e.target.value)}
-                                    placeholder="เช่น 1/2568"
                                     className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] ${errors.term ? 'border-red-500' : 'border-gray-300'
                                         }`}
-                                />
+                                >
+                                    <option value="">เลือกภาคการศึกษา</option>
+                                    {semesters.map((sem) => (
+                                        <option key={sem.id} value={sem.value}>
+                                            {sem.value}
+                                        </option>
+                                    ))}
+                                </select>
                                 {errors.term && (
                                     <p className="text-red-500 text-xs mt-1">{errors.term}</p>
                                 )}
@@ -207,11 +231,15 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                                 </label>
                                 <select
                                     value={formData.programType}
-                                    onChange={(e) => handleInputChange('programType', e.target.value as 'regular' | 'international')}
+                                    onChange={(e) => handleInputChange('programType', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
                                 >
-                                    <option value="regular">ปกติ (Regular)</option>
-                                    <option value="international">นานาชาติ (International)</option>
+                                    <option value="">เลือกประเภทหลักสูตร</option>
+                                    {coursePrograms.map((sem) => (
+                                        <option key={sem.id} value={sem.value}>
+                                            {sem.value}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -227,9 +255,9 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                                 วันที่ต้องการ TA <span className="text-red-500">*</span>
                             </label>
                             <div className="flex flex-wrap gap-2">
-                                {DAYS_OF_WEEK.map((day) => (
+                                {daysOfWeek.map((day) => (
                                     <button
-                                        key={day.value}
+                                        key={day.id}
                                         type="button"
                                         onClick={() => handleDaySelect(day.value)}
                                         className={`px-4 py-2 rounded-lg border transition-colors ${formData.workingDay === day.value
@@ -237,7 +265,7 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                                             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                                             }`}
                                     >
-                                        {day.label}
+                                        {day.value}
                                     </button>
                                 ))}
                             </div>
@@ -313,9 +341,9 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                                     onChange={(e) => handleInputChange('minGrade', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
                                 >
-                                    {GRADE_OPTIONS.map((grade) => (
-                                        <option key={grade.value} value={grade.value}>
-                                            {grade.label}
+                                    {gradeOptions.map((grade) => (
+                                        <option key={grade.id} value={grade.value}>
+                                            {grade.value}
                                         </option>
                                     ))}
                                 </select>
