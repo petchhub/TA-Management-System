@@ -33,6 +33,7 @@ export interface CreateCourseRequest {
     taAllocation: number;
     gradeID: number;
     task: string;
+    workHour: number;
 }
 
 /**
@@ -99,6 +100,18 @@ export async function createCourseAnnouncement(data: {
         };
 
 
+        // Calculate work hours from class start and end times
+        const calculateWorkHours = (startTime: string, endTime: string): number => {
+            const [startHour, startMin] = startTime.split(':').map(Number);
+            const [endHour, endMin] = endTime.split(':').map(Number);
+            const startMinutes = startHour * 60 + startMin;
+            const endMinutes = endHour * 60 + endMin;
+            const diffMinutes = endMinutes - startMinutes;
+            return Math.round(diffMinutes / 60); // Round to nearest hour
+        };
+
+        const workHour = calculateWorkHours(data.classTime.startTime, data.classTime.endTime);
+
         const requestData: CreateCourseRequest = {
             courseName: data.courseName,
             courseID: data.courseCode,
@@ -115,6 +128,7 @@ export async function createCourseAnnouncement(data: {
             taAllocation: data.numberOfTAs,
             gradeID: data.gradeId || 1, // Use resolved ID or default
             task: data.requirements,
+            workHour: workHour,
         };
 
         console.log('Sending course announcement request:', requestData);
