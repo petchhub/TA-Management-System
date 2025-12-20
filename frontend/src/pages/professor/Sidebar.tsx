@@ -1,4 +1,5 @@
 import { LayoutDashboard, Users, Clock, BookOpen, Settings } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 type Page = 'dashboard' | 'recruitment' | 'work-hours' | 'courses';
 
@@ -8,6 +9,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+  const { user } = useAuth();
+
+  const username = user?.name || 'Professor';
+  const role = user?.role === 'PROFESSOR' ? 'อาจารย์' : user?.role || 'Professor';
   const menuItems = [
     { id: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'recruitment' as Page, label: 'การรับสมัคร TA', icon: Users },
@@ -32,8 +37,8 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                 <button
                   onClick={() => onNavigate(item.id)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                      ? 'text-[var(--color-primary-600)] bg-[var(--color-primary-50)]'
-                      : 'text-gray-700 hover:bg-gray-50'
+                    ? 'text-[var(--color-primary-600)] bg-[var(--color-primary-50)]'
+                    : 'text-gray-700 hover:bg-gray-50'
                     }`}
                 >
                   <Icon size={20} />
@@ -55,11 +60,11 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       <div className="p-4 bg-gray-50 border-t border-gray-200">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full flex items-center justify-center text-white bg-[var(--color-primary-600)]">
-            P
+            {username?.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="text-sm">Prof. Smith</p>
-            <p className="text-xs text-gray-500">อาจารย์</p>
+            <p className="text-sm font-medium text-gray-900">{username}</p>
+            <p className="text-xs text-gray-500">{role}</p>
           </div>
         </div>
       </div>

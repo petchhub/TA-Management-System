@@ -29,7 +29,7 @@ func InitializeController(authenService service.AuthenService, googleOAuthConfig
 	{
 		r.GET("/google", c.handleLogin)
 		r.GET("google/callback", c.handleCallback)
-		r.GET("/me", c.getMe)
+		r.GET("/me", c.handleAuthMe)
 	}
 }
 
@@ -38,8 +38,7 @@ func (controller AuthController) handleCallback(ctx *gin.Context) {
 	code := ctx.Query("code")
 
 	if queryState == "" || code == "" {
-		// Redirect to frontend with error
-		ctx.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/login?error=invalid_request")
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request parameters: state or code missing."})
 		return
 	}
 
@@ -48,30 +47,26 @@ func (controller AuthController) handleCallback(ctx *gin.Context) {
 		// Log the failure reason internally (optional but recommended)
 		fmt.Printf("State check failed. Cookie Error: %v, Cookie State: %s, Query State: %s\n", err, cookieState, queryState)
 
-		// Redirect to frontend with error
-		ctx.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/login?error=state_mismatch")
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "State mismatch or session expired. Invalid CSRF protection."})
 		return
 	}
 
 	signedJWT, _, err := controller.service.HandleGoogleCallback(ctx, code)
 
 	if err != nil {
-		// Redirect to frontend with error
-		errorMsg := "authentication_failed"
+		// Map service errors to appropriate HTTP status codes
+		status := http.StatusInternalServerError
 		if err.Error() == "email not verified" {
-			errorMsg = "email_not_verified"
+			status = http.StatusForbidden
 		} else if err.Error() == "code exchange failed" {
-			errorMsg = "code_exchange_failed"
+			status = http.StatusBadRequest
 		}
-		ctx.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3000/login?error=%s", errorMsg))
+		ctx.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Set auth cookie
 	ctx.SetCookie("auth_token", signedJWT, 3600*24*7, "/", "localhost", false, true) // Cookie lasts 7 days
-
-	// Redirect to frontend callback page
-	ctx.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/login?success=true")
+	// ctx.JSON(http.StatusOK, user)
+	ctx.Redirect(http.StatusTemporaryRedirect, utils.GetenvDefault("FRONTEND_URL", "http://localhost:3000/login"))
 }
 
 func (controller AuthController) handleLogin(ctx *gin.Context) {
@@ -89,26 +84,12 @@ func (controller AuthController) handleLogin(ctx *gin.Context) {
 	ctx.String(http.StatusOK, url)
 }
 
-func (controller AuthController) getMe(ctx *gin.Context) {
-	// Get JWT token from cookie
-	tokenString, err := ctx.Cookie("auth_token")
-	if err != nil || tokenString == "" {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: No auth token found"})
-		return
-	}
-
-	// Decode JWT token
-	claims, err := utils.DecodeToken(tokenString, []byte(utils.GetenvDefault("JWT_SECRET", "change-me-please")))
+func (controller AuthController) handleAuthMe(ctx *gin.Context) {
+	token, err := ctx.Cookie("auth_token")
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
-		return
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 	}
+	user, err := utils.DecodeToken(token, []byte(utils.GetenvDefault("JWT_SECRET", "")))
 
-	// Return user data from claims
-	ctx.JSON(http.StatusOK, gin.H{
-		"id":    claims.Sub,
-		"email": claims.Email,
-		"name":  claims.Name,
-		"role":  claims.Role,
-	})
+	ctx.JSON(http.StatusOK, user)
 }

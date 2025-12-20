@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Book,
   Users,
@@ -7,6 +7,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { TADetailModal } from "./TADetailModal";
+import { getAllCourses } from "../../services/courseService";
 
 interface Course {
   id: string;
@@ -28,188 +29,184 @@ interface Course {
 }
 
 export function CourseManagement() {
-  const [selectedCourse, setSelectedCourse] =
-    useState<Course | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const courses: Course[] = [
-    {
-      id: "1",
-      code: "01076104",
-      name: "Programming Fundamental",
-      semester: "1/2568",
-      requiredTAs: 3,
-      approvedTAs: 2,
-      pendingApplications: 2,
-      totalHours: 120,
-      tas: [
-        {
-          id: "1",
-          name: "ประเสริฐ ขยัน",
-          studentId: "6512345680",
-          hoursWorked: 45,
-          hoursThisMonth: 12,
-          status: "active",
-        },
-        {
-          id: "2",
-          name: "วิชัย ดีมาก",
-          studentId: "6512345681",
-          hoursWorked: 38,
-          hoursThisMonth: 10,
-          status: "active",
-        },
-      ],
-    },
-    {
-      id: "2",
-      code: "01076109",
-      name: "Object-Oriented Data Structures",
-      semester: "1/2568",
-      requiredTAs: 2,
-      approvedTAs: 2,
-      pendingApplications: 1,
-      totalHours: 80,
-      tas: [
-        {
-          id: "3",
-          name: "มาลี สวยงาม",
-          studentId: "6512345682",
-          hoursWorked: 52,
-          hoursThisMonth: 16,
-          status: "active",
-        },
-        {
-          id: "4",
-          name: "สมหญิง รักเรียน",
-          studentId: "6512345679",
-          hoursWorked: 28,
-          hoursThisMonth: 8,
-          status: "active",
-        },
-      ],
-    },
-    {
-      id: "3",
-      code: "01076564",
-      name: "Design and Analysis of Algorithms",
-      semester: "1/2568",
-      requiredTAs: 2,
-      approvedTAs: 0,
-      pendingApplications: 1,
-      totalHours: 0,
-      tas: [],
-    },
-    {
-      id: "4",
-      code: "01076589",
-      name: "Advanced Database Systems",
-      semester: "1/2568",
-      requiredTAs: 2,
-      approvedTAs: 2,
-      pendingApplications: 0,
-      totalHours: 96,
-      tas: [
-        {
-          id: "5",
-          name: "ประเสริฐ ขยัน",
-          studentId: "6512345680",
-          hoursWorked: 48,
-          hoursThisMonth: 14,
-          status: "active",
-        },
-        {
-          id: "6",
-          name: "มาลี สวยงาม",
-          studentId: "6512345682",
-          hoursWorked: 48,
-          hoursThisMonth: 14,
-          status: "active",
-        },
-      ],
-    },
-  ];
+  // Fetch courses from backend
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        const backendCourses = await getAllCourses();
+
+        // Transform backend data to match frontend Course interface
+        const transformedCourses: Course[] = backendCourses.map((course, index) => ({
+          id: (index + 1).toString(),
+          code: course.courseID,
+          name: course.courseName,
+          semester: "1/2568", // Default value - will be updated when backend provides it
+          requiredTAs: 0,
+          approvedTAs: 0,
+          pendingApplications: 0,
+          totalHours: 0,
+          tas: [],
+        }));
+
+        setCourses(transformedCourses);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch courses:', err);
+        setError('ไม่สามารถโหลดข้อมูลรายวิชาได้');
+        // Use fallback data if API fails
+        setCourses([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
+
+  const [selectedTA, setSelectedTA] = useState<{
+    id: string;
+    name: string;
+    studentId: string;
+    hoursWorked: number;
+    hoursThisMonth: number;
+    status: "active" | "inactive";
+  } | null>(null);
+
+  const getStatusColor = (
+    approved: number,
+    required: number
+  ) => {
+    if (approved === 0) return "text-red-600 bg-red-50";
+    if (approved < required)
+      return "text-yellow-600 bg-yellow-50";
+    return "text-green-600 bg-green-50";
+  };
+
+  const getStatusText = (
+    approved: number,
+    required: number
+  ) => {
+    if (approved === 0) return "ยังไม่มี TA";
+    if (approved < required) return "TA ไม่ครบ";
+    return "ครบแล้ว";
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">กำลังโหลดข้อมูลรายวิชา...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="text-red-600" size={24} />
+            <div>
+              <h3 className="text-red-900 font-medium">เกิดข้อผิดพลาด</h3>
+              <p className="text-red-700 text-sm mt-1">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+              >
+                ลองใหม่อีกครั้ง
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (courses.length === 0) {
+    return (
+      <div className="p-8">
+        <div className="mb-8">
+          <h1 className="text-gray-900 mb-2">จัดการรายวิชา</h1>
+          <p className="text-gray-600">
+            จัดการ TA และติดตามชั่วโมงการทำงาน
+          </p>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
+          <Book className="mx-auto text-gray-400 mb-4" size={48} />
+          <h3 className="text-gray-900 font-medium mb-2">ยังไม่มีรายวิชา</h3>
+          <p className="text-gray-600 text-sm">
+            คุณยังไม่มีรายวิชาที่สอนในภาคการศึกษานี้
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-gray-900 mb-2">จัดการรายวิชา</h1>
         <p className="text-gray-600">
-          รายวิชาที่รับผิดชอบและจำนวน TA
+          จัดการ TA และติดตามชั่วโมงการทำงาน
         </p>
       </div>
 
-      {/* Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-[var(--color-primary-50)] text-[var(--color-primary-600)] rounded-lg">
-              <Book size={24} />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <Book className="text-blue-600" size={24} />
             </div>
             <div>
-              <p className="text-gray-600 text-sm">
-                รายวิชาทั้งหมด
-              </p>
-              <p className="text-gray-900">
-                {courses.length} วิชา
+              <p className="text-gray-600 text-sm">รายวิชาทั้งหมด</p>
+              <p className="text-gray-900 text-2xl font-semibold">
+                {courses.length}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-green-50 text-green-600 rounded-lg">
-              <Users size={24} />
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-green-50 rounded-lg">
+              <Users className="text-green-600" size={24} />
             </div>
             <div>
-              <p className="text-gray-600 text-sm">
-                TA ที่อนุมัติแล้ว
-              </p>
-              <p className="text-gray-900">
+              <p className="text-gray-600 text-sm">TA ทั้งหมด</p>
+              <p className="text-gray-900 text-2xl font-semibold">
                 {courses.reduce(
-                  (sum, c) => sum + c.approvedTAs,
-                  0,
-                )}{" "}
-                คน
+                  (sum, course) => sum + course.approvedTAs,
+                  0
+                )}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-yellow-50 text-yellow-600 rounded-lg">
-              <AlertCircle size={24} />
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-yellow-50 rounded-lg">
+              <Clock className="text-yellow-600" size={24} />
             </div>
             <div>
               <p className="text-gray-600 text-sm">
-                วิชาที่ขาด TA
+                ชั่วโมงทำงานรวม
               </p>
-              <p className="text-gray-900">
-                {
-                  courses.filter(
-                    (c) => c.approvedTAs < c.requiredTAs,
-                  ).length
-                }{" "}
-                วิชา
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
-              <Clock size={24} />
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">
-                ชั่วโมงรวมทั้งหมด
-              </p>
-              <p className="text-gray-900">
+              <p className="text-gray-900 text-2xl font-semibold">
                 {courses.reduce(
-                  (sum, c) => sum + c.totalHours,
-                  0,
+                  (sum, course) => sum + course.totalHours,
+                  0
                 )}{" "}
                 ชม.
               </p>
@@ -219,130 +216,106 @@ export function CourseManagement() {
       </div>
 
       {/* Courses List */}
-      <div className="grid grid-cols-1 gap-4">
-        {courses.map((course) => {
-          const isComplete =
-            course.approvedTAs >= course.requiredTAs;
-          const needsAttention =
-            course.approvedTAs === 0 ||
-            course.approvedTAs < course.requiredTAs;
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">
+            รายวิชาที่สอน
+          </h2>
+        </div>
 
-          return (
+        <div className="divide-y divide-gray-200">
+          {courses.map((course) => (
             <div
               key={course.id}
-              className={`bg-white rounded-lg border p-6 hover:shadow-md transition-shadow ${needsAttention
-                  ? "border-yellow-300 bg-yellow-50"
-                  : "border-gray-200"
-                }`}
+              className="p-6 hover:bg-gray-50 transition-colors cursor-pointer"
+              onClick={() => setSelectedCourse(course)}
             >
-              <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-gray-900">
+                    <h3 className="text-gray-900 font-medium">
                       {course.code} - {course.name}
                     </h3>
-                    {needsAttention && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800">
-                        <AlertCircle size={12} />
-                        ขาด TA
-                      </span>
-                    )}
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                        course.approvedTAs,
+                        course.requiredTAs
+                      )}`}
+                    >
+                      {getStatusText(
+                        course.approvedTAs,
+                        course.requiredTAs
+                      )}
+                    </span>
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-gray-600 text-sm mb-3">
                     ภาคการศึกษา {course.semester}
                   </p>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-600 mb-1">
-                    TA ที่ต้องการ
-                  </p>
-                  <p className="text-gray-900">
-                    {course.requiredTAs} คน
-                  </p>
-                </div>
-
-                <div
-                  className={`rounded-lg p-3 ${isComplete ? "bg-green-50" : "bg-yellow-50"}`}
-                >
-                  <p className="text-xs text-gray-600 mb-1">
-                    TA ที่อนุมัติแล้ว
-                  </p>
-                  <p
-                    className={
-                      isComplete
-                        ? "text-green-900"
-                        : "text-yellow-900"
-                    }
-                  >
-                    {course.approvedTAs} / {course.requiredTAs}{" "}
-                    คน
-                  </p>
-                </div>
-
-                <div className="bg-[var(--color-primary-50)] rounded-lg p-3">
-                  <p className="text-xs text-gray-600 mb-1">
-                    กำลังสมัคร (รอพิจารณา)
-                  </p>
-                  <p className="text-[var(--color-primary-900)]">
-                    {course.pendingApplications} คน
-                  </p>
-                </div>
-
-                <div className="bg-purple-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-600 mb-1">
-                    ชั่วโมงรวม
-                  </p>
-                  <p className="text-purple-900">
-                    {course.totalHours} ชม.
-                  </p>
-                </div>
-              </div>
-
-              {course.tas.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    TA ประจำวิชา:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {course.tas.map((ta) => (
-                      <div
-                        key={ta.id}
-                        className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm"
-                      >
-                        <div className="w-6 h-6 rounded-full bg-[var(--color-primary-600)] flex items-center justify-center text-white text-xs">
-                          {ta.name.charAt(0)}
-                        </div>
-                        <span className="text-gray-900">
-                          {ta.name}
-                        </span>
-                        <span className="text-gray-500">
-                          ({ta.hoursThisMonth} ชม./เดือน)
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Users size={16} className="text-gray-400" />
+                      <span className="text-gray-600">
+                        TA: {course.approvedTAs}/{course.requiredTAs}
+                      </span>
+                    </div>
+                    {course.pendingApplications > 0 && (
+                      <div className="flex items-center gap-2">
+                        <AlertCircle
+                          size={16}
+                          className="text-yellow-600"
+                        />
+                        <span className="text-yellow-600">
+                          รอพิจารณา {course.pendingApplications} คน
                         </span>
                       </div>
-                    ))}
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-gray-400" />
+                      <span className="text-gray-600">
+                        {course.totalHours} ชั่วโมง
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              <button
-                onClick={() => setSelectedCourse(course)}
-                className="flex items-center gap-2 text-[var(--color-primary-600)] hover:text-[var(--color-primary-700)] text-sm"
-              >
-                ดูรายละเอียดชั่วโมงงานของแต่ละคน
-                <ChevronRight size={16} />
-              </button>
+                  {course.tas.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <p className="text-sm font-medium text-gray-700 mb-2">
+                        TA ประจำวิชา:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {course.tas.map((ta) => (
+                          <button
+                            key={ta.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTA(ta);
+                            }}
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors"
+                          >
+                            {ta.name} ({ta.studentId})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <ChevronRight
+                  className="text-gray-400 flex-shrink-0 ml-4"
+                  size={20}
+                />
+              </div>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      {selectedCourse && (
+      {/* TA Detail Modal */}
+      {selectedTA && (
         <TADetailModal
-          course={selectedCourse}
-          onClose={() => setSelectedCourse(null)}
+          ta={selectedTA}
+          onClose={() => setSelectedTA(null)}
         />
       )}
     </div>

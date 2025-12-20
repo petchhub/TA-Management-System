@@ -12,8 +12,7 @@ import StudentDashboard from './pages/student/Dashboard';
 import WorkHours from './pages/student/WorkHours';
 
 // Professor pages
-import { Dashboard as ProfDashboard } from './pages/professor/Dashboard';
-import { TARecruitment } from './pages/professor/TARecruitment';
+import ProfessorLayout from './pages/professor/ProfessorLayout';
 
 // Finance pages
 import { Dashboard as FinanceDashboard } from './pages/finance/Dashboard';
@@ -43,8 +42,11 @@ export default function App() {
 
           {/* Professor Routes - Only accessible to PROFESSOR role */}
           <Route element={<ProtectedRoute allowedRoles={['PROFESSOR']} />}>
-            <Route path="/prof/dashboard" element={<ProfDashboard />} />
-            <Route path="/prof/recruitment" element={<TARecruitment />} />
+            <Route path="/prof/*" element={<ProfessorLayout />} />
+            <Route path="/prof/dashboard" element={<ProfessorLayout initialPage="dashboard" />} />
+            <Route path="/prof/recruitment" element={<ProfessorLayout initialPage="recruitment" />} />
+            <Route path="/prof/work-hours" element={<ProfessorLayout initialPage="work-hours" />} />
+            <Route path="/prof/courses" element={<ProfessorLayout initialPage="courses" />} />
           </Route>
 
           {/* Finance Routes - Only accessible to FINANCE role */}

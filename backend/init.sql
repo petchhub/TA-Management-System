@@ -18,6 +18,12 @@ CREATE TABLE status(
     status_value VARCHAR(20) NOT NULL
 );
 
+
+CREATE TABLE grades(
+    grade_ID  SERIAL PRIMARY KEY,
+    grade_value VARCHAR(10) NOT NULL
+);
+
 CREATE TABLE semester(
     semester_ID  SERIAL PRIMARY KEY,
     semester_value VARCHAR(10) NOT NULL,
@@ -88,8 +94,10 @@ CREATE TABLE ta_job_posting(
     id SERIAL PRIMARY KEY,
     professor_ID INTEGER NOT NULL,
     task VARCHAR(200) NOT NULL,
+    ta_allocation INTEGER NOT NULL,
     status_ID INTEGER NOT NULL,
     course_ID INTEGER ,
+    grade_ID INTEGER NOT NULL,
     created_date TIMESTAMP ,
     delete_date TIMESTAMP,
     CONSTRAINT FK_status_ID
@@ -100,7 +108,10 @@ CREATE TABLE ta_job_posting(
         REFERENCES professors(professor_ID),
     CONSTRAINT FK_course_ID
         FOREIGN KEY (course_ID)
-        REFERENCES courses(id)
+        REFERENCES courses(id),
+    CONSTRAINT FK_grade_ID
+        FOREIGN KEY (grade_ID)
+        REFERENCES grades(grade_ID)
 );
 
 CREATE TABLE ta_application(
@@ -237,3 +248,13 @@ INSERT INTO class_days (class_day_value) VALUES
 INSERT INTO course_programs (course_program_value) VALUES
     ('General'),
     ('International');
+
+--grades
+INSERT INTO grades (grade_value) VALUES
+    ('A'),
+    ('B+'),
+    ('B'),
+    ('C+'),
+    ('C'),
+    ('D+'),
+    ('D');

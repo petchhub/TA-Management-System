@@ -1,4 +1,8 @@
 import { Users, CheckCircle, Clock, Plus, UserCheck, FileText } from 'lucide-react';
+import { useState } from 'react';
+import { CreateTAAnnouncementModal, TAAnnouncementData } from './CreateTAAnnouncementModal';
+import { createCourseAnnouncement } from '../../services/courseService';
+import { useAuth } from '../../context/AuthContext';
 
 
 interface DashboardProps {
@@ -6,6 +10,32 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onNavigate }: DashboardProps) {
+  const { user } = useAuth();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateAnnouncement = async (data: TAAnnouncementData) => {
+    try {
+      setIsSubmitting(true);
+
+      // Add professor ID from auth context if available
+      const professorID = user?.id ? parseInt(user.id) : 1;
+
+      const result = await createCourseAnnouncement({
+        ...data,
+        professorID: professorID
+      });
+
+      console.log('Course announcement created:', result);
+      alert(`ประกาศรับสมัคร TA สำเร็จ!\nรหัสวิชา: ${data.courseCode}\nชื่อวิชา: ${data.courseName}`);
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Failed to create announcement:', error);
+      alert(`เกิดข้อผิดพลาดในการสร้างประกาศ: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   const stats = [
@@ -42,7 +72,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       icon: Plus,
       color: '#E35205',
       hoverColor: '#C54504',
-      onClick: () => { },
+      onClick: () => setShowCreateModal(true),
     },
     {
       title: 'อนุมัติ TA',
@@ -180,6 +210,14 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </button>
         </div>
       </div>
+
+      {/* Create TA Announcement Modal */}
+      {showCreateModal && (
+        <CreateTAAnnouncementModal
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateAnnouncement}
+        />
+      )}
     </div>
   );
 }
