@@ -23,22 +23,48 @@ export default function LoginPage() {
   useEffect(() => {
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search);
-      const redirectUri = params.get('redirect_uri');
+      const success = params.get('success');
+      const error = params.get('error');
 
-      if (redirectUri) {
+      // Handle error from backend redirect
+      if (error) {
+        const errorMessages: { [key: string]: string } = {
+          invalid_request: 'Invalid authentication request. Please try again.',
+          state_mismatch: 'Session expired or invalid. Please try again.',
+          email_not_verified: 'Your email is not verified. Please verify your email.',
+          code_exchange_failed: 'Failed to exchange authorization code. Please try again.',
+          authentication_failed: 'Authentication failed. Please try again.',
+        };
+        setError(errorMessages[error] || 'An error occurred during authentication.');
+        // Clear error parameter from URL
+        window.history.replaceState({}, '', window.location.pathname);
+        return;
+      }
+
+      // Handle successful callback
+      if (success === 'true') {
         try {
           setLoading(true);
           setError(null);
 
-          // Fetch user data from backend after callback
-          const response = await fetch('/TA-management/auth/me', {
+          // Fetch user data from backend /auth/me endpoint
+          const response = await fetch('http://localhost:8084/TA-management/auth/me', {
             credentials: 'include',
           });
 
           if (response.ok) {
             const userData = await response.json();
-            login(userData);
-            redirectToDashboard(userData.role);
+
+            // Convert role to uppercase to match frontend expectations
+            const normalizedUser = {
+              id: userData.id,
+              email: userData.email,
+              name: userData.name,
+              role: userData.role?.toUpperCase() || null,
+            };
+
+            login(normalizedUser);
+            redirectToDashboard(normalizedUser.role);
           } else if (response.status === 401) {
             setError('Authentication failed. Please try again.');
           } else {
@@ -49,6 +75,8 @@ export default function LoginPage() {
           setError('An error occurred during authentication.');
         } finally {
           setLoading(false);
+          // Clear success parameter from URL
+          window.history.replaceState({}, '', window.location.pathname);
         }
       }
     };
@@ -81,7 +109,7 @@ export default function LoginPage() {
       setError(null);
 
       // Request OAuth URL from backend
-      const response = await fetch('/TA-management/auth/google', {
+      const response = await fetch('http://localhost:8084/TA-management/auth/google', {
         method: 'GET',
         credentials: 'include',
       });

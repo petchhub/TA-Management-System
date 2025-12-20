@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const response = await fetch('/TA-management/auth/me', {
           credentials: 'include',
         });
-        
+
         if (response.ok) {
           const userData = await response.json();
           // Ensure role is included
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               id: userData.id || userData.sub || '',
               email: userData.email || '',
               name: userData.name || '',
-              role: (userData.role as UserRole) || null,
+              role: (userData.role?.toUpperCase() as UserRole) || null,
               pic: userData.pic,
             });
           }
