@@ -20,13 +20,162 @@ func NewCourseRepository(DB *sql.DB) CourseRepositoryImplementation {
 
 func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error) {
 
+	query := `SELECT 
+				j.task,
+				j.id,
+				c.course_ID, 
+				c.course_name, 
+				c.ta_allocation, 
+				c.work_hour,
+				c.class_start,
+				c.class_end,
+				c.location,
+				cd.class_day_value, 
+				p.firstname,
+				p.lastname,
+				s.semester_value,
+				st.status_value,
+				g.grade_value
+			FROM ta_job_posting AS j
+			LEFT JOIN courses AS c
+				ON j.course_ID = c.id
+			LEFT JOIN class_days AS cd
+				ON c.class_day_ID = cd.class_day_ID 
+			LEFT JOIN professors AS p
+				ON c.professor_ID = p.professor_ID
+			LEFT JOIN semester AS s
+				ON c.semester_ID = s.semester_ID
+			LEFT JOIN status AS st
+				ON j.status_ID = st.status_ID
+			LEFT JOIN grades AS g
+				ON j.grade_ID = g.grade_ID`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	//garantees that connection is released back to the pool ,prevent leak
+	defer rows.Close()
+
+	var courses []response.Course
+	for rows.Next() {
+		var course response.Course
+		var firstname string
+		var lastname string
+		err := rows.Scan(
+			&course.Task,
+			&course.JobPostID,
+			&course.CourseID,
+			&course.CourseName,
+			&course.TaAllocation,
+			&course.WorkHour,
+			&course.ClassStart,
+			&course.ClassEnd,
+			&course.Location,
+			&course.Classday,
+			&firstname,
+			&lastname,
+			&course.Semester,
+			&course.Status,
+			&course.Grade,
+		)
+		if err != nil {
+			return nil, err
+		}
+		course.ProfessorName = firstname + " " + lastname
+		courses = append(courses, course)
+	}
+
+	return courses, nil
+}
+
+func (r CourseRepositoryImplementation) GetAllCourseByStudentId(studentId int) ([]response.Course, error) {
+
+	query := `SELECT 
+				j.task,
+				j.id,
+				c.course_ID, 
+				c.course_name, 
+				c.ta_allocation, 
+				c.work_hour,
+				c.class_start,
+				c.class_end,
+				c.location,
+				cd.class_day_value, 
+				p.firstname,
+				p.lastname,
+				s.semester_value,
+				st.status_value,
+				g.grade_value
+			FROM ta_job_posting AS j
+			LEFT JOIN courses AS c
+				ON j.course_ID = c.id
+			LEFT JOIN class_days AS cd
+				ON c.class_day_ID = cd.class_day_ID 
+			LEFT JOIN professors AS p
+				ON c.professor_ID = p.professor_ID
+			LEFT JOIN semester AS s
+				ON c.semester_ID = s.semester_ID
+			LEFT JOIN status AS st
+				ON j.status_ID = st.status_ID
+			LEFT JOIN grades AS g
+				ON j.grade_ID = g.grade_ID
+			WHERE NOT EXISTS(
+				SELECT 1 
+				FROM ta_application as ta
+				WHERE ta.job_post_ID = j.id
+				AND ta.student_ID = $1)
+			`
+
+	rows, err := r.db.Query(query, studentId)
+	if err != nil {
+		return nil, err
+	}
+	//garantees that connection is released back to the pool ,prevent leak
+	defer rows.Close()
+
+	var courses []response.Course
+	for rows.Next() {
+		var course response.Course
+		var firstname string
+		var lastname string
+		err := rows.Scan(
+			&course.Task,
+			&course.JobPostID,
+			&course.CourseID,
+			&course.CourseName,
+			&course.TaAllocation,
+			&course.WorkHour,
+			&course.ClassStart,
+			&course.ClassEnd,
+			&course.Location,
+			&course.Classday,
+			&firstname,
+			&lastname,
+			&course.Semester,
+			&course.Status,
+			&course.Grade,
+		)
+		if err != nil {
+			return nil, err
+		}
+		course.ProfessorName = firstname + " " + lastname
+		courses = append(courses, course)
+	}
+
+	return courses, nil
+}
+
+func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]response.Course, error) {
+
 	query := `SELECT course_ID, 
 				course_name, 
 				ta_allocation, 
 				work_hour 
-			FROM courses`
+			FROM courses
+				WHERE professor_ID=$1`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.Query(query, professorId)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +243,9 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 	class_end,
 	work_hour,
 	ta_allocation,
+	location,
 	created_date) 
-	values ($1,$2,$3, $4, $5 ,$6 ,$7 ,$8 ,$9 ,$10 ,$11 ,$12, $13, $14, $15)
+	values ($1,$2,$3, $4, $5 ,$6 ,$7 ,$8 ,$9 ,$10 ,$11 ,$12, $13, $14, $15, $16)
 	RETURNING id`
 
 	var lastInsertId int
@@ -115,6 +265,7 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 		body.ClassEnd,
 		body.WorkHour,
 		body.TaAllocation,
+		body.Location,
 		time.Now(),
 	).Scan(&lastInsertId)
 
@@ -247,7 +398,23 @@ func (r CourseRepositoryImplementation) DeleteCourse(id int) error {
 	return nil
 }
 
-func (r CourseRepositoryImplementation) ApplyCourse(body request.ApplyCourse) (int, error) {
+func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) (int, error) {
+
+	//check student cannot make duplicate apply on same job_post
+	var count int
+	queryCheck := `SELECT COUNT(*) FROM ta_application 
+					WHERE job_post_id = $1
+					AND student_id = $2`
+
+	err := r.db.QueryRow(queryCheck, body.JobPostID, body.StudentID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	if count > 0 {
+		return 0, fmt.Errorf("student:%d already apply to this job", body.StudentID)
+	}
+
 	tx, err := r.db.Begin()
 	if err != nil {
 		return 0, err
@@ -260,19 +427,28 @@ func (r CourseRepositoryImplementation) ApplyCourse(body request.ApplyCourse) (i
 		tx.Rollback()
 		return 0, fmt.Errorf("failed on insert to transcript file : %v", err)
 	}
+
 	fmt.Println(body.StudentID)
-	fmt.Println(body.StatusID)
+
 	var applicationId int
-	query = `INSERT INTO ta_application(transcript_ID, student_ID, 
-			status_ID, course_ID, created_date)
-			VALUES($1, $2, $3, $4, $5)
+	query = `INSERT INTO ta_application(
+				transcript_ID, 
+				student_ID, 
+				status_ID, 
+				job_post_ID,
+				grade,
+				purpose,
+				created_date)
+			VALUES($1, $2, $3, $4, $5, $6 ,$7)
 			RETURNING id`
 
 	err = tx.QueryRow(query,
 		fileId,
 		body.StudentID,
-		body.StatusID,
-		body.CourseID,
+		3,
+		body.JobPostID,
+		body.Grade,
+		body.JobPostID,
 		time.Now(),
 	).Scan(&applicationId)
 
@@ -295,10 +471,12 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 	query := `SELECT 
 					ta.student_ID, 
 					ta.status_ID, 
-					ta.course_ID, 
+					tp.course_ID, 
 					ta.created_date,
 					st.status_value
 				FROM ta_application AS ta 
+				LEFT JOIN ta_job_posting AS tp
+					ON ta.job_post_ID = tp.id
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
 				WHERE student_ID = $1`
@@ -425,7 +603,13 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 	pendingStatus := 3
 	var courseId int
 	var studentId int
-	query := `SELECT course_ID, student_ID FROM ta_application WHERE id =$1 AND status_id =$2`
+	query := `SELECT 
+					jp.course_ID, 
+					ta.student_ID 
+				FROM ta_application as ta
+				LEFT JOIN ta_job_posting as jp
+					ON ta.job_post_ID = jp.id
+				WHERE ta.id =$1 AND ta.status_id =$2`
 
 	err = tx.QueryRow(query,
 		ApplicationId,
@@ -462,4 +646,50 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 		return fmt.Errorf("failed on commit transaction")
 	}
 	return nil
+}
+
+func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId int) ([]response.Application, error) {
+	query := `SELECT 
+					ta.id,
+					ta.student_ID, 
+					ta.status_ID, 
+					jp.course_ID, 
+					ta.created_date,
+					st.status_value,
+					c.course_name
+				FROM ta_application AS ta 
+				LEFT JOIN status AS st
+					ON ta.status_ID = st.status_ID
+				LEFT JOIN ta_job_posting AS jp
+					ON ta.job_post_ID = jp.id
+				LEFT JOIN courses AS c
+					ON jp.course_ID = c.id
+				WHERE c.professor_ID = $1`
+
+	rows, err := r.db.Query(query, professorId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var applications []response.Application
+	for rows.Next() {
+		var application response.Application
+
+		err := rows.Scan(
+			&application.ApplicationId,
+			&application.StudentID,
+			&application.StatusID,
+			&application.CourseID,
+			&application.CreatedDate,
+			&application.StatusCode,
+			&application.CourseName,
+		)
+		if err != nil {
+			return nil, err
+		}
+		applications = append(applications, application)
+	}
+
+	return applications, nil
 }

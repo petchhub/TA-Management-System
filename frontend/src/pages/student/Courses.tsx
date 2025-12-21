@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import CourseCard from "./CourseCard";
 import ApplicationModal from "./ApplicationModal";
+import { getOpenPositions, Course } from "../../services/positionService";
+import console from "console";
 
 export default function Courses() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,114 +22,31 @@ export default function Courses() {
     courseId: number | null;
   }>({ isOpen: false, courseId: null });
 
-  const availableCourses = [
-    {
-      id: 1,
-      code: "01076104",
-      name: "Object-Oriented Programming",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรอินเตอร์",
-      days: ["จันทร์", "พุธ"],
-      instructor: "ผศ.ดร. สมหญิง วิชาการ",
-      semester: "2/2568",
-      positions: 2,
-      hoursPerWeek: 6,
-      requirements:
-        "เกรด B ในวิชาโปรแกรมเบื้องต้น, มีประสบการณ์ในการสอน",
-      description:
-        "ช่วยสอนและตรวจการบ้านวิชาการเขียนโปรแกรมเชิงวัตถุ",
-      location: "อาคาร ecc ชั้น 8-810",
-      deadline: "2025-12-15",
-      status: "open" as const,
-    },
-    {
-      id: 2,
-      code: "0107618",
-      name: "Database Systems",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรปกติ(ไทย)",
-      days: ["อังคาร", "ศุกร์"],
-      instructor: "รศ.ดร. วิทยา ฐานข้อมูล",
-      semester: "2/2568",
-      positions: 3,
-      hoursPerWeek: 4,
-      requirements: "เกรด B+ ขึ้นไปในวิชาเบื้องต้น",
-      description: "ช่วยสอนและดูแลห้องปฏิบัติการฐานข้อมูล",
-      location: "อาคาร ecc ชั้น 5-508",
-      deadline: "2025-12-20",
-      status: "open" as const,
-    },
-    {
-      id: 3,
-      code: "01073101",
-      name: "System Platform Administration",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรปกติ(ไทย)",
-      days: ["จันทร์", "พุธ", "ศุกร์"],
-      instructor: "ผศ.ดร. สมศักดิ์ จุลศาสตร์",
-      semester: "2/2568",
-      positions: 4,
-      hoursPerWeek: 5,
-      requirements: "เกรด A ในวิชาก่อนหน้า",
-      description: "ช่วยสอนและแก้โจทย์แคลคูลัสพื้นฐาน",
-      location: "อาคาร ecc ชั้น 8-808",
-      deadline: "2025-12-18",
-      status: "open" as const,
-    },
-    {
-      id: 4,
-      code: "01076201",
-      name: "Artificial Intelligence",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรอินเตอร์",
-      days: ["พฤหัสบดี"],
-      instructor: "รศ.ดร. ปัญญา ชาญชัย",
-      semester: "2/2568",
-      positions: 2,
-      hoursPerWeek: 6,
-      requirements:
-        "เกรด A ในวิชา CS301, มีความรู้ Python และ Machine Learning",
-      description: "ช่วยสอนและดูแลโปรเจค AI",
-      location: "อาคาร ecc ชั้น 8-811",
-      deadline: "2025-12-10",
-      status: "open" as const,
-    },
-    {
-      id: 5,
-      code: "01076103",
-      name: "Digital System",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรต่อเนื่อง",
-      days: ["เสาร์", "อาทิตย์"],
-      instructor: "อ. Sarah Johnson",
-      semester: "2/2568",
-      positions: 3,
-      hoursPerWeek: 4,
-      requirements: "ผ่านตัวก่อนหน้ามาแล้ว",
-      description: "ช่วยสอนและฝึกทักษะให้น้องๆ",
-      location: "อาคาร ecc ชั้น 8-802",
-      deadline: "2025-12-12",
-      status: "open" as const,
-    },
-    {
-      id: 6,
-      code: "01076102",
-      name: "Software Defined Networking",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรปกติ(ไทย)",
-      days: ["อังคาร", "พฤหัสบดี"],
-      instructor: "ผศ.ดร. วิทย์ ฟิสิกส์",
-      semester: "2/2568",
-      positions: 2,
-      hoursPerWeek: 5,
-      requirements:
-        "เกรด B+ ขึ้นไปในวิชาการเขียนโปรแกรมเบื้องต้น",
-      description: "ช่วยสอนและดูแลห้องปฏิบัติ",
-      location: "อาคาร ecc ชั้น 8-801",
-      deadline: "2025-12-08",
-      status: "closed" as const,
-    },
-  ];
+  // Backend integration state
+  const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch positions from backend on mount
+  useEffect(() => {
+    async function fetchPositions() {
+      try {
+        setLoading(true);
+        setError(null);
+        const positions = await getOpenPositions();
+        setAvailableCourses(positions);
+        console.log(positions);
+      } catch (err) {
+        console.error('Failed to fetch positions:', err);
+        setError('ไม่สามารถโหลดข้อมูลตำแหน่งได้ กรุณาลองใหม่อีกครั้ง');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPositions();
+  }, []);
+
 
   const programs = [
     "ทั้งหมด",
@@ -149,23 +68,23 @@ export default function Courses() {
 
   const filteredCourses = availableCourses.filter((course) => {
     const matchesSearch =
-      course.code
-        .toLowerCase()
+      course?.code
+        ?.toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      course.name
-        .toLowerCase()
+      course?.name
+        ?.toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
-      course.instructor
-        .toLowerCase()
+      course?.instructor
+        ?.toLowerCase()
         .includes(searchQuery.toLowerCase());
     const matchesProgram =
       filterProgram === "all" ||
-      course.program === filterProgram;
+      course?.program === filterProgram;
     const matchesDay =
-      filterDay === "all" || course.days.includes(filterDay);
+      filterDay === "all" || course?.days.includes(filterDay);
     const matchesSemester =
       filterSemester === "all" ||
-      course.semester === filterSemester;
+      course?.semester === filterSemester;
 
     return (
       matchesSearch &&
@@ -332,19 +251,42 @@ export default function Courses() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 rounded-xl p-6 shadow-sm border border-red-200 text-center">
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+          >
+            ลองใหม่อีกครั้ง
+          </button>
+        </div>
+      )}
+
       {/* Course Listings */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredCourses.map((course) => (
-          <CourseCard
-            key={course.id}
-            course={course}
-            onApply={handleApply}
-          />
-        ))}
-      </div>
+      {!loading && !error && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {filteredCourses.map((course) => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              onApply={handleApply}
+            />
+          ))}
+        </div>
+      )}
 
       {/* No Results */}
-      {filteredCourses.length === 0 && (
+      {!loading && !error && filteredCourses.length === 0 && (
         <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-100 text-center">
           <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-gray-900 mb-2">ไม่พบรายวิชา</h3>

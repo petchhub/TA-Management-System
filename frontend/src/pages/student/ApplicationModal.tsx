@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { X, Upload, FileText, CheckCircle } from 'lucide-react';
+import { applyToPosition } from '../../services/positionService';
+import { useAuth } from '../../context/AuthContext';
 
 interface Course {
   id: number;
@@ -14,7 +16,7 @@ interface Course {
   description: string;
   location: string;
   deadline: string;
-  status: 'open' | 'closed';
+  status: string;
 }
 
 interface ApplicationModalProps {
@@ -25,7 +27,7 @@ interface ApplicationModalProps {
 }
 
 export default function ApplicationModal({ isOpen, courseId, course, onClose }: ApplicationModalProps) {
-  const [step, setStep] = useState<'form' | 'confirm' | 'success'>('form');
+  const [step, setStep] = useState<'form' | 'confirm' | 'success' | 'error'>('form');
   const [formData, setFormData] = useState({
     motivation: '',
     experience: '',
@@ -34,6 +36,10 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
     transcript: null as File | null,
     resume: null as File | null
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const { user } = useAuth();
 
   if (!isOpen || !course) return null;
 
@@ -42,13 +48,45 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
     setStep('confirm');
   };
 
-  const handleConfirm = () => {
-    // In a real app, this would submit to backend
-    console.log('Application submitted:', { courseId, formData });
-    setStep('success');
-    setTimeout(() => {
-      resetAndClose();
-    }, 3000);
+  const handleConfirm = async () => {
+    if (!courseId || !formData.transcript || !user?.id) {
+      setErrorMessage('ข้อมูลไม่ครบถ้วน กรุณาตรวจสอบอีกครั้ง');
+      setStep('error');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      // Submit application to backend
+      // Convert user.id to number (assuming it's a student ID)
+      const studentId = parseInt(user.id, 10);
+      if (isNaN(studentId)) {
+        throw new Error('Invalid student ID');
+      }
+
+      await applyToPosition(courseId, {
+        studentID: studentId,
+        statusID: 3, // 3 = Pending status
+        motivation: formData.motivation,
+        experience: formData.experience,
+        availability: formData.availability,
+        gpa: formData.gpa,
+        transcript: formData.transcript,
+        resume: formData.resume || undefined,
+      });
+
+      setStep('success');
+      setTimeout(() => {
+        resetAndClose();
+      }, 3000);
+    } catch (error) {
+      console.error('Failed to submit application:', error);
+      setErrorMessage('ไม่สามารถส่งใบสมัครได้ กรุณาลองใหม่อีกครั้ง');
+      setStep('error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetAndClose = () => {
@@ -250,7 +288,7 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 px-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white rounded-lg transition-colors"
+                  className="flex-1 py-3 px-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-black rounded-lg transition-colors"
                 >
                   ถัดไป
                 </button>
@@ -318,9 +356,10 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                 </button>
                 <button
                   onClick={handleConfirm}
-                  className="flex-1 py-3 px-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white rounded-lg transition-colors"
+                  disabled={submitting}
+                  className="flex-1 py-3 px-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  ยืนยันการสมัคร
+                  {submitting ? 'กำลังส่ง...' : 'ยืนยันการสมัคร'}
                 </button>
               </div>
             </div>
@@ -338,6 +377,32 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
               <p className="text-gray-600">
                 คุณจะได้รับอีเมลแจ้งผลการพิจารณาภายใน 7-14 วัน
               </p>
+            </div>
+          )}
+
+          {step === 'error' && (
+            <div className="py-12 text-center">
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <X className="w-10 h-10 text-red-600" />
+              </div>
+              <h3 className="text-gray-900 mb-2">เกิดข้อผิดพลาด</h3>
+              <p className="text-gray-600 mb-6">
+                {errorMessage}
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => setStep('form')}
+                  className="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                >
+                  กลับไปแก้ไข
+                </button>
+                <button
+                  onClick={resetAndClose}
+                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                >
+                  ปิด
+                </button>
+              </div>
             </div>
           )}
         </div>

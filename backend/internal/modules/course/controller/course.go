@@ -26,12 +26,15 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 	r.Use()
 	{
 		r.GET("", c.findAllCourse)
+		r.GET("/student/:studentId", c.GetAllCourseByStudentId)
+		r.GET("/professor/:professorId", c.findProfessorCourse)
 		r.POST("", c.createCourse)
 		r.PATCH("/:courseId", c.updateCourse)
 		r.DELETE("/:courseId", c.deleteCourse)
-		r.POST("/apply/:courseId", c.applyCourse)
+		r.POST("/apply/:jobPostId", c.applyJobPost)
 		r.GET("/application/student/:studentId", c.getApplicationByStudentId)
 		r.GET("/application/course/:courseId", c.getApplicationBycourseId)
+		r.GET("/application/professor/:professorId", c.getApplicationByProfessorId)
 		r.GET("/application/:applilcationId", c.getApplicationDetail)
 		r.GET("/application/pdf/:applicationId", c.getApplicationPdf)
 		r.POST("/application/approve/:applicationId", c.approveApplication)
@@ -41,6 +44,39 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 func (controller CourseController) findAllCourse(ctx *gin.Context) {
 	//validate
 	result, err := controller.service.GetAllCourse()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller CourseController) GetAllCourseByStudentId(ctx *gin.Context) {
+
+	studentId, ok := utils.ValidateParam(ctx, "studentId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validation Param Failed"})
+		return
+	}
+
+	result, err := controller.service.GetAllCourseByStudentId(studentId)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+	}
+
+	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller CourseController) findProfessorCourse(ctx *gin.Context) {
+
+	//validate
+	professorId, ok := utils.ValidateParam(ctx, "professorId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validation Param Failed"})
+		return
+	}
+
+	result, err := controller.service.GetProfessorCourse(professorId)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"err": err.Error()})
 		return
@@ -102,9 +138,9 @@ func (controller CourseController) deleteCourse(ctx *gin.Context) {
 
 }
 
-func (controller CourseController) applyCourse(ctx *gin.Context) {
-	rq := request.ApplyCourse{}
-	id, ok := utils.ValidateParam(ctx, "courseId")
+func (controller CourseController) applyJobPost(ctx *gin.Context) {
+	rq := request.ApplyJobPost{}
+	id, ok := utils.ValidateParam(ctx, "jobPostId")
 	if !ok {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validate Param Failed."})
 		return
@@ -135,11 +171,11 @@ func (controller CourseController) applyCourse(ctx *gin.Context) {
 		return
 	}
 
-	rq.CourseID = &id
+	rq.JobPostID = &id
 	rq.FileBytes = &fileBytes
 	rq.FileName = &fileHeader.Filename
 
-	result, err := controller.service.ApplyCourse(rq)
+	result, err := controller.service.ApplyJobPost(rq)
 	if err != nil {
 		fmt.Println(err)
 		ctx.JSON(http.StatusInternalServerError, result)
@@ -165,8 +201,23 @@ func (controller CourseController) getApplicationByStudentId(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, result)
 }
 
+func (controller CourseController) getApplicationByProfessorId(ctx *gin.Context) {
+	id, ok := utils.ValidateParam(ctx, "professorId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validate Param Failed."})
+		return
+	}
+
+	result, err := controller.service.GetApplicationByProfessorId(id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, result)
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
+}
+
 func (controller CourseController) getApplicationBycourseId(ctx *gin.Context) {
-	id, ok := utils.ValidateParam(ctx, "studentId")
+	id, ok := utils.ValidateParam(ctx, "courseId")
 	if !ok {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validate Param Failed."})
 		return
@@ -233,5 +284,5 @@ func (controller CourseController) approveApplication(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, result)
 		return
 	}
-
+	ctx.JSON(http.StatusCreated, result)
 }

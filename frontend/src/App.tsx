@@ -8,8 +8,7 @@ import PublicHomePage from './pages/public/HomePage';
 import LoginPage from './pages/auth/LoginPage';
 
 // Student pages
-import StudentDashboard from './pages/student/Dashboard';
-import WorkHours from './pages/student/WorkHours';
+import StudentLayout from './pages/student/StudentLayout';
 
 // Professor pages
 import ProfessorLayout from './pages/professor/ProfessorLayout';
@@ -36,8 +35,11 @@ export default function App() {
 
           {/* Student Routes - Only accessible to STUDENT role */}
           <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
-            <Route path="/student/dashboard" element={<StudentDashboard />} />
-            <Route path="/student/work-hours" element={<WorkHours />} />
+            <Route path="/student/*" element={<StudentLayout />} />
+            <Route path="/student/dashboard" element={<StudentLayout initialPage="dashboard" />} />
+            <Route path="/student/work-hours" element={<StudentLayout initialPage="work-hours" />} />
+            <Route path="/student/courses" element={<StudentLayout initialPage="courses" />} />
+            <Route path="/student/profile" element={<StudentLayout initialPage="profile" />} />
           </Route>
 
           {/* Professor Routes - Only accessible to PROFESSOR role */}

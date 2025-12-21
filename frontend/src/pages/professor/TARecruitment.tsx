@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Eye,
@@ -9,9 +9,11 @@ import {
   IdCard,
 } from "lucide-react";
 import { ApplicantModal } from "./ApplicantModal";
+import { useAuth } from "../../context/AuthContext";
+import { getProfessorApplications, approveApplication } from "../../services/courseService";
 
 interface Applicant {
-  id: string;
+  id: number;
   name: string;
   studentId: string;
   gpa: number;
@@ -29,123 +31,78 @@ interface Applicant {
 }
 
 export function TARecruitment() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] =
-    useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [gpaFilter, setGpaFilter] = useState<string>("all");
-  const [selectedApplicant, setSelectedApplicant] =
-    useState<Applicant | null>(null);
+  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
 
-  const [applicants, setApplicants] = useState<Applicant[]>([
-    {
-      id: "1",
-      name: "สมชาย ใจดี",
-      studentId: "6512345678",
-      gpa: 3.85,
-      email: "somchai@university.ac.th",
-      phone: "081-234-5678",
-      course: "01076101 - Introduction to Computer Engineering",
-      status: "pending",
-      documents: {
-        transcript: true,
-        bankAccount: true,
-        studentCard: true,
-      },
-      experience: "เคยเป็น TA วิชา Programming I",
-      motivation:
-        "อยากพัฒนาทักษะการสอนและช่วยเหลือนิสิตรุ่นน้อง",
-    },
-    {
-      id: "2",
-      name: "สมหญิง รักเรียน",
-      studentId: "6512345679",
-      gpa: 3.92,
-      email: "somying@university.ac.th",
-      phone: "082-345-6789",
-      course: "01076109 - OBJECT ORIENTED DATA STRUCTURES",
-      status: "pending",
-      documents: {
-        transcript: true,
-        bankAccount: true,
-        studentCard: false,
-      },
-      experience: "ไม่มีประสบการณ์",
-      motivation: "ต้องการเรียนรู้และพัฒนาทักษะการสื่อสาร",
-    },
-    {
-      id: "3",
-      name: "ประเสริฐ ขยัน",
-      studentId: "6512345680",
-      gpa: 3.78,
-      email: "prasert@university.ac.th",
-      phone: "083-456-7890",
-      course: "01076119 - WEB APPLICATION DEVELOPMENT",
-      status: "approved",
-      documents: {
-        transcript: true,
-        bankAccount: true,
-        studentCard: true,
-      },
-      experience: "เคยเป็น TA วิชา Web Development",
-      motivation:
-        "มีความสนใจในด้านการสอนและต้องการสะสมประสบการณ์",
-    },
-    {
-      id: "4",
-      name: "วิชัย ดีมาก",
-      studentId: "6512345681",
-      gpa: 3.67,
-      email: "wichai@university.ac.th",
-      phone: "084-567-8901",
-      course: "01076564 - DESIGN AND ANALYSIS OF ALGORITHMS",
-      status: "pending",
-      documents: {
-        transcript: true,
-        bankAccount: false,
-        studentCard: true,
-      },
-      experience: "ไม่มีประสบการณ์",
-      motivation: "อยากช่วยเหลือนิสิตที่มีปัญหาในการเรียน",
-    },
-    {
-      id: "5",
-      name: "มาลี สวยงาม",
-      studentId: "6512345682",
-      gpa: 3.95,
-      email: "malee@university.ac.th",
-      phone: "085-678-9012",
-      course: "01076109 - OBJECT ORIENTED DATA STRUCTURES",
-      status: "approved",
-      documents: {
-        transcript: true,
-        bankAccount: true,
-        studentCard: true,
-      },
-      experience: "เคยเป็น TA วิชา Database Systems",
-      motivation:
-        "มีความชำนาญในเนื้อหาและต้องการถ่ายทอดความรู้",
-    },
-  ]);
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleApprove = (id: string) => {
-    setApplicants(
-      applicants.map((app) =>
-        app.id === id
-          ? { ...app, status: "approved" as const }
-          : app,
-      ),
-    );
+  const fetchApplications = async () => {
+    if (!user) {
+      console.log("No user found in AuthContext");
+      return;
+    }
+
+    console.log("Current user in TARecruitment:", user);
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const professorId = parseInt(user.id);
+      const apps = await getProfessorApplications(professorId, user.name);
+      console.log("Apps returned to TARecruitment:", apps);
+
+      // Map backend Application to frontend Applicant
+      const mappedApplicants: Applicant[] = apps.map((app: any) => ({
+        id: app.applicationId, // Should ideally use Application ID or fallback
+        name: app.studentName || `Student ID: ${app.studentID}`, // Fallback since API lacks name
+        studentId: app.studentID?.toString() || "-",
+        gpa: parseFloat(app.grade) || 0.00, // Fallback as backend doesn't send this yet
+        // Fallback for email as we don't have it
+        email: app.studentID
+          ? `${app.studentID}@kmitl.ac.th`
+          : "-",
+        phone: "-", // No phone in API
+        course: app.courseName ? `${app.courseName}` : "Unknown Course",
+        status: (app.statusCode?.toLowerCase() as any) || "pending",
+        documents: {
+          transcript: true, // Optimistically assuming true or we could check a 'hasTranscript' if backend sent it
+          bankAccount: false,
+          studentCard: false,
+        },
+        experience: "ข้อมูลไม่ระบุ",
+        motivation: app.purpose || "ข้อมูลไม่ระบุ",
+      }));
+
+      setApplicants(mappedApplicants);
+    } catch (err) {
+      console.error("Failed to fetch applications:", err);
+      setError("ไม่สามารถโหลดข้อมูลผู้สมัครได้");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReject = (id: string) => {
-    setApplicants(
-      applicants.map((app) =>
-        app.id === id
-          ? { ...app, status: "rejected" as const }
-          : app,
-      ),
-    );
+  useEffect(() => {
+    fetchApplications();
+  }, [user]);
+
+  const handleApprove = async (id: number) => {
+    try {
+      await approveApplication(id);
+      // Refresh list
+      await fetchApplications();
+    } catch (err) {
+      console.error("Failed to approve application:", err);
+      alert("เกิดข้อผิดพลาดในการอนุมัติ");
+    }
   };
+
 
   const filteredApplicants = applicants.filter((app) => {
     const matchesSearch =
@@ -214,6 +171,18 @@ export function TARecruitment() {
           </p>
         </div>
       </div>
+
+      {loading && (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 mb-6 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
@@ -386,7 +355,7 @@ export function TARecruitment() {
                           </button>
                           <button
                             onClick={() =>
-                              handleReject(applicant.id)
+                              handleReject()
                             }
                             className="p-1 text-red-600 hover:bg-red-50 rounded"
                             title="ปฏิเสธ"
@@ -413,7 +382,7 @@ export function TARecruitment() {
             setSelectedApplicant(null);
           }}
           onReject={() => {
-            handleReject(selectedApplicant.id);
+            handleReject();
             setSelectedApplicant(null);
           }}
         />

@@ -8,13 +8,16 @@ import (
 
 type CourseService interface {
 	GetAllCourse() (*response.RequestDataResponse, error)
+	GetAllCourseByStudentId(studentId int) (*response.RequestDataResponse, error)
 	CreateCourse(body request.CreateCourse) (response.CreateResponse, error)
 	UpdateCourse(body request.UpdateCourse) (response.GeneralResponse, error)
 	DeleteCourse(courseId int) (response.GeneralResponse, error)
-	ApplyCourse(body request.ApplyCourse) (*response.CreateResponse, error)
+	ApplyJobPost(body request.ApplyJobPost) (*response.CreateResponse, error)
 	GetApplicationByStudentId(studentId int) (*response.RequestDataResponse, error)
 	GetApplicationByCourseId(CourseId int) (*response.RequestDataResponse, error)
 	GetApplicationDetail(ApplicationId int) (*response.RequestDataResponse, error)
 	GetApplicationPdf(ApplicationId int) (*courseResponse.ApplicationTrancript, error)
 	ApproveApplication(ApplicationId int) (*response.GeneralResponse, error)
+	GetProfessorCourse(ProfessorId int) (*response.RequestDataResponse, error)
+	GetApplicationByProfessorId(professorId int) (*response.RequestDataResponse, error)
 }

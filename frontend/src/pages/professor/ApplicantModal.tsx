@@ -1,7 +1,7 @@
 import { X, FileText, CreditCard, IdCard, Check, XIcon, Download } from 'lucide-react';
 
 interface Applicant {
-  id: string;
+  id: number;
   name: string;
   studentId: string;
   gpa: number;
@@ -62,8 +62,8 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
               <div>
                 <p className="text-sm text-gray-600 mb-1">สถานะ</p>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${applicant.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    applicant.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
+                  applicant.status === 'approved' ? 'bg-green-100 text-green-800' :
+                    'bg-red-100 text-red-800'
                   }`}>
                   {applicant.status === 'pending' ? 'รอพิจารณา' :
                     applicant.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธ'}

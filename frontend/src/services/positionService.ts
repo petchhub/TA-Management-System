@@ -1,0 +1,174 @@
+/**
+ * Position Service - API integration for TA position search and applications
+ */
+
+const API_BASE_URL = 'http://localhost:8084/TA-management';
+
+/**
+ * Backend response structure for course/position
+ */
+export interface PositionResponse {
+    courseID: string;
+    courseName: string;
+    taAllocation: number;
+    workHour: number;
+    classStart: string;
+    classEnd: string;
+    location: string;
+    grade: string;
+    task: string;
+    classday: string;
+    professorName: string;
+    semester: string;
+    status: string;
+    sec: string;
+    program: string;
+}
+
+/**
+ * Frontend Course interface for display
+ */
+export interface Course {
+    id: number;
+    code: string;
+    name: string;
+    department: string;
+    program: string;
+    sec: string;
+    days: string;
+    instructor: string;
+    semester: string;
+    positions: number;
+    hoursPerWeek: number;
+    requirements: string;
+    description: string;
+    location: string;
+    deadline: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+}
+
+/**
+ * Application form data
+ */
+export interface ApplicationData {
+    studentID: number;
+    statusID: number;
+    motivation: string;
+    experience: string;
+    availability: string;
+    gpa: string;
+    transcript: File;
+    resume?: File;
+}
+
+/**
+ * Map backend position response to frontend Course interface
+ */
+function mapPositionToCourse(position: PositionResponse, index: number): Course {
+    // Calculate deadline (30 days from now as default since backend doesn't provide)
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 30);
+    const deadlineStr = deadline.toISOString().split('T')[0];
+
+    return {
+        id: index + 1, // Use index as ID since backend doesn't provide unique ID in response
+        code: position.courseID,
+        name: position.courseName,
+        department: 'คณะวิศวกรรมศาสตร์', // Default since backend doesn't provide
+        program: position.program || 'หลักสูตรปกติ(ไทย)',
+        sec: position.sec || '',
+        days: position.classday || "",
+        instructor: position.professorName,
+        semester: position.semester || "",
+        positions: position.taAllocation,
+        hoursPerWeek: position.workHour,
+        requirements: position.grade || '',
+        description: position.task || '',
+        location: position.location || '',
+        deadline: deadlineStr,
+        startTime: position.classStart || '',
+        endTime: position.classEnd || '',
+        status: position.status || "",
+    };
+}
+
+/**
+ * Fetch all open TA positions from the backend
+ * @returns Promise with list of positions
+ */
+export async function getOpenPositions(): Promise<Course[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch positions: ${response.statusText}`);
+        }
+
+        const positions = await response.json();
+        console.log('API Response data:', positions);
+        console.log(Array.isArray(positions));
+        // Ensure positions is an array
+        // const positions: PositionResponse[] = Array.isArray(data)
+        //     ? data
+        //     : []
+        console.log('courseId:', positions);
+        // Map backend response to frontend Course interface
+        const courses = positions.data.map((position: PositionResponse, index: number) => mapPositionToCourse(position, index));
+        console.log('Mapped courses:', courses);
+        return courses;
+    } catch (error) {
+        console.error('Error fetching positions:', error);
+        throw error;
+    }
+}
+
+/**
+ * Submit application to a TA position
+ * @param courseId - Course ID to apply to
+ * @param applicationData - Application form data
+ * @returns Promise with application result
+ */
+export async function applyToPosition(
+    courseId: number,
+    applicationData: ApplicationData
+): Promise<any> {
+    try {
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('studentID', applicationData.studentID.toString());
+        formData.append('statusID', applicationData.statusID.toString());
+        formData.append('pdfFile', applicationData.transcript);
+        formData.append('grade', applicationData.gpa);
+        formData.append('purpose', applicationData.motivation);
+        // Note: Backend currently only accepts transcript file
+        // Other fields (motivation, experience, availability, gpa) are not in the backend schema
+        // They would need to be added to the backend if required
+
+        const response = await fetch(`${API_BASE_URL}/course/apply/${courseId}`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Backend error:', errorText);
+            throw new Error(`Failed to submit application: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('Application submitted successfully:', result);
+        return result;
+    } catch (error) {
+        console.error('Error submitting application:', error);
+        throw error;
+    }
+}

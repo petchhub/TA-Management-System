@@ -69,14 +69,7 @@ export function CourseManagement() {
     fetchCourses();
   }, []);
 
-  const [selectedTA, setSelectedTA] = useState<{
-    id: string;
-    name: string;
-    studentId: string;
-    hoursWorked: number;
-    hoursThisMonth: number;
-    status: "active" | "inactive";
-  } | null>(null);
+
 
   const getStatusColor = (
     approved: number,
@@ -287,10 +280,6 @@ export function CourseManagement() {
                         {course.tas.map((ta) => (
                           <button
                             key={ta.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedTA(ta);
-                            }}
                             className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-700 transition-colors"
                           >
                             {ta.name} ({ta.studentId})
@@ -312,10 +301,10 @@ export function CourseManagement() {
       </div>
 
       {/* TA Detail Modal */}
-      {selectedTA && (
+      {selectedCourse && (
         <TADetailModal
-          ta={selectedTA}
-          onClose={() => setSelectedTA(null)}
+          course={selectedCourse}
+          onClose={() => setSelectedCourse(null)}
         />
       )}
     </div>

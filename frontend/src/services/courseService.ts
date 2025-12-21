@@ -7,11 +7,41 @@ const API_BASE_URL = 'http://localhost:8084/TA-management';
 export interface Course {
     courseID: string;
     courseName: string;
+    taAllocation: number;
+    workHour: number;
+    classStart: string;
+    classEnd: string;
+    location: string;
+    grade: string;
+    task: string;
+    classday: string;
+    professorName: string;
+    semester: string;
+    status: string;
+    jobPostID: number;
 }
 
 export interface CourseResponse {
     message: string;
     data: Course[];
+}
+
+export interface Application {
+    applicationId: number;
+    studentID: number;
+    statusID: number;
+    courseID: number; // Backend sends int for course_ID/job_post_ID in this specific endpoint
+    statusCode: string;
+    createdDate: string;
+    // Optional fields that might be missing or need future backend support
+    studentName?: string;
+    grade?: string;
+    purpose?: string;
+}
+
+export interface ApplicationResponse {
+    message: string;
+    data: Application[];
 }
 
 /**
@@ -154,5 +184,121 @@ export async function createCourseAnnouncement(data: {
     } catch (error) {
         console.error('Error creating course announcement:', error);
         throw error;
+    }
+}
+
+/**
+ * Fetch all applications for a specific course
+ * @param courseId - The ID of the course (or jobPostID)
+ * @returns Promise with list of applications
+ */
+export async function getApplicationsForCourse(courseId: number): Promise<Application[]> {
+    try {
+        // Ideally this should use the jobPostID, but if the backend expects courseId, we use that.
+        // However, looking at the backend code, it filters by course_ID in the ta_application table.
+        // But applications are created with job_post_ID. 
+        // We will try to fetch using the ID we have.
+        const response = await fetch(`${API_BASE_URL}/course/application/course/${courseId}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch applications for course ${courseId}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        // Backend returns "data": null if no apps, ensuring we return []
+        return result || [];
+    } catch (error) {
+        console.error(`Error fetching applications for course ${courseId}:`, error);
+        return [];
+    }
+}
+
+/**
+ * Fetch all applications for all courses belonging to a professor
+ * @param professorId - The ID of the professor
+ * @param professorName - Optional name of the professor for filtering
+ * @returns Promise with list of applications
+ */
+export async function getProfessorApplications(professorId: number, professorName?: string): Promise<Application[]> {
+    try {
+        console.log('Fetching applications for professor:', { id: professorId });
+
+        const response = await fetch(`${API_BASE_URL}/course/application/professor/${professorId}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch applications for professor ${professorId}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log('Applications for professor:', result);
+        return result.data || [];
+    } catch (error) {
+        console.error('Error in getProfessorApplications:', error);
+        throw error;
+    }
+}
+
+/**
+ * Approve a TA application
+ * @param applicationId - The ID of the application to approve
+ * @returns Promise with result
+ */
+export async function approveApplication(applicationId: number): Promise<any> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/application/approve/${applicationId}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to approve application ${applicationId}: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error(`Error approving application ${applicationId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch all applications for a specific student
+ * @param studentId - The ID of the student
+ * @returns Promise with list of applications
+ */
+export async function getStudentApplications(studentId: number): Promise<Application[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/application/student/${studentId}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch applications for student ${studentId}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error(`Error fetching applications for student ${studentId}:`, error);
+        return [];
     }
 }

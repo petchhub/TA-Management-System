@@ -35,6 +35,7 @@ type CreateCourse struct {
 	GradeID         int       `json:"gradeID"`
 	Task            string    `json:"task"`
 	WorkHour        int       `json:"workHour"`
+	Location        string    `json:"location"`
 	CreatedDate     time.Time `json:"-"`
 }
 
@@ -55,10 +56,11 @@ type UpdateCourse struct {
 	Id              int        `json:"id"`
 }
 
-type ApplyCourse struct {
-	StudentID int `form:"studentID"`
-	StatusID  int `form:"statusID"`
-	CourseID  *int
+type ApplyJobPost struct {
+	StudentID int    `form:"studentID"`
+	Grade     string `form:"grade"`
+	Purpose   string `form:"purpose"`
+	JobPostID *int
 	FileBytes *[]byte
 	FileName  *string
 }

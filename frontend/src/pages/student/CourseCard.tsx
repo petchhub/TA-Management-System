@@ -6,7 +6,8 @@ interface Course {
   name: string;
   department: string;
   program: string;
-  days: string[];
+  sec: string;
+  days: string;
   instructor: string;
   semester: string;
   positions: number;
@@ -15,7 +16,9 @@ interface Course {
   description: string;
   location: string;
   deadline: string;
-  status: 'open' | 'closed';
+  startTime: string;
+  endTime: string;
+  status: string;
 }
 
 interface CourseCardProps {
@@ -40,7 +43,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
   };
 
   return (
-    <div className={`bg-white rounded-xl p-6 shadow-sm border transition-all hover:shadow-md flex flex-col h-full ${course.status === 'open' ? 'border-gray-100' : 'border-gray-200 opacity-60'
+    <div className={`bg-white rounded-xl p-6 shadow-sm border transition-all hover:shadow-md flex flex-col h-full ${course.status === 'Pending' ? 'border-gray-100' : 'border-gray-200 opacity-60'
       }`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
@@ -52,6 +55,9 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-gray-900 font-semibold">{course.code}</h3>
+                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                  กลุ่ม {course.sec}
+                </span>
                 <span className="text-sm text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
                   {course.program}
                 </span>
@@ -62,11 +68,11 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
           <p className="text-gray-600 mb-3">{course.description}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <span className={`px-3 py-1 rounded-full ${course.status === 'open'
+          <span className={`px-3 py-1 rounded-full ${course.status === 'Pending'
             ? 'bg-green-100 text-green-700'
             : 'bg-gray-100 text-gray-700'
             }`}>
-            {course.status === 'open' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
+            {course.status === 'Pending' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
           </span>
           <span className="px-3 py-1 bg-[var(--color-primary-100)] text-[var(--color-primary-700)] rounded-full">
             {course.semester}
@@ -86,7 +92,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
         </div>
         <div className="flex items-center gap-3 text-gray-700">
           <Calendar className="w-4 h-4 text-gray-400" />
-          <span>วันเรียน: {course.days.join(', ')}</span>
+          <span>วันเรียน: {course.days} ({course.startTime} - {course.endTime})</span>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="flex items-center gap-2 text-gray-700">
@@ -109,7 +115,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
       </div>
 
       {/* Deadline Warning */}
-      {isDeadlineSoon() && course.status === 'open' && (
+      {isDeadlineSoon() && course.status === 'Pending' && (
         <div className="flex items-center gap-2 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
           <p className="text-yellow-700">
@@ -127,12 +133,12 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
         <button
           onClick={() => onApply(course.id)}
           disabled={course.status === 'closed'}
-          className={`px-6 py-2 rounded-lg transition-colors ${course.status === 'open'
+          className={`px-6 py-2 rounded-lg transition-colors ${course.status === 'Pending'
             ? 'bg-orange-600 hover:bg-orange-700 text-white'
             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             }`}
         >
-          {course.status === 'open' ? 'สมัครเลย' : 'ปิดรับสมัคร'}
+          {course.status === 'Pending' ? 'สมัครเลย' : 'ปิดรับสมัคร'}
         </button>
       </div>
     </div>

@@ -20,6 +20,21 @@ func (s CourseServiceImplementation) GetAllCourse() (*response.RequestDataRespon
 
 	courses, err := s.repo.GetAllCourse()
 	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	response := response.RequestDataResponse{
+		Data:    courses,
+		Message: "Success",
+	}
+
+	return &response, nil
+}
+
+func (s CourseServiceImplementation) GetAllCourseByStudentId(studentId int) (*response.RequestDataResponse, error) {
+	courses, err := s.repo.GetAllCourseByStudentId(studentId)
+	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	response := response.RequestDataResponse{
@@ -62,8 +77,8 @@ func (s CourseServiceImplementation) DeleteCourse(id int) (response.GeneralRespo
 	return response.GeneralResponse{Message: "Delete Successful"}, err
 }
 
-func (s CourseServiceImplementation) ApplyCourse(body request.ApplyCourse) (*response.CreateResponse, error) {
-	id, err := s.repo.ApplyCourse(body)
+func (s CourseServiceImplementation) ApplyJobPost(body request.ApplyJobPost) (*response.CreateResponse, error) {
+	id, err := s.repo.ApplyJobPost(body)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +91,7 @@ func (s CourseServiceImplementation) ApplyCourse(body request.ApplyCourse) (*res
 func (s CourseServiceImplementation) GetApplicationByStudentId(studentId int) (*response.RequestDataResponse, error) {
 	applications, err := s.repo.GetApplicationByStudentId(studentId)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	return &response.RequestDataResponse{
@@ -125,5 +141,30 @@ func (s CourseServiceImplementation) ApproveApplication(applicationId int) (*res
 	}
 	return &response.GeneralResponse{
 		Message: "Approved application Successful",
+	}, nil
+}
+
+func (s CourseServiceImplementation) GetProfessorCourse(professorId int) (*response.RequestDataResponse, error) {
+	courses, err := s.repo.GetProfessorCourse(professorId)
+	if err != nil {
+		return nil, err
+	}
+	response := response.RequestDataResponse{
+		Data:    courses,
+		Message: "Success",
+	}
+
+	return &response, nil
+}
+
+func (s CourseServiceImplementation) GetApplicationByProfessorId(professorId int) (*response.RequestDataResponse, error) {
+	applications, err := s.repo.GetApplicationByProfessorId(professorId)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return &response.RequestDataResponse{
+		Data:    applications,
+		Message: "GET success",
 	}, nil
 }
