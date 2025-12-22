@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import StatusCard from "./StatusCard";
 import { useAuth } from "../../context/AuthContext";
-import { getStudentApplications, getAllCourses, Application, Course } from "../../services/courseService";
+import { getStudentApplications, getAllCoursesByStudentId, Application, Course } from "../../services/courseService";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -25,7 +25,7 @@ export default function Dashboard() {
         const studentId = parseInt(user.id); // Assuming user.id is the student ID
         const [apps, courses] = await Promise.all([
           getStudentApplications(studentId),
-          getAllCourses()
+          getAllCoursesByStudentId(studentId)
         ]);
 
         // Map applications to activities
@@ -45,8 +45,8 @@ export default function Dashboard() {
 
           // Determine status string for UI
           let statusUI = "pending";
-          if (app.statusCode === "Approved") statusUI = "approved";
-          if (app.statusCode === "Rejected") statusUI = "rejected"; // If exists
+          if (app.statusCode === "APPROVED") statusUI = "approved";
+          if (app.statusCode === "REJECTED") statusUI = "rejected"; // If exists
 
           return {
             id: index,

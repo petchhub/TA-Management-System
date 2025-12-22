@@ -8,7 +8,7 @@ const API_BASE_URL = 'http://localhost:8084/TA-management';
  * Backend response structure for course/position
  */
 export interface PositionResponse {
-    jobPostID:number;
+    jobPostID: number;
     courseID: string;
     courseName: string;
     taAllocation: number;
@@ -60,6 +60,9 @@ export interface ApplicationData {
     experience: string;
     gpa: string;
     transcript: File;
+    phoneNumber?: string;
+    bankAccount?: File | null;
+    studentCard?: File | null;
 }
 
 /**
@@ -173,10 +176,21 @@ export async function applyToPosition(
         const formData = new FormData();
         formData.append('studentID', applicationData.studentID.toString());
         formData.append('statusID', applicationData.statusID.toString());
-        formData.append('pdfFile', applicationData.transcript);
+        formData.append('Transcript', applicationData.transcript); // Changed from 'pdfFile'
         formData.append('grade', applicationData.gpa);
         formData.append('purpose', applicationData.motivation);
         formData.append('experience', applicationData.experience);
+
+        // Phone number is required (NOT NULL in database)
+        formData.append('phoneNumber', applicationData.phoneNumber || '');
+
+        // Optional files - use correct field names
+        if (applicationData.bankAccount) {
+            formData.append('BankAccount', applicationData.bankAccount); // Changed from 'bankAccountFile'
+        }
+        if (applicationData.studentCard) {
+            formData.append('StudentCard', applicationData.studentCard); // Changed from 'studentCardFile'
+        }
 
         const response = await fetch(`${API_BASE_URL}/course/apply/${courseId}`, {
             method: 'POST',

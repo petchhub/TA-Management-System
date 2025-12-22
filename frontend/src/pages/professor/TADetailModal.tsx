@@ -135,8 +135,8 @@ export function TADetailModal({ course, onClose }: TADetailModalProps) {
                             <td className="px-6 py-4 text-gray-900">{ta.hoursThisMonth} ชม.</td>
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${ta.status === 'active'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
                                 }`}>
                                 {ta.status === 'active' ? 'กำลังทำงาน' : 'ไม่ได้ทำงาน'}
                               </span>

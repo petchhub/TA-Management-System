@@ -2,11 +2,12 @@
  * Course Service - API integration for course management
  */
 
-const API_BASE_URL = 'http://localhost:8084/TA-management';
+export const API_BASE_URL = 'http://localhost:8084/TA-management';
 
 export interface Course {
     courseID: string;
     courseName: string;
+    courseProgram: string;
     taAllocation: number;
     workHour: number;
     classStart: string;
@@ -35,6 +36,7 @@ export interface Application {
     createdDate: string;
     // Optional fields that might be missing or need future backend support
     studentName?: string;
+    phoneNumber?: string;
     grade?: string;
     purpose?: string;
 }
@@ -301,4 +303,58 @@ export async function getStudentApplications(studentId: number): Promise<Applica
         console.error(`Error fetching applications for student ${studentId}:`, error);
         return [];
     }
+}
+
+/**
+ * Fetch all courses for a specific student
+ * @param studentId - The ID of the student
+ * @returns Promise with list of courses
+ */
+export async function getAllCoursesByStudentId(studentId: number): Promise<Course[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/student/${studentId}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch courses for student ${studentId}: ${response.statusText}`);
+        }
+
+        const result: CourseResponse = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error(`Error fetching courses for student ${studentId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Get the URL for transcript PDF
+ * @param applicationId - The ID of the application
+ * @returns string URL
+ */
+export function getTranscriptUrl(applicationId: number): string {
+    return `${API_BASE_URL}/course/application/transcript/${applicationId}`;
+}
+
+/**
+ * Get the URL for bank account PDF
+ * @param applicationId - The ID of the application
+ * @returns string URL
+ */
+export function getBankAccountUrl(applicationId: number): string {
+    return `${API_BASE_URL}/course/application/bankaccount/${applicationId}`;
+}
+
+/**
+ * Get the URL for student card PDF
+ * @param applicationId - The ID of the application
+ * @returns string URL
+ */
+export function getStudentCardUrl(applicationId: number): string {
+    return `${API_BASE_URL}/course/application/studentcard/${applicationId}`;
 }

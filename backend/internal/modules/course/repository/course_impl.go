@@ -30,6 +30,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				c.class_start,
 				c.class_end,
 				c.location,
+				c.course_program,
 				cd.class_day_value, 
 				p.firstname,
 				p.lastname,
@@ -72,6 +73,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 			&course.ClassStart,
 			&course.ClassEnd,
 			&course.Location,
+			&course.CourseProgram,
 			&course.Classday,
 			&firstname,
 			&lastname,
@@ -101,6 +103,7 @@ func (r CourseRepositoryImplementation) GetAllCourseByStudentId(studentId int) (
 				c.class_start,
 				c.class_end,
 				c.location,
+				c.course_program,
 				cd.class_day_value, 
 				p.firstname,
 				p.lastname,
@@ -149,6 +152,7 @@ func (r CourseRepositoryImplementation) GetAllCourseByStudentId(studentId int) (
 			&course.ClassStart,
 			&course.ClassEnd,
 			&course.Location,
+			&course.CourseProgram,
 			&course.Classday,
 			&firstname,
 			&lastname,
@@ -274,6 +278,7 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 		return 0, err
 	}
 
+	statusID := 1
 	//Insert ta_jobposting
 	query = `INSERT INTO ta_job_posting(
 	professor_ID, 
@@ -292,7 +297,7 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 		body.GradeID,
 		body.Task,
 		body.TaAllocation,
-		3,
+		statusID,
 		time.Now(),
 	)
 	if err != nil {
@@ -420,41 +425,67 @@ func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) 
 		return 0, err
 	}
 
-	var fileId int
+	var transcriptId int
 	query := "INSERT INTO transcript_storage(file_bytes,file_name) VALUES($1, $2) RETURNING transcript_ID"
-	err = tx.QueryRow(query, body.FileBytes, body.FileName).Scan(&fileId)
+	err = tx.QueryRow(query, body.TranscriptBytes, body.TranscriptName).Scan(&transcriptId)
 	if err != nil {
 		tx.Rollback()
 		return 0, fmt.Errorf("failed on insert to transcript file : %v", err)
 	}
 
-	fmt.Println(body.StudentID)
+	var bankAccountId int
+	query = "INSERT INTO bank_account_storage(file_bytes,file_name) VALUES($1, $2) RETURNING bank_account_ID"
+	err = tx.QueryRow(query, body.BankAccountBytes, body.BankAccountName).Scan(&bankAccountId)
+	if err != nil {
+		tx.Rollback()
+		return 0, fmt.Errorf("failed on insert to bank account file : %v", err)
+	}
 
+	var studentCardId int
+	query = "INSERT INTO student_card_storage(file_bytes,file_name) VALUES($1, $2) RETURNING student_card_ID"
+	err = tx.QueryRow(query, body.StudentCardBytes, body.StudentCardName).Scan(&studentCardId)
+	if err != nil {
+		tx.Rollback()
+		return 0, fmt.Errorf("failed on insert to student card file : %v", err)
+	}
+
+	statusId := 3
 	var applicationId int
 	query = `INSERT INTO ta_application(
 				transcript_ID, 
+				bank_account_ID, 
+				student_card_ID,
 				student_ID, 
 				status_ID, 
 				job_post_ID,
 				grade,
 				purpose,
 				created_date)
-			VALUES($1, $2, $3, $4, $5, $6 ,$7)
+			VALUES($1, $2, $3, $4, $5, $6 ,$7, $8, $9)
 			RETURNING id`
 
 	err = tx.QueryRow(query,
-		fileId,
+		transcriptId,
+		bankAccountId,
+		studentCardId,
 		body.StudentID,
-		3,
+		statusId,
 		body.JobPostID,
 		body.Grade,
-		body.JobPostID,
+		body.Purpose,
 		time.Now(),
 	).Scan(&applicationId)
 
 	if err != nil {
 		tx.Rollback()
 		return 0, fmt.Errorf("failed on insert to ta_application: %v", err)
+	}
+
+	query = "UPDATE students SET phone_number = $1 WHERE student_ID = $2"
+	_, err = tx.Exec(query, body.PhoneNumber, body.StudentID)
+	if err != nil {
+		tx.Rollback()
+		return 0, fmt.Errorf("failed on update to students: %v", err)
 	}
 
 	err = tx.Commit()
@@ -473,10 +504,16 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 					ta.status_ID, 
 					tp.course_ID, 
 					ta.created_date,
-					st.status_value
+					st.status_value,
+					c.course_name,
+					c.class_day,
+					c.class_start,
+					c.class_end
 				FROM ta_application AS ta 
 				LEFT JOIN ta_job_posting AS tp
 					ON ta.job_post_ID = tp.id
+				LEFT JOIN courses AS c
+					ON tp.course_ID = c.id
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
 				WHERE student_ID = $1`
@@ -497,6 +534,10 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 			&application.CourseID,
 			&application.CreatedDate,
 			&application.StatusCode,
+			&application.CourseName,
+			&application.Classday,
+			&application.ClassStart,
+			&application.ClassEnd,
 		)
 		if err != nil {
 			return nil, err
@@ -551,11 +592,14 @@ func (r CourseRepositoryImplementation) GetApplicationDetail(ApplicationId int) 
 					ta.status_ID, 
 					ta.course_ID, 
 					ta.created_date,
-					st.status_value
+					st.status_value,
+					s.phone_number
 				FROM ta_application AS ta 
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
-				WHERE id = $1`
+				LEFT JOIN students AS s
+					ON ta.student_ID = s.student_ID
+				WHERE ta.id = $1`
 
 	var application response.Application
 	err := r.db.QueryRow(query, ApplicationId).Scan(
@@ -564,6 +608,7 @@ func (r CourseRepositoryImplementation) GetApplicationDetail(ApplicationId int) 
 		&application.CourseID,
 		&application.CreatedDate,
 		&application.StatusCode,
+		&application.PhoneNumber,
 	)
 	if err != nil {
 		return nil, err
@@ -572,24 +617,62 @@ func (r CourseRepositoryImplementation) GetApplicationDetail(ApplicationId int) 
 	return &application, nil
 }
 
-func (r CourseRepositoryImplementation) GetApplicationPdf(ApplicationId int) (*response.ApplicationTrancript, error) {
+func (r CourseRepositoryImplementation) GetApplicationTranscriptPdf(ApplicationId int) (*response.PdfFile, error) {
 	query := `SELECT
 				fs.file_name,
 				fs.file_bytes
 			FROM ta_application as ta
-			LEFT JOIN file_storage as fs
+			LEFT JOIN transcript_storage as fs
 			ON ta.transcript_ID = fs.transcript_ID
 			WHERE ta.id = $1`
 
-	var application response.ApplicationTrancript
+	var application response.PdfFile
 	err := r.db.QueryRow(query, ApplicationId).Scan(
 		&application.FileName,
-		&application.Transcript,
+		&application.FileBytes,
 	)
 	if err != nil {
 		return nil, err
 	}
 	return &application, nil
+}
+
+func (r CourseRepositoryImplementation) GetApplicationBankAccountPdf(ApplicationId int) (*response.PdfFile, error) {
+	query := `SELECT
+				fs.file_name,
+				fs.file_bytes
+			FROM ta_application as ta
+			LEFT JOIN bank_account_storage as fs
+			ON ta.bank_account_ID = fs.bank_account_ID
+			WHERE ta.id = $1`
+	var applicationPdf response.PdfFile
+	err := r.db.QueryRow(query, ApplicationId).Scan(
+		&applicationPdf.FileName,
+		&applicationPdf.FileBytes,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &applicationPdf, nil
+}
+
+func (r CourseRepositoryImplementation) GetApplicationStudentCardPdf(ApplicationId int) (*response.PdfFile, error) {
+	query := `SELECT
+				fs.file_name,
+				fs.file_bytes
+			FROM ta_application as ta
+			LEFT JOIN student_card_storage as fs
+			ON ta.student_card_ID = fs.student_card_ID
+			WHERE ta.id = $1`
+	var applicationPdf response.PdfFile
+	err := r.db.QueryRow(query, ApplicationId).Scan(
+		&applicationPdf.FileName,
+		&applicationPdf.FileBytes,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &applicationPdf, nil
 }
 
 func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) error {
@@ -620,10 +703,10 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 	}
 
 	//update status on ta_application
-	activeStatus := 1
+	approveStatus := 5
 	query = `UPDATE ta_application SET status_ID = $1 WHERE id = $2`
 
-	_, err = tx.Exec(query, activeStatus, ApplicationId)
+	_, err = tx.Exec(query, approveStatus, ApplicationId)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed update ta_application: %v", err)
@@ -656,7 +739,14 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 					jp.course_ID, 
 					ta.created_date,
 					st.status_value,
-					c.course_name
+					c.course_name,
+					ta.grade,
+					stu.firstname,
+					stu.lastname,
+					stu.phone_number,
+					CASE WHEN ta.transcript_ID IS NOT NULL THEN true ELSE false END as has_transcript,
+					CASE WHEN ta.bank_account_ID IS NOT NULL THEN true ELSE false END as has_bank_account,
+					CASE WHEN ta.student_card_ID IS NOT NULL THEN true ELSE false END as has_student_card
 				FROM ta_application AS ta 
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
@@ -664,6 +754,8 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 					ON ta.job_post_ID = jp.id
 				LEFT JOIN courses AS c
 					ON jp.course_ID = c.id
+				LEFT JOIN students AS stu
+					ON ta.student_id = stu.student_id
 				WHERE c.professor_ID = $1`
 
 	rows, err := r.db.Query(query, professorId)
@@ -675,6 +767,8 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 	var applications []response.Application
 	for rows.Next() {
 		var application response.Application
+		var firstname string
+		var lastname string
 
 		err := rows.Scan(
 			&application.ApplicationId,
@@ -684,10 +778,19 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 			&application.CreatedDate,
 			&application.StatusCode,
 			&application.CourseName,
+			&application.Grade,
+			&firstname,
+			&lastname,
+			&application.PhoneNumber,
+			&application.HasTranscript,
+			&application.HasBankAccount,
+			&application.HasStudentCard,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		application.StudentName = firstname + " " + lastname
 		applications = append(applications, application)
 	}
 

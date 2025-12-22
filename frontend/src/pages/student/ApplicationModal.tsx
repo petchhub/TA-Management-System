@@ -31,7 +31,10 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
   const [formData, setFormData] = useState({
     experience: '',
     gpa: '',
-    transcript: null as File | null
+    transcript: null as File | null,
+    phoneNumber: '',
+    bankAccount: null as File | null,
+    studentCard: null as File | null
   });
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -46,8 +49,8 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
   };
 
   const handleConfirm = async () => {
-    if (!courseId || !formData.transcript || !user?.id) {
-      setErrorMessage('ข้อมูลไม่ครบถ้วน กรุณาตรวจสอบอีกครั้ง');
+    if (!courseId || !formData.transcript || !user?.id || !formData.phoneNumber) {
+      setErrorMessage('ข้อมูลไม่ครบถ้วน กรุณาตรวจสอบอีกครั้ง (กรุณากรอกเบอร์โทรศัพท์)');
       setStep('error');
       return;
     }
@@ -69,6 +72,9 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
         experience: formData.experience,
         gpa: formData.gpa,
         transcript: formData.transcript,
+        phoneNumber: formData.phoneNumber,
+        bankAccount: formData.bankAccount,
+        studentCard: formData.studentCard,
       });
 
       setStep('success');
@@ -89,13 +95,12 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
     setFormData({
       experience: '',
       gpa: '',
-      transcript: null
+      transcript: null,
+      phoneNumber: '',
+      bankAccount: null,
+      studentCard: null
     });
     onClose();
-  };
-
-  const handleFileChange = (file: File | null) => {
-    setFormData(prev => ({ ...prev, transcript: file }));
   };
 
   return (
@@ -104,8 +109,8 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-gray-900">สมัครตำแหน่ง TA</h2>
-            <p className="text-gray-600">{course.code} - {course.name}</p>
+            <h2 className="text-xl font-semibold text-gray-900">สมัครตำแหน่ง TA</h2>
+            <p className="text-sm text-gray-600 mt-1">{course.code} - {course.name}</p>
           </div>
           <button
             onClick={resetAndClose}
@@ -159,6 +164,22 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                       placeholder="0.00"
                     />
                   </div>
+
+                  {/* Phone Number */}
+                  <div className="md:col-span-2">
+                    <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                      เบอร์โทรศัพท์มือถือ <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="phoneNumber"
+                      type="tel"
+                      value={formData.phoneNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                      required
+                      className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                      placeholder="0XX-XXX-XXXX"
+                    />
+                  </div>
                 </div>
 
                 {/* Experience */}
@@ -188,7 +209,7 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                     <input
                       type="file"
                       accept=".pdf"
-                      onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                      onChange={(e) => setFormData(prev => ({ ...prev, transcript: e.target.files?.[0] || null }))}
                       required
                       className="hidden"
                       id="transcript-upload"
@@ -216,6 +237,93 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                         </div>
                       )}
                     </label>
+                  </div>
+                </div>
+
+                {/* Optional Documents - Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Bank Account Upload */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      สำเนาหน้าบัญชีธนาคาร (PDF)
+                    </label>
+                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${formData.bankAccount
+                      ? 'border-primary-500 bg-primary-50/30'
+                      : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
+                      }`}>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => setFormData(prev => ({ ...prev, bankAccount: e.target.files?.[0] || null }))}
+                        className="hidden"
+                        id="bankAccount-upload"
+                      />
+                      <label htmlFor="bankAccount-upload" className="cursor-pointer w-full h-full block">
+                        {formData.bankAccount ? (
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="p-2 bg-white rounded-full shadow-sm">
+                              <FileText className="w-6 h-6 text-primary-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{formData.bankAccount.name}</p>
+                              <p className="text-xs text-gray-500 mt-1">คลิกเพื่อเปลี่ยนไฟล์</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="p-2 bg-gray-100 rounded-full">
+                              <Upload className="w-6 h-6 text-gray-500" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-700 text-sm">คลิกเพื่ออัปโหลด</p>
+                              <p className="text-xs text-gray-500 mt-1">รองรับไฟล์ PDF เท่านั้น</p>
+                            </div>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Student Card Upload */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      สำเนาบัตรนิสิต (PDF)
+                    </label>
+                    <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${formData.studentCard
+                      ? 'border-primary-500 bg-primary-50/30'
+                      : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
+                      }`}>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => setFormData(prev => ({ ...prev, studentCard: e.target.files?.[0] || null }))}
+                        className="hidden"
+                        id="studentCard-upload"
+                      />
+                      <label htmlFor="studentCard-upload" className="cursor-pointer w-full h-full block">
+                        {formData.studentCard ? (
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="p-2 bg-white rounded-full shadow-sm">
+                              <FileText className="w-6 h-6 text-primary-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">{formData.studentCard.name}</p>
+                              <p className="text-xs text-gray-500 mt-1">คลิกเพื่อเปลี่ยนไฟล์</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="p-2 bg-gray-100 rounded-full">
+                              <Upload className="w-6 h-6 text-gray-500" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-700 text-sm">คลิกเพื่ออัปโหลด</p>
+                              <p className="text-xs text-gray-500 mt-1">รองรับไฟล์ PDF เท่านั้น</p>
+                            </div>
+                          </div>
+                        )}
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>

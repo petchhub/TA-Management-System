@@ -20,7 +20,7 @@ interface Applicant {
   email: string;
   phone: string;
   course: string;
-  status: "pending" | "approved" | "rejected";
+  status: "PENDING" | "APPROVED" | "REJECTED";
   documents: {
     transcript: boolean;
     bankAccount: boolean;
@@ -67,13 +67,13 @@ export function TARecruitment() {
         email: app.studentID
           ? `${app.studentID}@kmitl.ac.th`
           : "-",
-        phone: "-", // No phone in API
+        phone: app.phoneNumber || "-", // Now using real phone number from backend
         course: app.courseName ? `${app.courseName}` : "Unknown Course",
-        status: (app.statusCode?.toLowerCase() as any) || "pending",
+        status: (app.statusCode as any) || "PENDING",
         documents: {
-          transcript: true, // Optimistically assuming true or we could check a 'hasTranscript' if backend sent it
-          bankAccount: false,
-          studentCard: false,
+          transcript: app.hasTranscript || false, // Real data from backend
+          bankAccount: app.hasBankAccount || false, // Real data from backend
+          studentCard: app.hasStudentCard || false, // Real data from backend
         },
         experience: "ข้อมูลไม่ระบุ",
         motivation: app.purpose || "ข้อมูลไม่ระบุ",
@@ -103,6 +103,11 @@ export function TARecruitment() {
     }
   };
 
+  const handleReject = () => {
+    // Backend doesn't have a direct reject endpoint yet, 
+    // we just update local state for UI feedback or alert
+    alert("ระบบการปฏิเสธยังไม่เปิดใช้งานในเวอร์ชันนี้");
+  };
 
   const filteredApplicants = applicants.filter((app) => {
     const matchesSearch =
@@ -125,11 +130,11 @@ export function TARecruitment() {
 
   const statusCount = {
     all: applicants.length,
-    pending: applicants.filter((a) => a.status === "pending")
+    pending: applicants.filter((a) => a.status === "PENDING")
       .length,
-    approved: applicants.filter((a) => a.status === "approved")
+    approved: applicants.filter((a) => a.status === "APPROVED")
       .length,
-    rejected: applicants.filter((a) => a.status === "rejected")
+    rejected: applicants.filter((a) => a.status === "REJECTED")
       .length,
   };
 
@@ -207,9 +212,9 @@ export function TARecruitment() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
           >
             <option value="all">สถานะทั้งหมด</option>
-            <option value="pending">รอพิจารณา</option>
-            <option value="approved">อนุมัติแล้ว</option>
-            <option value="rejected">ปฏิเสธ</option>
+            <option value="PENDING">รอพิจารณา</option>
+            <option value="APPROVED">อนุมัติแล้ว</option>
+            <option value="REJECTED">ปฏิเสธ</option>
           </select>
 
           <select
@@ -317,16 +322,16 @@ export function TARecruitment() {
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${applicant.status === "pending"
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${applicant.status === "PENDING"
                         ? "bg-yellow-100 text-yellow-800"
-                        : applicant.status === "approved"
+                        : applicant.status === "APPROVED"
                           ? "bg-green-100 text-green-800"
                           : "bg-red-100 text-red-800"
                         }`}
                     >
-                      {applicant.status === "pending"
+                      {applicant.status === "PENDING"
                         ? "รอพิจารณา"
-                        : applicant.status === "approved"
+                        : applicant.status === "APPROVED"
                           ? "อนุมัติแล้ว"
                           : "ปฏิเสธ"}
                     </span>
@@ -342,7 +347,7 @@ export function TARecruitment() {
                       >
                         <Eye size={18} />
                       </button>
-                      {applicant.status === "pending" && (
+                      {applicant.status === "PENDING" && (
                         <>
                           <button
                             onClick={() =>

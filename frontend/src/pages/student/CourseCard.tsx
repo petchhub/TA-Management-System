@@ -43,7 +43,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
   };
 
   return (
-    <div className={`bg-white rounded-xl p-6 shadow-sm border transition-all hover:shadow-md flex flex-col h-full ${course.status === 'Pending' ? 'border-gray-100' : 'border-gray-200 opacity-60'
+    <div className={`bg-white rounded-xl p-6 shadow-sm border transition-all hover:shadow-md flex flex-col h-full ${course.status === 'OPEN' ? 'border-gray-100' : 'border-gray-200 opacity-60'
       }`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
@@ -68,11 +68,11 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
           <p className="text-gray-600 mb-3">{course.description}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <span className={`px-3 py-1 rounded-full ${course.status === 'Pending'
+          <span className={`px-3 py-1 rounded-full ${course.status === 'OPEN'
             ? 'bg-green-100 text-green-700'
             : 'bg-gray-100 text-gray-700'
             }`}>
-            {course.status === 'Pending' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
+            {course.status === 'OPEN' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
           </span>
           <span className="px-3 py-1 bg-[var(--color-primary-100)] text-[var(--color-primary-700)] rounded-full">
             {course.semester}
@@ -115,7 +115,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
       </div>
 
       {/* Deadline Warning */}
-      {isDeadlineSoon() && course.status === 'Pending' && (
+      {isDeadlineSoon() && course.status === 'OPEN' && (
         <div className="flex items-center gap-2 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
           <p className="text-yellow-700">
@@ -133,12 +133,12 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
         <button
           onClick={() => onApply(course.id)}
           disabled={course.status === 'closed'}
-          className={`px-6 py-2 rounded-lg transition-colors ${course.status === 'Pending'
+          className={`px-6 py-2 rounded-lg transition-colors ${course.status === 'OPEN'
             ? 'bg-orange-600 hover:bg-orange-700 text-white'
             : 'bg-gray-200 text-gray-500 cursor-not-allowed'
             }`}
         >
-          {course.status === 'Pending' ? 'สมัครเลย' : 'ปิดรับสมัคร'}
+          {course.status === 'OPEN' ? 'สมัครเลย' : 'ปิดรับสมัคร'}
         </button>
       </div>
     </div>

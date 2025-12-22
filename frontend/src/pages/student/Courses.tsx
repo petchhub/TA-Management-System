@@ -10,9 +10,12 @@ import {
 import CourseCard from "./CourseCard";
 import ApplicationModal from "./ApplicationModal";
 import { getOpenPositions, Course } from "../../services/positionService";
+import { getAllCoursesByStudentId, Course as ServiceCourse } from "../../services/courseService";
+import { useAuth } from "../../context/AuthContext";
 import console from "console";
 
 export default function Courses() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterProgram, setFilterProgram] = useState("all");
   const [filterDay, setFilterDay] = useState("all");
@@ -33,9 +36,42 @@ export default function Courses() {
       try {
         setLoading(true);
         setError(null);
-        const positions = await getOpenPositions();
+
+        let positions: Course[] = [];
+
+        if (user && user.role === 'STUDENT') {
+          // For logged-in students, use the student-specific endpoint
+          const studentId = parseInt(user.id);
+          const courses = await getAllCoursesByStudentId(studentId);
+
+          // Map ServiceCourse to Course (frontend interface)
+          positions = courses.map((c: ServiceCourse) => ({
+            id: c.jobPostID, // Assuming jobPostID matches id in frontend Course
+            code: c.courseID,
+            name: c.courseName,
+            department: 'คณะวิศวกรรมศาสตร์', // Default
+            program: c.courseProgram, // Default or infer
+            sec: '', // Default
+            days: c.classday,
+            instructor: c.professorName,
+            semester: c.semester,
+            positions: c.taAllocation,
+            hoursPerWeek: c.workHour,
+            requirements: c.task,
+            description: c.task,
+            location: c.location,
+            deadline: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0], // Default 30 days
+            startTime: c.classStart,
+            endTime: c.classEnd,
+            status: c.status
+          }));
+        } else {
+          // For guests or non-students, use the general open positions endpoint
+          positions = await getOpenPositions();
+        }
+
         setAvailableCourses(positions);
-        console.log(positions);
+        console.log("Fetched positions:", positions);
       } catch (err) {
         console.error('Failed to fetch positions:', err);
         setError('ไม่สามารถโหลดข้อมูลตำแหน่งได้ กรุณาลองใหม่อีกครั้ง');
@@ -45,7 +81,7 @@ export default function Courses() {
     }
 
     fetchPositions();
-  }, []);
+  }, [user]);
 
 
   const programs = [
@@ -95,7 +131,7 @@ export default function Courses() {
   });
 
   const openPositions = availableCourses.filter(
-    (c) => c.status === "open",
+    (c) => c.status === "OPEN",
   ).length;
   const totalPositions = availableCourses.reduce(
     (sum, c) => sum + c.positions,

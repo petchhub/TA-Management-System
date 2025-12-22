@@ -1,4 +1,5 @@
-import { X, FileText, CreditCard, IdCard, Check, XIcon, Download } from 'lucide-react';
+import { X, FileText, CreditCard, IdCard, Check, XIcon, Eye } from 'lucide-react';
+import { getTranscriptUrl, getBankAccountUrl, getStudentCardUrl } from '../../services/courseService';
 
 interface Applicant {
   id: number;
@@ -8,7 +9,7 @@ interface Applicant {
   email: string;
   phone: string;
   course: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
   documents: {
     transcript: boolean;
     bankAccount: boolean;
@@ -61,12 +62,12 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
               </div>
               <div>
                 <p className="text-sm text-gray-600 mb-1">สถานะ</p>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${applicant.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  applicant.status === 'approved' ? 'bg-green-100 text-green-800' :
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${applicant.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                  applicant.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
                     'bg-red-100 text-red-800'
                   }`}>
-                  {applicant.status === 'pending' ? 'รอพิจารณา' :
-                    applicant.status === 'approved' ? 'อนุมัติแล้ว' : 'ปฏิเสธ'}
+                  {applicant.status === 'PENDING' ? 'รอพิจารณา' :
+                    applicant.status === 'APPROVED' ? 'อนุมัติแล้ว' : 'ปฏิเสธ'}
                 </span>
               </div>
               <div>
@@ -96,9 +97,12 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
                   <span className="text-gray-900">Transcript</span>
                 </div>
                 {applicant.documents.transcript ? (
-                  <button className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]">
-                    <Download size={16} />
-                    ดาวน์โหลด
+                  <button
+                    onClick={() => window.open(getTranscriptUrl(applicant.id), '_blank')}
+                    className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]"
+                  >
+                    <Eye size={16} />
+                    ดูเอกสาร
                   </button>
                 ) : (
                   <span className="text-sm text-red-600">ยังไม่อัปโหลด</span>
@@ -111,9 +115,12 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
                   <span className="text-gray-900">Bank Account</span>
                 </div>
                 {applicant.documents.bankAccount ? (
-                  <button className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]">
-                    <Download size={16} />
-                    ดาวน์โหลด
+                  <button
+                    onClick={() => window.open(getBankAccountUrl(applicant.id), '_blank')}
+                    className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]"
+                  >
+                    <Eye size={16} />
+                    ดูเอกสาร
                   </button>
                 ) : (
                   <span className="text-sm text-red-600">ยังไม่อัปโหลด</span>
@@ -126,9 +133,12 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
                   <span className="text-gray-900">Student Card</span>
                 </div>
                 {applicant.documents.studentCard ? (
-                  <button className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]">
-                    <Download size={16} />
-                    ดาวน์โหลด
+                  <button
+                    onClick={() => window.open(getStudentCardUrl(applicant.id), '_blank')}
+                    className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]"
+                  >
+                    <Eye size={16} />
+                    ดูเอกสาร
                   </button>
                 ) : (
                   <span className="text-sm text-red-600">ยังไม่อัปโหลด</span>
@@ -151,7 +161,7 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
         </div>
 
         {/* Actions */}
-        {applicant.status === 'pending' && (
+        {applicant.status === 'PENDING' && (
           <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6 flex gap-3 justify-end">
             <button
               onClick={onReject}
