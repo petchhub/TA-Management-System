@@ -58,6 +58,7 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                 const courseProgramsData = await getCourseProgram();
                 setDaysOfWeek(days);
                 setGradeOptions(grades);
+                console.log(grades)
                 setSemesters(semestersData);
                 setCoursePrograms(courseProgramsData);
             } catch (error) {

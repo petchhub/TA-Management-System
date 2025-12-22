@@ -8,6 +8,7 @@ const API_BASE_URL = 'http://localhost:8084/TA-management';
  * Backend response structure for course/position
  */
 export interface PositionResponse {
+    jobPostID:number;
     courseID: string;
     courseName: string;
     taAllocation: number;
@@ -99,7 +100,7 @@ function mapPositionToCourse(position: PositionResponse, index: number): Course 
     };
 
     return {
-        id: index + 1, // Use index as ID since backend doesn't provide unique ID in response
+        id: position.jobPostID,
         code: position.courseID,
         name: position.courseName,
         department: 'คณะวิศวกรรมศาสตร์', // Default since backend doesn't provide
