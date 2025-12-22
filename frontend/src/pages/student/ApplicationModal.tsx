@@ -29,12 +29,9 @@ interface ApplicationModalProps {
 export default function ApplicationModal({ isOpen, courseId, course, onClose }: ApplicationModalProps) {
   const [step, setStep] = useState<'form' | 'confirm' | 'success' | 'error'>('form');
   const [formData, setFormData] = useState({
-    motivation: '',
     experience: '',
-    availability: '',
     gpa: '',
-    transcript: null as File | null,
-    resume: null as File | null
+    transcript: null as File | null
   });
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -68,12 +65,10 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
       await applyToPosition(courseId, {
         studentID: studentId,
         statusID: 3, // 3 = Pending status
-        motivation: formData.motivation,
+        motivation: "",
         experience: formData.experience,
-        availability: formData.availability,
         gpa: formData.gpa,
         transcript: formData.transcript,
-        resume: formData.resume || undefined,
       });
 
       setStep('success');
@@ -92,18 +87,15 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
   const resetAndClose = () => {
     setStep('form');
     setFormData({
-      motivation: '',
       experience: '',
-      availability: '',
       gpa: '',
-      transcript: null,
-      resume: null
+      transcript: null
     });
     onClose();
   };
 
-  const handleFileChange = (field: 'transcript' | 'resume', file: File | null) => {
-    setFormData(prev => ({ ...prev, [field]: file }));
+  const handleFileChange = (file: File | null) => {
+    setFormData(prev => ({ ...prev, transcript: file }));
   };
 
   return (
@@ -128,7 +120,7 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
           {step === 'form' && (
             <form onSubmit={handleSubmit}>
               {/* Course Info */}
-              <div className="bg-[var(--color-primary-50)] border border-[var(--color-primary-200)] rounded-lg p-4 mb-6">
+              <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
                 <h3 className="text-gray-900 mb-2">รายละเอียดตำแหน่ง</h3>
                 <div className="grid grid-cols-2 gap-3 text-gray-700">
                   <div>
@@ -147,132 +139,83 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
               </div>
 
               {/* Form Fields */}
-              <div className="space-y-4 mb-6">
-                {/* GPA */}
-                <div>
-                  <label htmlFor="gpa" className="block text-gray-700 mb-2">
-                    เกรดเฉลี่ยสะสม (GPA) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="gpa"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="4"
-                    value={formData.gpa}
-                    onChange={(e) => setFormData(prev => ({ ...prev, gpa: e.target.value }))}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent"
-                    placeholder="0.00 - 4.00"
-                  />
-                </div>
-
-                {/* Motivation */}
-                <div>
-                  <label htmlFor="motivation" className="block text-gray-700 mb-2">
-                    เหตุผลที่สมัคร <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    id="motivation"
-                    value={formData.motivation}
-                    onChange={(e) => setFormData(prev => ({ ...prev, motivation: e.target.value }))}
-                    required
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent resize-none"
-                    placeholder="เล่าถึงเหตุผลที่คุณสนใจตำแหน่งนี้..."
-                  />
+              <div className="space-y-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* GPA */}
+                  <div>
+                    <label htmlFor="gpa" className="block text-sm font-medium text-gray-700 mb-2">
+                      เกรดเฉลี่ยสะสม (GPA) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="gpa"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="4"
+                      value={formData.gpa}
+                      onChange={(e) => setFormData(prev => ({ ...prev, gpa: e.target.value }))}
+                      required
+                      className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
 
                 {/* Experience */}
                 <div>
-                  <label htmlFor="experience" className="block text-gray-700 mb-2">
-                    ประสบการณ์ที่เกี่ยวข้อง
+                  <label htmlFor="experience" className="block text-sm font-medium text-gray-700 mb-2">
+                    ประสบการณ์ที่เกี่ยวข้อง (ถ้ามี)
                   </label>
                   <textarea
                     id="experience"
                     value={formData.experience}
                     onChange={(e) => setFormData(prev => ({ ...prev, experience: e.target.value }))}
                     rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent resize-none"
-                    placeholder="ประสบการณ์การสอน, โปรเจคที่เกี่ยวข้อง..."
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none"
+                    placeholder="หากมีประสบการณ์การเป็นผู้ช่วยสอน หรือกิจกรรมอื่นๆที่เกี่ยวข้อง สามารถระบุเพิ่มเติมได้"
                   />
                 </div>
 
-                {/* Availability */}
+                {/* Transcript Upload */}
                 <div>
-                  <label htmlFor="availability" className="block text-gray-700 mb-2">
-                    ช่วงเวลาที่สามารถปฏิบัติงานได้ <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Transcript (PDF) <span className="text-red-500">*</span>
                   </label>
-                  <textarea
-                    id="availability"
-                    value={formData.availability}
-                    onChange={(e) => setFormData(prev => ({ ...prev, availability: e.target.value }))}
-                    required
-                    rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent resize-none"
-                    placeholder="เช่น จันทร์-ศุกร์ 13:00-17:00"
-                  />
-                </div>
-
-                {/* File Uploads */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Transcript */}
-                  <div>
-                    <label className="block text-gray-700 mb-2">
-                      Transcript (PDF) <span className="text-red-500">*</span>
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[var(--color-primary-400)] transition-colors">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => handleFileChange('transcript', e.target.files?.[0] || null)}
-                        required
-                        className="hidden"
-                        id="transcript-upload"
-                      />
-                      <label htmlFor="transcript-upload" className="cursor-pointer">
-                        {formData.transcript ? (
-                          <div className="flex items-center justify-center gap-2 text-green-600">
-                            <FileText className="w-5 h-5" />
-                            <span className="text-gray-900 truncate">{formData.transcript.name}</span>
+                  <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${formData.transcript
+                    ? 'border-primary-500 bg-primary-50/30'
+                    : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
+                    }`}>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                      required
+                      className="hidden"
+                      id="transcript-upload"
+                    />
+                    <label htmlFor="transcript-upload" className="cursor-pointer w-full h-full block">
+                      {formData.transcript ? (
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <div className="p-3 bg-white rounded-full shadow-sm">
+                            <FileText className="w-8 h-8 text-primary-600" />
                           </div>
-                        ) : (
                           <div>
-                            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-gray-600">อัปโหลด Transcript</p>
+                            <p className="font-medium text-gray-900">{formData.transcript.name}</p>
+                            <p className="text-sm text-gray-500 mt-1">คลิกเพื่อเปลี่ยนไฟล์</p>
                           </div>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Resume */}
-                  <div>
-                    <label className="block text-gray-700 mb-2">
-                      Resume/CV (PDF)
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-[var(--color-primary-400)] transition-colors">
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => handleFileChange('resume', e.target.files?.[0] || null)}
-                        className="hidden"
-                        id="resume-upload"
-                      />
-                      <label htmlFor="resume-upload" className="cursor-pointer">
-                        {formData.resume ? (
-                          <div className="flex items-center justify-center gap-2 text-green-600">
-                            <FileText className="w-5 h-5" />
-                            <span className="text-gray-900 truncate">{formData.resume.name}</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <div className="p-3 bg-gray-100 rounded-full">
+                            <Upload className="w-8 h-8 text-gray-500" />
                           </div>
-                        ) : (
                           <div>
-                            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-gray-600">อัปโหลด Resume</p>
+                            <p className="font-medium text-gray-700">คลิกหรือลากไฟล์มาวางที่นี่</p>
+                            <p className="text-sm text-gray-500 mt-1">รองรับไฟล์ PDF เท่านั้น</p>
                           </div>
-                        )}
-                      </label>
-                    </div>
+                        </div>
+                      )}
+                    </label>
                   </div>
                 </div>
               </div>
@@ -288,7 +231,7 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 px-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-black rounded-lg transition-colors"
+                  className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
                 >
                   ถัดไป
                 </button>
@@ -310,11 +253,6 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                     <p className="text-gray-900">{formData.gpa}</p>
                   </div>
 
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-gray-600 mb-1">เหตุผลที่สมัคร</p>
-                    <p className="text-gray-900">{formData.motivation}</p>
-                  </div>
-
                   {formData.experience && (
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <p className="text-gray-600 mb-1">ประสบการณ์</p>
@@ -322,10 +260,7 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                     </div>
                   )}
 
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-gray-600 mb-1">ช่วงเวลาที่สามารถปฏิบัติงาน</p>
-                    <p className="text-gray-900">{formData.availability}</p>
-                  </div>
+                  {/* Removed Availability */}
 
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-gray-600 mb-2">เอกสารแนบ</p>
@@ -334,12 +269,6 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                         <div className="flex items-center gap-2 text-gray-900">
                           <FileText className="w-4 h-4" />
                           <span>Transcript: {formData.transcript.name}</span>
-                        </div>
-                      )}
-                      {formData.resume && (
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <FileText className="w-4 h-4" />
-                          <span>Resume: {formData.resume.name}</span>
                         </div>
                       )}
                     </div>
@@ -357,7 +286,7 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                 <button
                   onClick={handleConfirm}
                   disabled={submitting}
-                  className="flex-1 py-3 px-4 bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? 'กำลังส่ง...' : 'ยืนยันการสมัคร'}
                 </button>

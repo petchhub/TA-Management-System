@@ -57,10 +57,8 @@ export interface ApplicationData {
     statusID: number;
     motivation: string;
     experience: string;
-    availability: string;
     gpa: string;
     transcript: File;
-    resume?: File;
 }
 
 /**
@@ -72,27 +70,56 @@ function mapPositionToCourse(position: PositionResponse, index: number): Course 
     deadline.setDate(deadline.getDate() + 30);
     const deadlineStr = deadline.toISOString().split('T')[0];
 
+    // Infer program from course name (if no Thai characters, assume International)
+    // Backend doesn't send program field, so we must infer it on frontend
+    const programStr =
+        position.program?.includes('International')
+            ? 'International Program'
+            : 'หลักสูตรปกติ(ไทย)';
+
+
+    // Format requirements text
+    const requirementsStr = position.program?.includes('International')
+        ? `Must have passed ${position.courseName} with a grade not lower than ${position.grade}`
+        : `ต้องเคยผ่านรายวิชา ${position.courseName} โดยได้เกรดไม่ต่ำกว่า ${position.grade}`;
+
+    // Format time (Handle 0000-01-01T13:00:00Z -> 13:00)
+    const formatTime = (timeStr: string) => {
+        if (!timeStr) return '';
+        // If it comes as full ISO string
+        if (timeStr.includes('T')) {
+            return timeStr.split('T')[1].substring(0, 5);
+        }
+        // If it comes as HH:mm:ss
+        const parts = timeStr.split(':');
+        if (parts.length >= 2) {
+            return `${parts[0]}:${parts[1]}`;
+        }
+        return timeStr;
+    };
+
     return {
         id: index + 1, // Use index as ID since backend doesn't provide unique ID in response
         code: position.courseID,
         name: position.courseName,
         department: 'คณะวิศวกรรมศาสตร์', // Default since backend doesn't provide
-        program: position.program || 'หลักสูตรปกติ(ไทย)',
+        program: programStr,
         sec: position.sec || '',
         days: position.classday || "",
         instructor: position.professorName,
         semester: position.semester || "",
         positions: position.taAllocation,
         hoursPerWeek: position.workHour,
-        requirements: position.grade || '',
+        requirements: requirementsStr,
         description: position.task || '',
         location: position.location || '',
         deadline: deadlineStr,
-        startTime: position.classStart || '',
-        endTime: position.classEnd || '',
+        startTime: formatTime(position.classStart),
+        endTime: formatTime(position.classEnd),
         status: position.status || "",
     };
 }
+
 
 /**
  * Fetch all open TA positions from the backend
@@ -148,9 +175,7 @@ export async function applyToPosition(
         formData.append('pdfFile', applicationData.transcript);
         formData.append('grade', applicationData.gpa);
         formData.append('purpose', applicationData.motivation);
-        // Note: Backend currently only accepts transcript file
-        // Other fields (motivation, experience, availability, gpa) are not in the backend schema
-        // They would need to be added to the backend if required
+        formData.append('experience', applicationData.experience);
 
         const response = await fetch(`${API_BASE_URL}/course/apply/${courseId}`, {
             method: 'POST',
