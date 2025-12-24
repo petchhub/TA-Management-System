@@ -7,11 +7,15 @@ import (
 )
 
 type CourseService interface {
+	GetAllJobPost() (*response.RequestDataResponse, error)
+	GetAllJobPostByStudentId(studentId int) (*response.RequestDataResponse, error)
 	GetAllCourse() (*response.RequestDataResponse, error)
-	GetAllCourseByStudentId(studentId int) (*response.RequestDataResponse, error)
 	CreateCourse(body request.CreateCourse) (response.CreateResponse, error)
 	UpdateCourse(body request.UpdateCourse) (response.GeneralResponse, error)
 	DeleteCourse(courseId int) (response.GeneralResponse, error)
+	CreateJobPost(body request.CreateJobPost) (response.CreateResponse, error)
+	UpdateJobPost(body request.UpdateJobPost) (response.GeneralResponse, error)
+	DeleteJobPost(jobPostId int) (response.GeneralResponse, error)
 	ApplyJobPost(body request.ApplyJobPost) (*response.CreateResponse, error)
 	GetApplicationByStudentId(studentId int) (*response.RequestDataResponse, error)
 	GetApplicationByCourseId(CourseId int) (*response.RequestDataResponse, error)

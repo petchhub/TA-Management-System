@@ -24,12 +24,19 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 	c := NewCourseController(courseService)
 	r.Use()
 	{
-		r.GET("", c.findAllCourse)
-		r.GET("/student/:studentId", c.GetAllCourseByStudentId)
-		r.GET("/professor/:professorId", c.findProfessorCourse)
+
 		r.POST("", c.createCourse)
+		r.GET("/professor/:professorId", c.getProfessorCourse)
 		r.PATCH("/:courseId", c.updateCourse)
 		r.DELETE("/:courseId", c.deleteCourse)
+
+		r.POST("/jobpost", c.createJobPost)
+		r.GET("/jobpost", c.findAllJobPost)
+		r.GET("", c.getAllCourse)
+		r.GET("/student/:studentId", c.GetAllJobPostByStudentId)
+		r.PATCH("/jobpost/:jobpostId", c.updateJobPost)
+		r.DELETE("/jobpost/:jobpostId", c.deleteJobPost)
+
 		r.POST("/apply/:jobPostId", c.applyJobPost)
 		r.GET("/application/student/:studentId", c.getApplicationByStudentId)
 		r.GET("/application/course/:courseId", c.getApplicationBycourseId)
@@ -42,8 +49,33 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 	}
 }
 
-func (controller CourseController) findAllCourse(ctx *gin.Context) {
+func (controller CourseController) findAllJobPost(ctx *gin.Context) {
 	//validate
+	result, err := controller.service.GetAllJobPost()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller CourseController) GetAllJobPostByStudentId(ctx *gin.Context) {
+
+	studentId, ok := utils.ValidateParam(ctx, "studentId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validation Param Failed"})
+		return
+	}
+
+	result, err := controller.service.GetAllJobPostByStudentId(studentId)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+	}
+
+	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller CourseController) getAllCourse(ctx *gin.Context) {
 	result, err := controller.service.GetAllCourse()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
@@ -52,23 +84,7 @@ func (controller CourseController) findAllCourse(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, result)
 }
 
-func (controller CourseController) GetAllCourseByStudentId(ctx *gin.Context) {
-
-	studentId, ok := utils.ValidateParam(ctx, "studentId")
-	if !ok {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validation Param Failed"})
-		return
-	}
-
-	result, err := controller.service.GetAllCourseByStudentId(studentId)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
-	}
-
-	ctx.JSON(http.StatusOK, result)
-}
-
-func (controller CourseController) findProfessorCourse(ctx *gin.Context) {
+func (controller CourseController) getProfessorCourse(ctx *gin.Context) {
 
 	//validate
 	professorId, ok := utils.ValidateParam(ctx, "professorId")
@@ -137,6 +153,56 @@ func (controller CourseController) deleteCourse(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusNoContent, result)
 
+}
+
+func (controller CourseController) createJobPost(ctx *gin.Context) {
+	var rq request.CreateJobPost
+	if err := ctx.ShouldBindJSON(&rq); err != nil {
+		fmt.Println(err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
+		return
+	}
+	result, err := controller.service.CreateJobPost(rq)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	ctx.JSON(http.StatusCreated, result)
+}
+
+func (controller CourseController) updateJobPost(ctx *gin.Context) {
+	jobPostId, ok := utils.ValidateParam(ctx, "jobpostId")
+
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validation Param Failed"})
+		return
+	}
+	rq := request.UpdateJobPost{}
+	if err := ctx.ShouldBindJSON(&rq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "body request not valid"})
+		return
+	}
+	rq.Id = jobPostId
+	result, err := controller.service.UpdateJobPost(rq)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
+		return
+	}
+	ctx.JSON(http.StatusNoContent, result)
+}
+
+func (controller CourseController) deleteJobPost(ctx *gin.Context) {
+	id, ok := utils.ValidateParam(ctx, "jobpostId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validate Param Failed"})
+		return
+	}
+	result, err := controller.service.DeleteJobPost(id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
+		return
+	}
+	ctx.JSON(http.StatusNoContent, result)
 }
 
 func (controller CourseController) applyJobPost(ctx *gin.Context) {

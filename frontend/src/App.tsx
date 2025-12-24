@@ -14,7 +14,7 @@ import StudentLayout from './pages/student/StudentLayout';
 import ProfessorLayout from './pages/professor/ProfessorLayout';
 
 // Finance pages
-import { Dashboard as FinanceDashboard } from './pages/finance/Dashboard';
+import FinanceLayout from './pages/finance/FinanceLayout';
 
 /**
  * Role-based routing configuration for the TA Management System
@@ -53,7 +53,12 @@ export default function App() {
 
           {/* Finance Routes - Only accessible to FINANCE role */}
           <Route element={<ProtectedRoute allowedRoles={['FINANCE']} />}>
-            <Route path="/finance/dashboard" element={<FinanceDashboard />} />
+            <Route path="/finance/*" element={<FinanceLayout />} />
+            <Route path="/finance/dashboard" element={<FinanceLayout initialPage="dashboard" />} />
+            <Route path="/finance/courses" element={<FinanceLayout initialPage="work-hours" />} />
+            <Route path="/finance/export" element={<FinanceLayout initialPage="export" />} />
+            <Route path="/finance/holidays" element={<FinanceLayout initialPage="holidays" />} />
+            <Route path="/finance/announcement" element={<FinanceLayout initialPage="announcement" />} />
           </Route>
 
           {/* Catch-all route - Redirect unknown routes to home */}

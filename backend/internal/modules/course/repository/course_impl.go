@@ -18,18 +18,18 @@ func NewCourseRepository(DB *sql.DB) CourseRepositoryImplementation {
 	return CourseRepositoryImplementation{db: DB}
 }
 
-func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error) {
+func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, error) {
 
 	query := `SELECT 
 				j.task,
 				j.id,
-				c.course_ID, 
+				c.course_code, 
 				c.course_name, 
-				c.ta_allocation, 
+				j.ta_allocation, 
 				c.work_hour,
 				c.class_start,
 				c.class_end,
-				c.location,
+				j.location,
 				c.course_program,
 				cd.class_day_value, 
 				p.firstname,
@@ -39,7 +39,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				g.grade_value
 			FROM ta_job_posting AS j
 			LEFT JOIN courses AS c
-				ON j.course_ID = c.id
+				ON j.course_ID = c.course_ID
 			LEFT JOIN class_days AS cd
 				ON c.class_day_ID = cd.class_day_ID 
 			LEFT JOIN professors AS p
@@ -58,15 +58,15 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 	//garantees that connection is released back to the pool ,prevent leak
 	defer rows.Close()
 
-	var courses []response.Course
+	var courses []response.JobPost
 	for rows.Next() {
-		var course response.Course
+		var course response.JobPost
 		var firstname string
 		var lastname string
 		err := rows.Scan(
 			&course.Task,
 			&course.JobPostID,
-			&course.CourseID,
+			&course.CourseCode,
 			&course.CourseName,
 			&course.TaAllocation,
 			&course.WorkHour,
@@ -91,18 +91,18 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 	return courses, nil
 }
 
-func (r CourseRepositoryImplementation) GetAllCourseByStudentId(studentId int) ([]response.Course, error) {
+func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) ([]response.JobPost, error) {
 
 	query := `SELECT 
 				j.task,
 				j.id,
-				c.course_ID, 
+				c.course_code, 
 				c.course_name, 
-				c.ta_allocation, 
+				j.ta_allocation, 
 				c.work_hour,
 				c.class_start,
 				c.class_end,
-				c.location,
+				j.location,
 				c.course_program,
 				cd.class_day_value, 
 				p.firstname,
@@ -112,7 +112,7 @@ func (r CourseRepositoryImplementation) GetAllCourseByStudentId(studentId int) (
 				g.grade_value
 			FROM ta_job_posting AS j
 			LEFT JOIN courses AS c
-				ON j.course_ID = c.id
+				ON j.course_ID = c.course_ID
 			LEFT JOIN class_days AS cd
 				ON c.class_day_ID = cd.class_day_ID 
 			LEFT JOIN professors AS p
@@ -137,15 +137,15 @@ func (r CourseRepositoryImplementation) GetAllCourseByStudentId(studentId int) (
 	//garantees that connection is released back to the pool ,prevent leak
 	defer rows.Close()
 
-	var courses []response.Course
+	var courses []response.JobPost
 	for rows.Next() {
-		var course response.Course
+		var course response.JobPost
 		var firstname string
 		var lastname string
 		err := rows.Scan(
 			&course.Task,
 			&course.JobPostID,
-			&course.CourseID,
+			&course.CourseCode,
 			&course.CourseName,
 			&course.TaAllocation,
 			&course.WorkHour,
@@ -170,14 +170,80 @@ func (r CourseRepositoryImplementation) GetAllCourseByStudentId(studentId int) (
 	return courses, nil
 }
 
+func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error) {
+
+	query := `SELECT 
+				c.course_ID, 
+				c.course_code, 
+				c.course_name, 
+				c.course_program,
+				c.class_day,
+				c.class_start,
+				c.class_end,
+				c.semester,
+				c.sec,
+				p.firstname,
+				p.lastname,
+				c.work_hour
+			FROM courses AS c
+			LEFT JOIN professors AS p
+				ON c.professor_ID = p.professor_ID
+			WHERE c.deleted_date IS NULL`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var courses []response.Course
+	for rows.Next() {
+		var course response.Course
+		var firstname string
+		var lastname string
+		err := rows.Scan(
+			&course.CourseID,
+			&course.CourseCode,
+			&course.CourseName,
+			&course.CourseProgram,
+			&course.Classday,
+			&course.ClassStart,
+			&course.ClassEnd,
+			&course.Semester,
+			&course.Section,
+			&firstname,
+			&lastname,
+			&course.WorkHour,
+		)
+		if err != nil {
+			return nil, err
+		}
+		course.ProfessorName = firstname + " " + lastname
+		courses = append(courses, course)
+	}
+
+	return courses, nil
+}
+
 func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]response.Course, error) {
 
-	query := `SELECT course_ID, 
-				course_name, 
-				ta_allocation, 
-				work_hour 
-			FROM courses
-				WHERE professor_ID=$1`
+	query := `SELECT 
+				c.course_ID,
+				c.course_code, 
+				c.course_name,
+				c.course_program,
+				c.class_day,
+				c.class_start,
+				c.class_end,
+				c.semester,
+				c.sec,
+				p.firstname,
+				p.lastname,
+				c.work_hour 
+			FROM courses AS c
+			join professors AS p 
+				on c.professor_ID = p.professor_ID
+			WHERE c.professor_ID=$1`
 
 	rows, err := r.db.Query(query, professorId)
 	if err != nil {
@@ -189,11 +255,25 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 	var courses []response.Course
 	for rows.Next() {
 		var course response.Course
-
-		err := rows.Scan(&course.CourseID, &course.CourseName, &course.TaAllocation, &course.WorkHour)
+		var firstname string
+		var lastname string
+		err := rows.Scan(
+			&course.CourseID,
+			&course.CourseCode,
+			&course.CourseName,
+			&course.CourseProgram,
+			&course.Classday,
+			&course.ClassStart,
+			&course.ClassEnd,
+			&course.Semester,
+			&course.Section,
+			&firstname,
+			&lastname,
+			&course.WorkHour)
 		if err != nil {
 			return nil, err
 		}
+		course.ProfessorName = firstname + " " + lastname
 		courses = append(courses, course)
 	}
 
@@ -203,7 +283,7 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) (int, error) {
 
 	queryCheck := `SELECT COUNT(*) FROM courses 
-					WHERE course_ID=$1 
+					WHERE course_code=$1 
 					AND course_program_ID=$2 
 					AND sec=$3 
 					AND semester_ID=$4 
@@ -212,7 +292,7 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 	var count int
 
 	row := r.db.QueryRow(queryCheck,
-		body.CourseID,
+		body.CourseCode,
 		body.CourseProgramID,
 		body.Sec,
 		body.SemesterID,
@@ -233,7 +313,7 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 	}
 
 	query := `INSERT INTO courses(
-	course_ID, 
+	course_code, 
 	course_name,
 	professor_ID, 
 	course_program_ID, 
@@ -246,16 +326,14 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 	class_start, 
 	class_end,
 	work_hour,
-	ta_allocation,
-	location,
 	created_date) 
-	values ($1,$2,$3, $4, $5 ,$6 ,$7 ,$8 ,$9 ,$10 ,$11 ,$12, $13, $14, $15, $16)
-	RETURNING id`
+	values ($1,$2,$3, $4, $5 ,$6 ,$7 ,$8 ,$9 ,$10 ,$11 ,$12, $13, $14)
+	RETURNING course_ID`
 
 	var lastInsertId int
 
 	err = tx.QueryRow(query,
-		body.CourseID,
+		body.CourseCode,
 		body.CourseName,
 		body.ProfessorID,
 		body.CourseProgramID,
@@ -268,38 +346,9 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 		body.ClassStart,
 		body.ClassEnd,
 		body.WorkHour,
-		body.TaAllocation,
-		body.Location,
 		time.Now(),
 	).Scan(&lastInsertId)
 
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	statusID := 1
-	//Insert ta_jobposting
-	query = `INSERT INTO ta_job_posting(
-	professor_ID, 
-	course_ID,
-	grade_ID,
-	task,
-	ta_allocation,
-	status_ID,
-	created_date)
-	values ($1,$2,$3, $4, $5 ,$6 ,$7 )
-	RETURNING id`
-
-	_, err = tx.Exec(query,
-		body.ProfessorID,
-		lastInsertId,
-		body.GradeID,
-		body.Task,
-		body.TaAllocation,
-		statusID,
-		time.Now(),
-	)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
@@ -335,8 +384,8 @@ func (r CourseRepositoryImplementation) UpdateCourse(body request.UpdateCourse) 
 	if body.CourseName != nil {
 		addField("course_name", body.CourseName)
 	}
-	if body.CourseID != nil {
-		addField("course_id", body.CourseID)
+	if body.CourseCode != nil {
+		addField("course_code", body.CourseCode)
 	}
 	if body.CourseProgramID != nil {
 		addField("course_program_id", body.CourseProgramID)
@@ -388,18 +437,102 @@ func (r CourseRepositoryImplementation) UpdateCourse(body request.UpdateCourse) 
 }
 
 func (r CourseRepositoryImplementation) DeleteCourse(id int) error {
-	query := "UPDATE courses SET deleted_date = $1 WHERE id = $2"
+	query := "UPDATE courses SET deleted_date = $1 WHERE course_ID = $2"
 	_, err := r.db.Exec(query, time.Now(), id)
 	if err != nil {
 		return err
 	}
 
-	query = "UPDATE ta_job_posting SET deleted_date = $1 WHERE course_id = $2"
-	_, err = r.db.Exec(query, time.Now(), id)
+	// query = "UPDATE ta_job_posting SET deleted_date = $1 WHERE course_id = $2"
+	// _, err = r.db.Exec(query, time.Now(), id)
+	// if err != nil {
+	// 	return err
+	// }
+
+	return nil
+}
+
+func (r CourseRepositoryImplementation) CreateJobPost(body request.CreateJobPost) (int, error) {
+	query := `INSERT INTO ta_job_posting(
+				course_ID,
+				professor_ID,
+				location,
+				ta_allocation,
+				grade_ID,
+				task,
+				status_ID,
+				created_date)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+			RETURNING id`
+	var lastInsertId int
+	statusID := 1
+	err := r.db.QueryRow(query,
+		body.CourseID,
+		body.ProfessorID,
+		body.Location,
+		body.TaAllocation,
+		body.GradeID,
+		body.Task,
+		statusID,
+		time.Now(),
+	).Scan(&lastInsertId)
+	if err != nil {
+		return 0, err
+	}
+	return lastInsertId, nil
+}
+
+func (r CourseRepositoryImplementation) UpdateJobPost(body request.UpdateJobPost) error {
+	query := "UPDATE ta_job_posting SET "
+	params := []interface{}{}
+	placeholderID := 1 // PostgreSQL needs $1, $2...
+	// Helper to add fields and increment the counter
+	addField := func(columnName string, value interface{}) {
+		query += fmt.Sprintf("%s = $%d, ", columnName, placeholderID)
+		params = append(params, value)
+		placeholderID++
+	}
+	// 1. Check each field
+	if body.CourseID != nil {
+		addField("course_ID", body.CourseID)
+	}
+	if body.ProfessorID != nil {
+		addField("professor_ID", body.ProfessorID)
+	}
+	if body.Location != nil {
+		addField("location", body.Location)
+	}
+	if body.TaAllocation != nil {
+		addField("ta_allocation", body.TaAllocation)
+	}
+	if body.GradeID != nil {
+		addField("grade_ID", body.GradeID)
+	}
+	if body.Task != nil {
+		addField("task", body.Task)
+	}
+	// 2. Safety Check: Did the user send ANY data?
+	if len(params) == 0 {
+		return nil // Or return an error "nothing to update"
+	}
+	// 3. Finalize the query string
+	query = strings.TrimSuffix(query, ", ")
+	query += fmt.Sprintf(" WHERE id = $%d;", placeholderID)
+	params = append(params, body.Id)
+	// 4. Execute
+	_, err := r.db.Exec(query, params...)
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
+func (r CourseRepositoryImplementation) DeleteJobPost(jobPostId int) error {
+	query := "UPDATE ta_job_posting SET deleted_date = $1 WHERE id = $2"
+	_, err := r.db.Exec(query, time.Now(), jobPostId)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -513,7 +646,7 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 				LEFT JOIN ta_job_posting AS tp
 					ON ta.job_post_ID = tp.id
 				LEFT JOIN courses AS c
-					ON tp.course_ID = c.id
+					ON tp.course_ID = c.course_ID
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
 				WHERE student_ID = $1`
@@ -753,7 +886,7 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 				LEFT JOIN ta_job_posting AS jp
 					ON ta.job_post_ID = jp.id
 				LEFT JOIN courses AS c
-					ON jp.course_ID = c.id
+					ON jp.course_ID = c.course_ID
 				LEFT JOIN students AS stu
 					ON ta.student_id = stu.student_id
 				WHERE c.professor_ID = $1`

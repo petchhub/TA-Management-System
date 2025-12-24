@@ -15,19 +15,19 @@ export function Dashboard() {
       title: "จำนวนผู้ช่วยสอนทั้งหมด",
       value: "32",
       icon: Users,
-      color: "bg-[var(--color-primary-500)]",
+      color: "bg-orange-500",
     },
     {
       title: "จำนวนรายวิชาที่เปิดเบิกจ่าย",
       value: "12",
       icon: BookOpen,
-      color: "bg-green-500",
+      color: "bg-orange-600",
     },
     {
       title: "ชั่วโมงการทำงานที่เบิกจ่ายแล้ว",
       value: "238",
       icon: Clock,
-      color: "bg-purple-500",
+      color: "bg-orange-400",
     },
   ];
 
@@ -35,7 +35,7 @@ export function Dashboard() {
     {
       label: "Export ข้อมูลชั่วโมงงาน",
       icon: Download,
-      color: "bg-[var(--color-primary-600)] hover:bg-[var(--color-primary-700)]",
+      color: "bg-orange-600 hover:bg-orange-700",
     },
     {
       label: "จัดการวันหยุด",
@@ -45,7 +45,7 @@ export function Dashboard() {
     {
       label: "ส่งอีเมลประกาศ",
       icon: Mail,
-      color: "bg-green-600 hover:bg-green-700",
+      color: "bg-orange-500 hover:bg-orange-600",
     },
   ];
 

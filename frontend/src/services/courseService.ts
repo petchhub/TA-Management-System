@@ -5,7 +5,8 @@
 export const API_BASE_URL = 'http://localhost:8084/TA-management';
 
 export interface Course {
-    courseID: string;
+    courseID: number;
+    courseCode: string;
     courseName: string;
     courseProgram: string;
     taAllocation: number;
@@ -20,6 +21,7 @@ export interface Course {
     semester: string;
     status: string;
     jobPostID: number;
+    section: string;
 }
 
 export interface CourseResponse {
@@ -51,7 +53,7 @@ export interface ApplicationResponse {
  */
 export interface CreateCourseRequest {
     courseName: string;
-    courseID: string;
+    courseCode: string;
     professorID: number;
     courseProgramID: number;
     courseProgram: string;
@@ -106,10 +108,6 @@ export async function createCourseAnnouncement(data: {
     programType: 'regular' | 'international';
     workingDay: string;
     classTime: { startTime: string; endTime: string };
-    numberOfTAs: number;
-    minGrade: string;
-    gradeId?: number;
-    requirements: string;
     professorID?: number; // Optional override
     semesterId?: number;
 }): Promise<any> {
@@ -146,7 +144,7 @@ export async function createCourseAnnouncement(data: {
 
         const requestData: CreateCourseRequest = {
             courseName: data.courseName,
-            courseID: data.courseCode,
+            courseCode: data.courseCode,
             professorID: data.professorID || 1, // Use provided ID or default to 1
             courseProgramID: programMapping[data.programType] || 1,
             courseProgram: data.programType === 'international' ? 'International' : 'General',
@@ -157,9 +155,9 @@ export async function createCourseAnnouncement(data: {
             classday: data.workingDay.charAt(0).toUpperCase() + data.workingDay.slice(1),
             classStart: `${data.classTime.startTime}:00`,
             classEnd: `${data.classTime.endTime}:00`,
-            taAllocation: data.numberOfTAs,
-            gradeID: data.gradeId || 1, // Use resolved ID or default
-            task: data.requirements,
+            taAllocation: 0,
+            gradeID: 1, // Default, not used for course creation
+            task: "",
             workHour: workHour,
         };
 
@@ -249,6 +247,94 @@ export async function getProfessorApplications(professorId: number, professorNam
     } catch (error) {
         console.error('Error in getProfessorApplications:', error);
         throw error;
+    }
+}
+
+/**
+ * Create a new job post for a course
+ * @param data - The job post data
+ * @returns Promise with the created job post result
+ */
+export async function createJobPost(data: {
+    courseID: number;
+    professorID: number;
+    location: string;
+    taAllocation: number;
+    gradeID: number;
+    task: string;
+}): Promise<any> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/jobpost`, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Failed to create job post: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error creating job post:', error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch all courses for Finance Management (including non-jobposts)
+ * @returns Promise with list of courses
+ */
+export async function getAllCoursesForFinance(): Promise<Course[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch courses: ${response.statusText}`);
+        }
+
+        const result: CourseResponse = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error('Error fetching courses for finance:', error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch all courses for a specific professor
+ * @param professorId - The ID of the professor
+ * @returns Promise with list of courses
+ */
+export async function getProfessorCourses(professorId: number): Promise<Course[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/professor/${professorId}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch courses for professor ${professorId}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error(`Error fetching courses for professor ${professorId}:`, error);
+        return [];
     }
 }
 

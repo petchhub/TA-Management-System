@@ -1,7 +1,7 @@
 import { Users, CheckCircle, Clock, Plus, UserCheck, FileText } from 'lucide-react';
 import { useState } from 'react';
-import { CreateTAAnnouncementModal, TAAnnouncementData } from './CreateTAAnnouncementModal';
-import { createCourseAnnouncement } from '../../services/courseService';
+import { CreateTAAnnouncementModal } from './CreateTAAnnouncementModal';
+import { createJobPost } from '../../services/courseService';
 import { useAuth } from '../../context/AuthContext';
 
 
@@ -14,20 +14,28 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCreateAnnouncement = async (data: TAAnnouncementData) => {
+  const handleCreateAnnouncement = async (data: any) => {
     try {
       setIsSubmitting(true);
 
       // Add professor ID from auth context if available
       const professorID = user?.id ? parseInt(user.id) : 1;
 
-      const result = await createCourseAnnouncement({
-        ...data,
-        professorID: professorID
+      // The modal now returns data structure ready for createJobPost
+      // But let's ensure we use the explicit createJobPost service
+      // We need to import it first
+
+      const result = await createJobPost({
+        courseID: data.courseID,
+        professorID: professorID,
+        location: data.location || "Building",
+        taAllocation: data.taAllocation,
+        gradeID: data.gradeID,
+        task: data.task
       });
 
-      console.log('Course announcement created:', result);
-      alert(`ประกาศรับสมัคร TA สำเร็จ!\nรหัสวิชา: ${data.courseCode}\nชื่อวิชา: ${data.courseName}`);
+      console.log('Job post created:', result);
+      alert(`ประกาศรับสมัคร TA สำเร็จ!`);
       setShowCreateModal(false);
     } catch (error) {
       console.error('Failed to create announcement:', error);
