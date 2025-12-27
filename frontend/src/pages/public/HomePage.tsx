@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -20,115 +20,9 @@ export default function PublicHomePage() {
   const [filterDay, setFilterDay] = useState("all");
   const [filterSemester, setFilterSemester] = useState("all");
 
-  // Mock Data (Same as Student View for parity)
-  const availableCourses = [
-    {
-      id: 1,
-      code: "01076104",
-      name: "Object-Oriented Programming",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรอินเตอร์",
-      days: ["จันทร์", "พุธ"],
-      instructor: "ผศ.ดร. สมหญิง วิชาการ",
-      semester: "2/2568",
-      positions: 2,
-      hoursPerWeek: 6,
-      requirements:
-        "เกรด B ในวิชาโปรแกรมเบื้องต้น, มีประสบการณ์ในการสอน",
-      description:
-        "ช่วยสอนและตรวจการบ้านวิชาการเขียนโปรแกรมเชิงวัตถุ",
-      location: "อาคาร ecc ชั้น 8-810",
-      deadline: "2025-12-15",
-      status: "open" as const,
-    },
-    {
-      id: 2,
-      code: "0107618",
-      name: "Database Systems",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรปกติ(ไทย)",
-      days: ["อังคาร", "ศุกร์"],
-      instructor: "รศ.ดร. วิทยา ฐานข้อมูล",
-      semester: "2/2568",
-      positions: 3,
-      hoursPerWeek: 4,
-      requirements: "เกรด B+ ขึ้นไปในวิชาเบื้องต้น",
-      description: "ช่วยสอนและดูแลห้องปฏิบัติการฐานข้อมูล",
-      location: "อาคาร ecc ชั้น 5-508",
-      deadline: "2025-12-20",
-      status: "open" as const,
-    },
-    {
-      id: 3,
-      code: "01073101",
-      name: "System Platform Administration",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรปกติ(ไทย)",
-      days: ["จันทร์", "พุธ", "ศุกร์"],
-      instructor: "ผศ.ดร. สมศักดิ์ จุลศาสตร์",
-      semester: "2/2568",
-      positions: 4,
-      hoursPerWeek: 5,
-      requirements: "เกรด A ในวิชาก่อนหน้า",
-      description: "ช่วยสอนและแก้โจทย์แคลคูลัสพื้นฐาน",
-      location: "อาคาร ecc ชั้น 8-808",
-      deadline: "2025-12-18",
-      status: "open" as const,
-    },
-    {
-      id: 4,
-      code: "01076201",
-      name: "Artificial Intelligence",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรอินเตอร์",
-      days: ["พฤหัสบดี"],
-      instructor: "รศ.ดร. ปัญญา ชาญชัย",
-      semester: "2/2568",
-      positions: 2,
-      hoursPerWeek: 6,
-      requirements:
-        "เกรด A ในวิชา CS301, มีความรู้ Python และ Machine Learning",
-      description: "ช่วยสอนและดูแลโปรเจค AI",
-      location: "อาคาร ecc ชั้น 8-811",
-      deadline: "2025-12-10",
-      status: "open" as const,
-    },
-    {
-      id: 5,
-      code: "01076103",
-      name: "Digital System",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรต่อเนื่อง",
-      days: ["เสาร์", "อาทิตย์"],
-      instructor: "อ. Sarah Johnson",
-      semester: "2/2568",
-      positions: 3,
-      hoursPerWeek: 4,
-      requirements: "ผ่านตัวก่อนหน้ามาแล้ว",
-      description: "ช่วยสอนและฝึกทักษะให้น้องๆ",
-      location: "อาคาร ecc ชั้น 8-802",
-      deadline: "2025-12-12",
-      status: "open" as const,
-    },
-    {
-      id: 6,
-      code: "01076102",
-      name: "Software Defined Networking",
-      department: "คณะวิศวกรรมศาสตร์",
-      program: "หลักสูตรปกติ(ไทย)",
-      days: ["อังคาร", "พฤหัสบดี"],
-      instructor: "ผศ.ดร. วิทย์ ฟิสิกส์",
-      semester: "2/2568",
-      positions: 2,
-      hoursPerWeek: 5,
-      requirements:
-        "เกรด B+ ขึ้นไปในวิชาการเขียนโปรแกรมเบื้องต้น",
-      description: "ช่วยสอนและดูแลห้องปฏิบัติ",
-      location: "อาคาร ecc ชั้น 8-801",
-      deadline: "2025-12-08",
-      status: "closed" as const,
-    },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
 
   const programs = [
     "ทั้งหมด",
@@ -147,6 +41,51 @@ export default function PublicHomePage() {
     "อาทิตย์",
   ];
   const semesters = ["ทั้งหมด", "1/2568", "2/2568", "3/2568"];
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        // Use the new public endpoint
+        const response = await fetch("http://localhost:8084/TA-management/public/course/jobpost");
+        if (!response.ok) {
+          throw new Error("Failed to fetch courses");
+        }
+        const data = await response.json();
+
+        // Map backend data to frontend Course interface
+        const mappedCourses = data.data.map((item: any) => ({
+          id: item.jobPostID,
+          code: item.courseCode || item.courseName.split(" ")[0], // Fallback if code not separate
+          name: item.courseName,
+          department: "คณะวิศวกรรมศาสตร์", // Not in API yet, use default
+          program: item.courseProgram || "หลักสูตรปกติ(ไทย)",
+          days: item.classday || "ไม่ระบุ",
+          instructor: item.professorName || "ไม่ระบุ",
+          semester: item.semester || "2/2568",
+          positions: item.taAllocation || 1,
+          hoursPerWeek: item.workHour || 0,
+          requirements: item.task || "ไม่ระบุรายละเอียด",
+          description: `ช่วยสอนวิชา ${item.courseName}`, // Generate description
+          location: item.location || "ไม่ระบุ",
+          deadline: "2025-12-31", // Default deadline
+          status: (item.status === "OPEN" ? "open" : "closed") as "open" | "closed",
+          startTime: item.classStart || "-",
+          endTime: item.classEnd || "-",
+          sec: "1" // Default sec
+        }));
+
+        setAvailableCourses(mappedCourses);
+      } catch (err) {
+        console.error("Error fetching courses:", err);
+        setError("ไม่สามารถโหลดข้อมูลรายวิชาได้");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, []);
 
   const filteredCourses = availableCourses.filter((course) => {
     const matchesSearch =
