@@ -70,7 +70,7 @@ func (s AuthenServiceImplementation) HandleGoogleCallback(ctx *gin.Context, code
 	// if !gu.VerifiedEmail {
 	// 	return "", nil, errors.New("email not verified")
 	// }
-
+	fmt.Println(gu)
 	role, err := s.repo.CheckUserRole(gu.Name)
 	if err != nil {
 		fmt.Println(err)

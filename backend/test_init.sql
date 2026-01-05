@@ -176,6 +176,19 @@ CREATE TABLE ta_courses(
         REFERENCES courses(course_ID)
 );
 
+CREATE TABLE ta_duty_historys(
+    id SERIAL PRIMARY KEY,
+    date TIMESTAMP,
+    course_ID INT,
+    student_ID INT,
+    CONSTRAINT FK_course_ID
+        FOREIGN KEY (course_ID)
+        REFERENCES courses(course_ID),
+    CONSTRAINT FK_student_ID
+        FOREIGN KEY (student_ID)
+        REFERENCES students(student_ID)
+);
+
 CREATE TABLE holidays(
     id SERIAL PRIMARY KEY,
     holiday_date DATE UNIQUE,
