@@ -1,552 +1,341 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  Download,
-  Check,
-  Calendar,
   BookOpen,
+  ChevronLeft,
+  CheckCircle,
+  User,
+  Clock
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { getProfessorCourses, getApplicationsForCourse, Course, Application } from "../../services/courseService";
+import { getTADutyRoadmap, markDutyAsDone, DutyChecklistItem } from "../../services/taDutyService";
 
-interface WorkHour {
-  id: string;
-  taName: string;
-  studentId: string;
-  course: string;
-  date: string;
-  hours: number;
-  status: "pending" | "checked" | "absent";
+interface TADutyData {
+  ta: Application;
+  duties: DutyChecklistItem[];
 }
 
 export function TAWorkHours() {
-  const [selectedMonth, setSelectedMonth] = useState("2025-11");
-  const [selectedCourse, setSelectedCourse] = useState("all");
-  const [selectedDate, setSelectedDate] = useState("all");
-  const [workHours, setWorkHours] = useState<WorkHour[]>([
-    {
-      id: "1",
-      taName: "ประเสริฐ ขยัน",
-      studentId: "66012345",
-      course: "CS101",
-      date: "2025-11-01",
-      hours: 3,
-      status: "checked",
-    },
-    {
-      id: "2",
-      taName: "มาลี สวยงาม",
-      studentId: "66012346",
-      course: "CS102",
-      date: "2025-11-01",
-      hours: 4,
-      status: "checked",
-    },
-    {
-      id: "3",
-      taName: "ประเสริฐ ขยัน",
-      studentId: "66012347",
-      course: "CS101",
-      date: "2025-11-08",
-      hours: 3,
-      status: "pending",
-    },
-    {
-      id: "4",
-      taName: "มาลี สวยงาม",
-      studentId: "66012348",
-      course: "CS102",
-      date: "2025-11-08",
-      hours: 4,
-      status: "pending",
-    },
-    {
-      id: "5",
-      taName: "ประเสริฐ ขยัน",
-      studentId: "66012349",
-      course: "CS101",
-      date: "2025-11-15",
-      hours: 3,
-      status: "pending",
-    },
-    {
-      id: "6",
-      taName: "มาลี สวยงาม",
-      studentId: "66012351",
-      course: "CS102",
-      date: "2025-11-15",
-      hours: 4,
-      status: "pending",
-    },
-    {
-      id: "7",
-      taName: "ประเสริฐ ขยัน",
-      studentId: "66012340",
-      course: "CS301",
-      date: "2025-11-15",
-      hours: 5,
-      status: "pending",
-    },
-    {
-      id: "8",
-      taName: "มาลี สวยงาม",
-      studentId: "66012352",
-      course: "CS301",
-      date: "2025-11-22",
-      hours: 4,
-      status: "pending",
-    },
-  ]);
+  const { user } = useAuth();
+  const [viewMode, setViewMode] = useState<"courses" | "duties">("courses");
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [taDutiesList, setTaDutiesList] = useState<TADutyData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  // Get unique courses for filter
-  const courses = Array.from(
-    new Set(workHours.map((wh) => wh.course)),
-  ).sort();
-
-  // Get unique dates for filter
-  const dates = Array.from(
-    new Set(workHours.map((wh) => wh.date)),
-  ).sort();
-
-  const toggleStatus = (id: string) => {
-    setWorkHours(
-      workHours.map((wh) =>
-        wh.id === id
-          ? {
-            ...wh,
-            status:
-              wh.status === "checked"
-                ? "pending"
-                : ("checked" as const),
-          }
-          : wh,
-      ),
-    );
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
   };
 
-  // Filter work hours based on selected course and date
-  const filteredWorkHours = workHours.filter((wh) => {
-    const matchesCourse =
-      selectedCourse === "all" || wh.course === selectedCourse;
-    const matchesDate =
-      selectedDate === "all" || wh.date === selectedDate;
-    return matchesCourse && matchesDate;
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
+
+  // Fetch Courses on load
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (!user?.id) return;
+      setLoading(true);
+      try {
+        const result = await getProfessorCourses(parseInt(user.id));
+        setCourses(result);
+      } catch (error) {
+        console.error("Failed to fetch courses:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (viewMode === "courses") {
+      fetchCourses();
+    }
+  }, [user?.id, viewMode]);
+
+  // Fetch TAs and Duties when a course is selected
+  useEffect(() => {
+    const fetchTADuties = async () => {
+      if (!selectedCourse) return;
+      setLoading(true);
+      try {
+        console.log("fetch duties");
+        // 1. Get TAs (Applications)
+        // using courseID from the selected course. 
+        // Note: getApplicationsForCourse usually expects specific ID, let's assume courseID works.
+        const applications = await getApplicationsForCourse(selectedCourse.courseID);
+
+        // Filter only APPROVED TAs
+        const approvedTAs = applications.filter(app => app.statusCode === "APPROVED");
+
+        // 2. For each TA, get their duty roadmap
+        const dutiesData = await Promise.all(
+          approvedTAs.map(async (ta) => {
+            // studentID is needed. Application has 'studentID'.
+            const duties = await getTADutyRoadmap(selectedCourse.courseID, ta.studentID);
+            return {
+              ta,
+              duties: duties || [] // Ensure duties is array
+            };
+          })
+        );
+
+        setTaDutiesList(dutiesData);
+      } catch (error) {
+        console.error("Failed to fetch TA duties:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (viewMode === "duties" && selectedCourse) {
+      fetchTADuties();
+    }
+  }, [viewMode, selectedCourse]);
+
+  const handleCourseSelect = (course: Course) => {
+    setSelectedCourse(course);
+    setViewMode("duties");
+  };
+
+  const handleBackToCourses = () => {
+    setSelectedCourse(null);
+    setViewMode("courses");
+    setTaDutiesList([]);
+  };
+
+  const handleMarkDone = async (studentID: number, date: string) => {
+    if (!selectedCourse) return;
+
+    if (!confirm(`ยืนยันการเช็คชื่อวันที่ ${new Date(date).toLocaleDateString("th-TH")}?`)) {
+      return;
+    }
+
+    try {
+      await markDutyAsDone(selectedCourse.courseID, studentID, date);
+
+      // Update local state
+      setTaDutiesList(prevList =>
+        prevList.map(item => {
+          if (item.ta.studentID === studentID) {
+            return {
+              ...item,
+              duties: item.duties.map(duty =>
+                duty.date === date ? { ...duty, isChecked: true, status: "Done" } : duty // Assuming 'Done' is the status string backend sets, or just use isChecked
+              )
+            };
+          }
+          return item;
+        })
+      );
+    } catch (error) {
+      alert("Failed to mark duty as done");
+    }
+  };
+
+  // -- RENDER: Course List --
+  if (viewMode === "courses") {
+    return (
+      <div className="p-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            เลือกรายวิชาเพื่อตรวจสอบชั่วโมงงาน
+          </h1>
+          <p className="text-gray-600">
+            เลือกรายวิชาที่ต้องการตรวจสอบบันทึกการปฏิบัติงานของ TA
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">กำลังโหลดรายวิชา...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.length === 0 ? (
+              <div className="col-span-full text-center py-12 bg-white rounded-lg border border-gray-200">
+                <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500">ไม่พบรายวิชาที่สอน</p>
+              </div>
+            ) : (
+              courses.map((course) => (
+                <div
+                  key={course.courseID}
+                  onClick={() => handleCourseSelect(course)}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-[#E35205] cursor-pointer transition-all group"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-orange-50 rounded-lg group-hover:bg-[#E35205] transition-colors">
+                      <BookOpen size={24} className="text-[#E35205] group-hover:text-white transition-colors" />
+                    </div>
+                    <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                      {course.courseProgram}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    {course.courseCode}
+                  </h3>
+                  <p className="text-gray-600 mb-4 line-clamp-1">{course.courseName}</p>
+
+                  <div className="flex items-center text-sm text-gray-500 gap-4">
+                    <div className="flex items-center gap-1">
+                      <Clock size={16} />
+                      <span>{course.classday}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+
+
+  // -- RENDER: Duties View --
+
+  // Pivot data for Matrix View
+  // 1. Get all unique dates
+  const allDatesSet = new Set<string>();
+  taDutiesList.forEach(item => {
+    item.duties.forEach(duty => allDatesSet.add(duty.date));
   });
+  const sortedDates = Array.from(allDatesSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
-  const totalHours = filteredWorkHours
-    .filter((wh) => wh.status === "checked")
-    .reduce((sum, wh) => sum + wh.hours, 0);
-
-  const pendingHours = filteredWorkHours
-    .filter((wh) => wh.status === "pending")
-    .reduce((sum, wh) => sum + wh.hours, 0);
-
-  // Group by TA
-  const tasSummary = filteredWorkHours.reduce(
-    (acc, wh) => {
-      if (!acc[wh.taName]) {
-        acc[wh.taName] = {
-          name: wh.taName,
-          studentId: wh.studentId,
-          totalHours: 0,
-          checkedHours: 0,
-        };
-      }
-      acc[wh.taName].totalHours += wh.hours;
-      if (wh.status === "checked") {
-        acc[wh.taName].checkedHours += wh.hours;
-      }
-      return acc;
-    },
-    {} as Record<
-      string,
-      {
-        name: string;
-        studentId: string;
-        totalHours: number;
-        checkedHours: number;
-      }
-    >,
-  );
+  // Filter dates by Selected Month
+  const filteredDates = sortedDates.filter(dateStr => {
+    const d = new Date(dateStr);
+    return d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear();
+  });
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-gray-900 mb-2">
-          ชั่วโมงการทำงาน TA
-        </h1>
-        <p className="text-gray-600">
-          จัดการและเช็คชั่วโมงการทำงานของผู้ช่วยสอน
-        </p>
-      </div>
+      <button
+        onClick={handleBackToCourses}
+        className="flex items-center gap-2 text-gray-600 hover:text-[#E35205] mb-6 transition-colors"
+      >
+        <ChevronLeft size={20} />
+        กลับไปหน้ารายวิชา
+      </button>
 
-      {/* Filters Section */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm text-gray-600 mb-2">
-              เลือกรายวิชา
-            </label>
-            <div className="relative">
-              <BookOpen
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={20}
-              />
-              <select
-                value={selectedCourse}
-                onChange={(e) =>
-                  setSelectedCourse(e.target.value)
-                }
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] bg-white"
-              >
-                <option value="all">ทุกวิชา</option>
-                {courses.map((course) => (
-                  <option key={course} value={course}>
-                    {course}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-2">
-              เลือกวันที่
-            </label>
-            <div className="relative">
-              <Calendar
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={20}
-              />
-              <select
-                value={selectedDate}
-                onChange={(e) =>
-                  setSelectedDate(e.target.value)
-                }
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] bg-white"
-              >
-                <option value="all">ทุกวัน</option>
-                {dates.map((date) => (
-                  <option key={date} value={date}>
-                    {new Date(date).toLocaleDateString(
-                      "th-TH",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      },
-                    )}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-2">
-              เลือกเดือน
-            </label>
-            <div className="relative">
-              <Calendar
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={20}
-              />
-              <select
-                value={selectedMonth}
-                onChange={(e) =>
-                  setSelectedMonth(e.target.value)
-                }
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] bg-white"
-              >
-                <option value="2025-11">พฤศจิกายน 2025</option>
-                <option value="2025-10">ตุลาคม 2025</option>
-                <option value="2025-09">กันยายน 2025</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Active Filters Display */}
-        {(selectedCourse !== "all" ||
-          selectedDate !== "all") && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  กรองข้อมูล:
-                </span>
-                {selectedCourse !== "all" && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-[var(--color-primary-100)] text-[var(--color-primary-800)]">
-                    วิชา: {selectedCourse}
-                    <button
-                      onClick={() => setSelectedCourse("all")}
-                      className="hover:bg-[var(--color-primary-200)] rounded-full p-0.5"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
-                {selectedDate !== "all" && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
-                    วันที่:{" "}
-                    {new Date(selectedDate).toLocaleDateString(
-                      "th-TH",
-                      { day: "numeric", month: "short" },
-                    )}
-                    <button
-                      onClick={() => setSelectedDate("all")}
-                      className="hover:bg-green-200 rounded-full p-0.5"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
-                <button
-                  onClick={() => {
-                    setSelectedCourse("all");
-                    setSelectedDate("all");
-                  }}
-                  className="text-sm text-gray-600 hover:text-gray-800 underline"
-                >
-                  ล้างตัวกรอง
-                </button>
-              </div>
-            </div>
-          )}
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="mb-8 flex justify-between items-end">
+        <div>
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-green-50 text-green-600 rounded-lg">
-              <Check size={24} />
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">
-                ชั่วโมงที่เช็คแล้ว
-              </p>
-              <p className="text-gray-900">
-                {totalHours} ชั่วโมง
-              </p>
-            </div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {selectedCourse?.courseCode} - {selectedCourse?.courseName}
+            </h1>
           </div>
+          <p className="text-gray-600">
+            ตรวจสอบชั่วโมงงาน TA (Student ID)
+          </p>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-yellow-50 text-yellow-600 rounded-lg">
-              <Calendar size={24} />
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">รอการเช็ค</p>
-              <p className="text-gray-900">
-                {pendingHours} ชั่วโมง
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-[var(--color-primary-50)] text-[var(--color-primary-600)] rounded-lg">
-              <Calendar size={24} />
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">
-                รายการทั้งหมด
-              </p>
-              <p className="text-gray-900">
-                {filteredWorkHours.length} รายการ
-              </p>
-            </div>
-          </div>
+        {/* Month Selector */}
+        <div className="flex items-center gap-4 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+          <button onClick={handlePrevMonth} className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors">
+            <ChevronLeft size={20} />
+          </button>
+          <span className="font-bold text-gray-800 min-w-[150px] text-center">
+            {currentMonth.toLocaleDateString("th-TH", { month: 'long', year: 'numeric' })}
+          </span>
+          <button onClick={handleNextMonth} className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors">
+            <ChevronLeft size={20} className="rotate-180" />
+          </button>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-          <Download size={18} />
-          Export PDF (แผ่นเซ็นชื่อ)
-        </button>
-      </div>
-
-      {/* TA Summary */}
-      {Object.keys(tasSummary).length > 0 && (
-        <div className="bg-white rounded-lg border border-gray-200 mb-6">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-gray-900">
-              สรุปชั่วโมงงานรายบุคคล
-            </h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    ชื่อ TA
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    รหัสนิสิต
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    ชั่วโมงที่เช็คแล้ว
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    ชั่วโมงรวม
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    สถานะ
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.values(tasSummary).map((ta) => (
-                  <tr
-                    key={ta.studentId}
-                    className="border-b border-gray-200 hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 text-gray-900">
-                      {ta.name}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {ta.studentId}
-                    </td>
-                    <td className="px-6 py-4 text-gray-900">
-                      {ta.checkedHours} ชม.
-                    </td>
-                    <td className="px-6 py-4 text-gray-900">
-                      {ta.totalHours} ชม.
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-green-600 h-2 rounded-full"
-                          style={{
-                            width: `${(ta.checkedHours / ta.totalHours) * 100}%`,
-                          }}
-                        />
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500">กำลังโหลดข้อมูลการทำงาน...</p>
+        </div>
+      ) : taDutiesList.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <User size={48} className="mx-auto text-gray-300 mb-4" />
+          <p className="text-gray-500">ไม่พบ TA ที่ผ่านการอนุมัติในรายวิชานี้ หรือยังไม่มีข้อมูลการทำงาน</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-[#E35205] text-white font-bold border-b border-orange-600">
+              <tr>
+                <th className="px-6 py-4 sticky left-0 bg-[#E35205] z-10 border-r border-orange-400 min-w-[200px]">
+                  วันที่
+                </th>
+                {taDutiesList.map((data) => (
+                  <th key={data.ta.studentID} className="px-6 py-4 text-center min-w-[120px] border-r border-orange-400 last:border-r-0">
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center gap-2">
+                        {/* Only Student ID as requested */}
+                        <span className="text-sm font-bold">{data.ta.studentID}</span>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-orange-100">
+              {filteredDates.length === 0 ? (
+                <tr>
+                  <td colSpan={taDutiesList.length + 1} className="px-6 py-12 text-center text-gray-500">
+                    ไม่มีข้อมูลในเดือนนี้
+                  </td>
+                </tr>
+              ) : (
+                filteredDates.map((dateString) => (
+                  <tr key={dateString} className="hover:bg-orange-50 transition-colors">
+                    {/* Date Column */}
+                    <td className="px-6 py-4 font-medium text-gray-900 sticky left-0 bg-white border-r border-gray-200">
+                      {new Date(dateString).toLocaleDateString("th-TH", {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'short' // Short month to save space
+                      })}
+                    </td>
+
+                    {/* Duty Cells for each TA */}
+                    {taDutiesList.map((data) => {
+                      const duty = data.duties.find(d => d.date === dateString);
+                      return (
+                        <td key={`${data.ta.studentID}-${dateString}`} className="px-6 py-4 text-center border-r border-gray-100 last:border-r-0">
+                          {duty ? (
+                            <div className="flex justify-center">
+                              {duty.isChecked ? (
+                                <div className="text-green-600">
+                                  <CheckCircle size={20} />
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleMarkDone(data.ta.studentID, duty.date)}
+                                  className="w-6 h-6 rounded border-2 border-gray-300 hover:border-[#E35205] hover:bg-orange-50 flex items-center justify-center transition-all group"
+                                  title="Check"
+                                >
+                                  {/* Empty checkbox style, check on hover */}
+                                  <div className="w-3 h-3 rounded-sm bg-[#E35205] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-300">-</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       )}
-
-      {/* Work Hours Detail */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <div>
-            <h2 className="text-gray-900">
-              รายละเอียดชั่วโมงงาน
-            </h2>
-            {selectedDate !== "all" && (
-              <p className="text-sm text-gray-600 mt-1">
-                กรองตามวันที่:{" "}
-                {new Date(selectedDate).toLocaleDateString(
-                  "th-TH",
-                  {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  },
-                )}
-              </p>
-            )}
-          </div>
-          {filteredWorkHours.length > 0 && (
-            <span className="text-sm text-gray-600">
-              แสดง {filteredWorkHours.length} รายการ
-            </span>
-          )}
-        </div>
-        <div className="overflow-x-auto">
-          {filteredWorkHours.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                <Calendar size={32} className="text-gray-400" />
-              </div>
-              <h3 className="text-gray-900 mb-2">
-                ไม่พบข้อมูล
-              </h3>
-              <p className="text-gray-600">
-                ไม่มีข้อมูลชั่วโมงการทำงานตามเงื่อนไขที่เลือก
-              </p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    วันที่
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    ชื่อ TA
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    รหัสนิสิต
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    รายวิชา
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    ชั่วโมง
-                  </th>
-                  <th className="px-6 py-3 text-left text-gray-600">
-                    เช็คชื่อ
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredWorkHours.map((wh) => (
-                  <tr
-                    key={wh.id}
-                    className="border-b border-gray-200 hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4 text-gray-900">
-                      {new Date(wh.date).toLocaleDateString(
-                        "th-TH",
-                        {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        },
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-gray-900">
-                      {wh.taName}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {wh.studentId}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {wh.course}
-                    </td>
-                    <td className="px-6 py-4 text-gray-900">
-                      {wh.hours} ชม.
-                    </td>
-                    <td className="px-6 py-4">
-                      <label className="flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={wh.status === "checked"}
-                          onChange={() => toggleStatus(wh.id)}
-                          className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-600">
-                          {wh.status === "checked"
-                            ? "เช็คแล้ว"
-                            : "รอเช็ค"}
-                        </span>
-                      </label>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

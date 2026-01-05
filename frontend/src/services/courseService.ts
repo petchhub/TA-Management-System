@@ -212,8 +212,8 @@ export async function getApplicationsForCourse(courseId: number): Promise<Applic
         }
 
         const result = await response.json();
-        // Backend returns "data": null if no apps, ensuring we return []
-        return result || [];
+        // Backend returns wrapped object with "data" field
+        return result.data || [];
     } catch (error) {
         console.error(`Error fetching applications for course ${courseId}:`, error);
         return [];

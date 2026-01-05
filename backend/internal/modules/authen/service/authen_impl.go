@@ -70,7 +70,7 @@ func (s AuthenServiceImplementation) HandleGoogleCallback(ctx *gin.Context, code
 	// if !gu.VerifiedEmail {
 	// 	return "", nil, errors.New("email not verified")
 	// }
-	fmt.Println(gu)
+
 	role, err := s.repo.CheckUserRole(gu.Name)
 	if err != nil {
 		fmt.Println(err)
@@ -84,7 +84,11 @@ func (s AuthenServiceImplementation) HandleGoogleCallback(ctx *gin.Context, code
 	case "STUDENT":
 		studentID, ok := utils.ExtractDigits(gu.Email)
 		if !ok {
-			return "", nil, errors.New("failed to extract student ID from email")
+			// return "", nil, errors.New("failed to extract student ID from email")
+			studentID, err = strconv.Atoi(gu.ID)
+			if err != nil {
+				studentID = 1
+			}
 		}
 		internalID = strconv.Itoa(studentID)
 

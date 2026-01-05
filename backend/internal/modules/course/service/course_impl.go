@@ -149,6 +149,7 @@ func (s CourseServiceImplementation) GetApplicationByStudentId(studentId int) (*
 func (s CourseServiceImplementation) GetApplicationByCourseId(courseId int) (*response.RequestDataResponse, error) {
 	applications, err := s.repo.GetApplicationByCourseId(courseId)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	return &response.RequestDataResponse{

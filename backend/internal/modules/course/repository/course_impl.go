@@ -689,10 +689,12 @@ func (r CourseRepositoryImplementation) GetApplicationByCourseId(courseId int) (
 	query := `SELECT 
 					ta.student_ID, 
 					ta.status_ID, 
-					ta.course_ID, 
+					tp.course_ID, 
 					ta.created_date,
 					st.status_value
 				FROM ta_application AS ta 
+				LEFT JOIN ta_job_posting AS tp
+					ON ta.job_post_ID = tp.id
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
 				WHERE course_ID = $1`

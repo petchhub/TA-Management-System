@@ -47,7 +47,7 @@ export default function Courses() {
           // Map ServiceCourse to Course (frontend interface)
           positions = courses.map((c: ServiceCourse) => ({
             id: c.jobPostID, // Assuming jobPostID matches id in frontend Course
-            code: c.courseID,
+            code: c.courseCode,
             name: c.courseName,
             department: 'คณะวิศวกรรมศาสตร์', // Default
             program: c.courseProgram, // Default or infer
