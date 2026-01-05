@@ -41,6 +41,7 @@ export interface Application {
     phoneNumber?: string;
     grade?: string;
     purpose?: string;
+    courseName?: string;
 }
 
 export interface ApplicationResponse {
@@ -282,6 +283,32 @@ export async function createJobPost(data: {
     } catch (error) {
         console.error('Error creating job post:', error);
         throw error;
+    }
+}
+
+/**
+ * Fetch all job posts
+ * @returns Promise with list of job posts
+ */
+export async function getAllJobPosts(): Promise<any[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/jobpost`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch job posts: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error('Error fetching job posts:', error);
+        return [];
     }
 }
 

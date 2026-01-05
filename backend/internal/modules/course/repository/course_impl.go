@@ -36,7 +36,8 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 				p.lastname,
 				s.semester_value,
 				st.status_value,
-				g.grade_value
+				g.grade_value,
+				j.course_ID
 			FROM ta_job_posting AS j
 			LEFT JOIN courses AS c
 				ON j.course_ID = c.course_ID
@@ -80,6 +81,7 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 			&course.Semester,
 			&course.Status,
 			&course.Grade,
+			&course.CourseID,
 		)
 		if err != nil {
 			return nil, err
@@ -109,7 +111,8 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				p.lastname,
 				s.semester_value,
 				st.status_value,
-				g.grade_value
+				g.grade_value,
+				j.course_ID
 			FROM ta_job_posting AS j
 			LEFT JOIN courses AS c
 				ON j.course_ID = c.course_ID
@@ -159,6 +162,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 			&course.Semester,
 			&course.Status,
 			&course.Grade,
+			&course.CourseID,
 		)
 		if err != nil {
 			return nil, err

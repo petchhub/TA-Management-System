@@ -379,6 +379,18 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
                           <span>Transcript: {formData.transcript.name}</span>
                         </div>
                       )}
+                      {formData.bankAccount && (
+                        <div className="flex items-center gap-2 text-gray-900">
+                          <FileText className="w-4 h-4" />
+                          <span>Bank Account: {formData.bankAccount.name}</span>
+                        </div>
+                      )}
+                      {formData.studentCard && (
+                        <div className="flex items-center gap-2 text-gray-900">
+                          <FileText className="w-4 h-4" />
+                          <span>Student Card: {formData.studentCard.name}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

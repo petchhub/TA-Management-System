@@ -140,7 +140,7 @@ export function CourseExport() {
             </button>
             <button
               onClick={() => handleExport("excel")}
-              className="flex items-center gap-2 px-6 py-2 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)] transition-colors"
+              className="flex items-center gap-2 px-6 py-2 bg-[#E35205] text-white rounded-lg hover:bg-[#c44604] transition-colors"
             >
               <FileSpreadsheet size={18} />
               Export Excel
@@ -154,12 +154,12 @@ export function CourseExport() {
         <div className="border-b border-gray-200 bg-slate-50 px-6 py-3">
           <button
             onClick={toggleAll}
-            className="flex items-center gap-2 text-sm hover:text-[var(--color-primary-600)]"
+            className="flex items-center gap-2 text-sm hover:text-[#E35205]"
           >
             {selectedCourses.length === courses.length ? (
               <CheckSquare
                 size={18}
-                className="text-[var(--color-primary-600)]"
+                className="text-[#E35205]"
               />
             ) : (
               <Square size={18} />
@@ -177,14 +177,14 @@ export function CourseExport() {
               <div
                 key={course.id}
                 onClick={() => toggleCourse(course.id)}
-                className={`px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? "bg-[var(--color-primary-50)]" : ""}`}
+                className={`px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? "bg-[#fff1ec]" : ""}`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     {isSelected ? (
                       <CheckSquare
                         size={20}
-                        className="text-[var(--color-primary-600)]"
+                        className="text-[#E35205]"
                       />
                     ) : (
                       <Square
@@ -225,8 +225,8 @@ export function CourseExport() {
       </div>
 
       {/* Export Info */}
-      <div className="mt-6 bg-[var(--color-primary-50)] border border-[var(--color-primary-200)] rounded-lg p-4">
-        <p className="text-sm text-[var(--color-primary-800)]">
+      <div className="mt-6 bg-[#fff1ec] border border-[#ffdbcf] rounded-lg p-4">
+        <p className="text-sm text-[#9c3803]">
           <strong>หมายเหตุ:</strong>{" "}
           ไฟล์ที่ส่งออกจะอยู่ในรูปแบบพร้อมใช้งานสำหรับจัดทำเอกสารเบิกจ่ายค่าตอบแทน
           รวมถึงข้อมูลชื่อผู้ช่วยสอน, ชั่วโมงการทำงาน,

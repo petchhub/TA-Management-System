@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getGrades, LookupItem } from '../../services/lookupService';
-import { getProfessorCourses, Course } from '../../services/courseService';
+import { getProfessorCourses, getAllJobPosts, Course } from '../../services/courseService';
 import { useAuth } from '../../context/AuthContext';
+import { formatTime } from '../../utils/formatUtils';
 
 interface CreateTAAnnouncementModalProps {
     onClose: () => void;
@@ -45,12 +46,23 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                 if (!user?.id) return;
 
                 setLoading(true);
-                const [profCourses, grades] = await Promise.all([
+                const [profCourses, grades, jobPosts] = await Promise.all([
                     getProfessorCourses(parseInt(user.id)),
-                    getGrades()
+                    getGrades(),
+                    getAllJobPosts()
                 ]);
 
-                setCourses(profCourses);
+                // Filter out courses that already have an OPEN announcement
+                // We check if the courseID exists in jobPosts (now supported by backend)
+                // Filter where status is OPEN (or just check existence if that's the rule, but usually openness matters)
+                const openCourseIDs = new Set(
+                    jobPosts
+                        .filter((jp: any) => jp.status === 'OPEN')
+                        .map((jp: any) => jp.courseID)
+                );
+
+                const availableCourses = profCourses.filter((c: Course) => !openCourseIDs.has(c.courseID));
+                setCourses(availableCourses);
                 setGradeOptions(grades);
             } catch (error) {
                 console.error("Failed to fetch data:", error);
@@ -198,7 +210,7 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                                 <p><span className="text-gray-500">อาจารย์ผู้สอน:</span> {selectedCourse.professorName}</p>
                                 <p><span className="text-gray-500">หลักสูตร:</span> {selectedCourse.courseProgram}</p>
                                 <p><span className="text-gray-500">ภาคการศึกษา:</span> {selectedCourse.semester}</p>
-                                <p><span className="text-gray-500">วัน/เวลา:</span> {selectedCourse.classday} {selectedCourse.classStart.slice(0, 5)} - {selectedCourse.classEnd.slice(0, 5)}</p>
+                                <p><span className="text-gray-500">วัน/เวลา:</span> {selectedCourse.classday} {formatTime(selectedCourse.classStart)} - {formatTime(selectedCourse.classEnd)}</p>
                             </div>
                         </div>
                     )}

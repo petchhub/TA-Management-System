@@ -181,7 +181,7 @@ export function HolidayCalendar() {
             setNewHoliday({ date: '', name: '' });
             setShowAddModal(true);
           }}
-          className="flex items-center gap-2 px-6 py-2 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)] transition-colors"
+          className="flex items-center gap-2 px-6 py-2 bg-[#E35205] text-white rounded-lg hover:bg-[#c44604] transition-colors"
         >
           <Plus size={18} />
           เพิ่มวันหยุดพิเศษ
@@ -290,7 +290,7 @@ export function HolidayCalendar() {
                 </button>
                 <button
                   onClick={addHoliday}
-                  className="flex-1 px-4 py-2 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)]"
+                  className="flex-1 px-4 py-2 bg-[#E35205] text-white rounded-lg hover:bg-[#c44604]"
                 >
                   เพิ่มวันหยุด
                 </button>

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { getAllCoursesForFinance, createCourseAnnouncement, Course } from '../../services/courseService';
 import { getProfessors, getCourseProgram, getClassDays, getSemesters, LookupItem } from '../../services/lookupService';
+import { formatTime } from '../../utils/formatUtils';
 
 export function CourseManagement() {
     const [courses, setCourses] = useState<Course[]>([]);
@@ -143,7 +144,7 @@ export function CourseManagement() {
                                     <div className="text-sm text-gray-600 space-y-1">
                                         <p>ตอนเรียน: {course.section || "N/A"}</p>
                                         <p>อาจารย์ผู้สอน: {course.professorName}</p>
-                                        <p>วันเรียน: {course.classday} | เวลา: {course.classStart.slice(0, 5)} - {course.classEnd.slice(0, 5)}</p>
+                                        <p>วันเรียน: {course.classday} | เวลา: {formatTime(course.classStart)} - {formatTime(course.classEnd)}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">

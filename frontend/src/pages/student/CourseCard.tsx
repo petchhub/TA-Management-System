@@ -1,4 +1,5 @@
 import { BookOpen, User, Clock, MapPin, Calendar, AlertCircle } from 'lucide-react';
+import { formatTime } from '../../utils/formatUtils';
 
 interface Course {
   id: number;
@@ -92,7 +93,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
         </div>
         <div className="flex items-center gap-3 text-gray-700">
           <Calendar className="w-4 h-4 text-gray-400" />
-          <span>วันเรียน: {course.days} ({course.startTime} - {course.endTime})</span>
+          <span>วันเรียน: {course.days} ({formatTime(course.startTime)} - {formatTime(course.endTime)})</span>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="flex items-center gap-2 text-gray-700">
