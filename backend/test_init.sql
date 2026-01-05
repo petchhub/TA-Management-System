@@ -176,7 +176,13 @@ CREATE TABLE ta_courses(
         REFERENCES courses(course_ID)
 );
 
-
+CREATE TABLE holidays(
+    id SERIAL PRIMARY KEY,
+    holiday_date DATE UNIQUE,
+    name_eng VARCHAR(200),
+    name_thai VARCHAR(200),
+    category VARCHAR(20)
+);
 
 -- insert constant values
 

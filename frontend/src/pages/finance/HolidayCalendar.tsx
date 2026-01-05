@@ -1,43 +1,102 @@
-import { useState } from 'react';
-import { Calendar, Plus, Trash2, Edit2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar as CalendarIcon, Plus, Trash2, Edit2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Holiday {
-  id: string;
-  date: string;
+  id: number;
+  date: string; // ISO string 2006-01-02T00:00:00Z...
   name: string;
-  type: 'official' | 'special';
+  type: string; // 'official' | 'special'
 }
 
 export function HolidayCalendar() {
-  const [holidays, setHolidays] = useState<Holiday[]>([
-    { id: '1', date: '2024-12-25', name: 'วันคริสต์มาส', type: 'official' },
-    { id: '2', date: '2025-01-01', name: 'วันขึ้นปีใหม่', type: 'official' },
-    { id: '3', date: '2025-02-14', name: 'วันสงกรานต์', type: 'official' },
-    { id: '4', date: '2024-12-20', name: 'วันหยุดพิเศษ (ประชุมคณะ)', type: 'special' },
-  ]);
-
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newHoliday, setNewHoliday] = useState({ date: '', name: '' });
-  const [selectedMonth, setSelectedMonth] = useState('2024-12');
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
-  const addHoliday = () => {
-    if (newHoliday.date && newHoliday.name) {
-      const holiday: Holiday = {
-        id: Date.now().toString(),
-        date: newHoliday.date,
-        name: newHoliday.name,
-        type: 'special',
-      };
-      setHolidays([...holidays, holiday]);
-      setNewHoliday({ date: '', name: '' });
-      setShowAddModal(false);
+  const fetchHolidays = async () => {
+    try {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const response = await fetch(`http://localhost:8084/TA-management/lookup/holiday?month=${month}&year=${year}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch holidays');
+      const data = await response.json();
+      setHolidays(data || []);
+    } catch (error) {
+      console.error('Error fetching holidays:', error);
     }
   };
 
-  const deleteHoliday = (id: string) => {
-    if (confirm('คุณต้องการลบวันหยุดนี้หรือไม่?')) {
-      setHolidays(holidays.filter((h) => h.id !== id));
+  useEffect(() => {
+    fetchHolidays();
+  }, [selectedMonth]);
+
+  const addHoliday = async () => {
+    if (newHoliday.date && newHoliday.name) {
+      try {
+        const payload = {
+          date: new Date(newHoliday.date).toISOString(),
+          nameThai: newHoliday.name,
+          type: 'special',
+        };
+        const response = await fetch('http://localhost:8084/TA-management/lookup/holiday', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) throw new Error('Failed to add holiday');
+
+        await fetchHolidays();
+        setNewHoliday({ date: '', name: '' });
+        setShowAddModal(false);
+      } catch (error) {
+        console.error('Error adding holiday:', error);
+        alert('Failed to add holiday');
+      }
     }
+  };
+
+  const deleteHoliday = async (id: number) => {
+    if (confirm('คุณต้องการลบวันหยุดนี้หรือไม่?')) {
+      try {
+        const response = await fetch(`http://localhost:8084/TA-management/lookup/holiday/${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (!response.ok) throw new Error('Failed to delete holiday');
+        setHolidays(holidays.filter((h) => h.id !== id));
+      } catch (error) {
+        console.error('Error deleting holiday:', error);
+        alert('Failed to delete holiday');
+      }
+    }
+  };
+
+  const handlePrevMonth = () => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const date = new Date(year, month - 1 - 1, 1); // Subtract 1 month
+    setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const handleNextMonth = () => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const date = new Date(year, month - 1 + 1, 1); // Add 1 month
+    setSelectedMonth(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const handleDayClick = (day: number) => {
+    const dateStr = `${selectedMonth}-${String(day).padStart(2, '0')}`;
+    setNewHoliday({ date: dateStr, name: '' });
+    setShowAddModal(true);
   };
 
   const getDaysInMonth = (yearMonth: string) => {
@@ -63,13 +122,15 @@ export function HolidayCalendar() {
     // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${selectedMonth}-${String(day).padStart(2, '0')}`;
-      const holiday = holidays.find((h) => h.date === dateStr);
+      // Basic string matching for date (assuming backend returns correct date part)
+      const holiday = holidays.find((h) => h.date.startsWith(dateStr));
       const isToday = dateStr === new Date().toISOString().split('T')[0];
 
       days.push(
         <div
           key={day}
-          className={`p-2 border border-gray-200 min-h-[80px] ${holiday ? (holiday.type === 'official' ? 'bg-red-50' : 'bg-yellow-50') : 'bg-white'
+          onClick={() => handleDayClick(day)}
+          className={`p-2 border border-gray-200 min-h-[80px] cursor-pointer hover:bg-gray-50 transition-colors ${holiday ? (holiday.type === 'official' ? 'bg-red-50' : 'bg-yellow-50') : 'bg-white'
             } ${isToday ? 'ring-2 ring-[var(--color-primary-500)]' : ''}`}
         >
           <div className="text-sm font-medium mb-1">{day}</div>
@@ -96,16 +157,30 @@ export function HolidayCalendar() {
       {/* Month Selector and Add Button */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <label className="text-sm text-gray-600">เลือกเดือน:</label>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
-          />
+          <button onClick={handlePrevMonth} className="p-2 hover:bg-gray-100 rounded-full">
+            <ChevronLeft size={20} />
+          </button>
+
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">เลือกเดือน:</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+            />
+          </div>
+
+          <button onClick={handleNextMonth} className="p-2 hover:bg-gray-100 rounded-full">
+            <ChevronRight size={20} />
+          </button>
         </div>
+
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setNewHoliday({ date: '', name: '' });
+            setShowAddModal(true);
+          }}
           className="flex items-center gap-2 px-6 py-2 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)] transition-colors"
         >
           <Plus size={18} />
@@ -131,49 +206,53 @@ export function HolidayCalendar() {
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg mb-4">รายการวันหยุดทั้งหมด</h3>
         <div className="space-y-2">
-          {holidays
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .map((holiday) => (
-              <div
-                key={holiday.id}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-4">
-                  <Calendar size={18} className="text-gray-600" />
-                  <div>
-                    <p className="font-medium">{holiday.name}</p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(holiday.date).toLocaleDateString('th-TH', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs ${holiday.type === 'official'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                  >
-                    {holiday.type === 'official' ? 'วันหยุดปกติ' : 'วันหยุดพิเศษ'}
-                  </span>
-                </div>
-                {holiday.type === 'special' && (
-                  <div className="flex gap-2">
-                    <button className="p-2 text-[var(--color-primary-600)] hover:bg-[var(--color-primary-50)] rounded">
-                      <Edit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => deleteHoliday(holiday.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded"
+          {holidays.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">ไม่มีวันหยุดในเดือนนี้</p>
+          ) : (
+            holidays
+              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+              .map((holiday) => (
+                <div
+                  key={holiday.id}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-4">
+                    <CalendarIcon size={18} className="text-gray-600" />
+                    <div>
+                      <p className="font-medium">{holiday.name}</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(holiday.date).toLocaleDateString('th-TH', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs ${holiday.type === 'official'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                        }`}
                     >
-                      <Trash2 size={16} />
-                    </button>
+                      {holiday.type === 'official' ? 'วันหยุดปกติ' : 'วันหยุดพิเศษ'}
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
+                  {holiday.type === 'special' && (
+                    <div className="flex gap-2">
+                      {/* <button className="p-2 text-[var(--color-primary-600)] hover:bg-[var(--color-primary-50)] rounded">
+                        <Edit2 size={16} />
+                      </button> */}
+                      <button
+                        onClick={() => deleteHoliday(holiday.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+          )}
         </div>
       </div>
 

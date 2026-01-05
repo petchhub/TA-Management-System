@@ -1,24 +1,90 @@
 package main
 
 import (
+	"TA-management/config"
 	"TA-management/internal/logs"
+	authenrepo "TA-management/internal/modules/authen/repository"
+	authenservice "TA-management/internal/modules/authen/service"
+	courserepo "TA-management/internal/modules/course/repository"
+	courseservice "TA-management/internal/modules/course/service"
+	lookuprepo "TA-management/internal/modules/lookup/repository"
+	lookupservice "TA-management/internal/modules/lookup/service"
+	tadutyrepo "TA-management/internal/modules/ta_duty/repository"
+	tadutyservice "TA-management/internal/modules/ta_duty/service"
 	router "TA-management/internal/routers"
+	"TA-management/internal/utils"
+	"fmt"
 	"net/http"
+	"os"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"github.com/robfig/cron/v3"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
+var googleOAuthConfig *oauth2.Config
+
 func main() {
-	gin.SetMode(gin.ReleaseMode)
+
+	_ = godotenv.Load()
 	log := logs.InitializeLogger()
 	defer logs.SyncLogger(log)
 
-	routes := router.InitRouter()
+	db := config.ConnectDatabase()
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	// calendarKey := os.Getenv("GOOGL_CALENDAR_KEY")
+	BOTKey := os.Getenv("BOT_HOLIDAYS_KEY")
+	BOTURL := os.Getenv("BOT_HOLIDAYS_URL")
 
+	// ====== OAuth2 config ======
+	googleOAuthConfig = &oauth2.Config{
+		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		RedirectURL:  utils.GetenvDefault("GOOGLE_REDIRECT_URL", "http://localhost:8084/TA-management/auth/google/callback"),
+		Scopes:       []string{"openid", "email", "profile"},
+		Endpoint:     google.Endpoint,
+	}
+
+	//Initialize Repositories & Services
+	authenRepo := authenrepo.NewAuthenRepository(db)
+	authenSvc := authenservice.NewAuthenService(authenRepo, googleOAuthConfig, jwtSecret)
+
+	courseRepo := courserepo.NewCourseRepository(db)
+	courseSvc := courseservice.NewCourseService(courseRepo)
+
+	lookupRepo := lookuprepo.NewLookupRepository(db)
+	lookupSvc := lookupservice.NewLookupService(lookupRepo)
+
+	tadutyRepo := tadutyrepo.NewTaDutyRepository(db)
+	tadutySvc := tadutyservice.NewTaDutyServiceImplementation(tadutyRepo, log)
+
+	//start CRONS JOB
+	c := cron.New(cron.WithLocation(time.FixedZone("ICT", 7*3600)))
+	c.AddFunc("@weekly", func() {
+		lookupSvc.SyncOfficialHoliday(BOTKey, BOTURL)
+	})
+	c.Start()
+
+	go func() {
+		log.Info("🚀 Startup Sync: Initializing holiday data...")
+		err := lookupSvc.SyncOfficialHoliday(BOTKey, BOTURL)
+		if err != nil {
+			log.Info("❌ Initial sync holidays failed: %v", err)
+		} else {
+			log.Info("✅ Initial sync holidays successful")
+		}
+	}()
+
+	routes := router.InitRouter(authenSvc, courseSvc, lookupSvc, tadutySvc, googleOAuthConfig, jwtSecret)
+
+	port := 8084
 	server := &http.Server{
-		Addr:    ":8084",
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: routes,
 	}
 
-	server.ListenAndServe()
+	fmt.Println("🚀 TA-Management Server started on :8084")
+	log.Fatal(server.ListenAndServe())
 }

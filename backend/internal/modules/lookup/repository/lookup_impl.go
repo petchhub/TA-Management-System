@@ -2,7 +2,10 @@ package repository
 
 import (
 	"TA-management/internal/modules/lookup/dto/response"
+	"TA-management/internal/modules/ta_duty/dto/request"
+	"TA-management/internal/modules/ta_duty/entity"
 	"database/sql"
+	"fmt"
 )
 
 type LookupRepositoryImplementation struct {
@@ -131,4 +134,78 @@ func (r LookupRepositoryImplementation) GetProfessors() (*[]response.LookupRespo
 		professors = append(professors, professor)
 	}
 	return &professors, nil
+}
+
+func (r LookupRepositoryImplementation) SyncOfficialHoliday(holidays []request.CreateHoliday) error {
+	if len(holidays) == 0 {
+		return nil
+	}
+
+	values := []interface{}{}
+	query := `insert into holidays (holiday_date, name_eng, name_thai, category) VALUES`
+
+	for i, h := range holidays {
+		//calculate placeholder
+		p1 := i*4 + 1
+		p2 := i*4 + 2
+		p3 := i*4 + 3
+		p4 := i*4 + 4
+
+		query += fmt.Sprintf("($%d, $%d, $%d, $%d)", p1, p2, p3, p4)
+		if i < len(holidays)-1 {
+			query += ","
+		}
+		values = append(values, h.Date, h.NameEng, h.NameThai, h.Type)
+	}
+
+	query += ` ON CONFLICT (holiday_date) DO UPDATE SET 
+				name_eng = EXCLUDED.name_eng,
+				name_thai = EXCLUDED.name_thai,
+				category = EXCLUDED.category`
+
+	_, err := r.db.Exec(query, values...)
+	if err != nil {
+		fmt.Printf("Failed to insert holidays: %v\n", err)
+		return err
+	}
+
+	return nil
+}
+
+func (r LookupRepositoryImplementation) GetHolidaysByMonth(month int, year int) ([]entity.Holiday, error) {
+	query := `SELECT id, holiday_date, name_thai, category FROM holidays 
+	          WHERE EXTRACT(MONTH FROM holiday_date) = $1 AND EXTRACT(YEAR FROM holiday_date) = $2`
+	rows, err := r.db.Query(query, month, year)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get holidays: %v", err)
+	}
+	defer rows.Close()
+
+	var holidays []entity.Holiday
+	for rows.Next() {
+		var h entity.Holiday
+		if err := rows.Scan(&h.ID, &h.Date, &h.Name, &h.Type); err != nil {
+			return nil, fmt.Errorf("failed to scan holiday: %v", err)
+		}
+		holidays = append(holidays, h)
+	}
+	return holidays, nil
+}
+
+func (r LookupRepositoryImplementation) AddSpecialHoliday(holiday request.CreateHoliday) error {
+	query := `INSERT INTO holidays (holiday_date, name_thai, category) VALUES ($1, $2, 'special')`
+	_, err := r.db.Exec(query, holiday.Date, holiday.NameThai)
+	if err != nil {
+		return fmt.Errorf("failed to add special holiday: %v", err)
+	}
+	return nil
+}
+
+func (r LookupRepositoryImplementation) DeleteHoliday(id int) error {
+	query := `DELETE FROM holidays WHERE id = $1`
+	_, err := r.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete holiday: %v", err)
+	}
+	return nil
 }

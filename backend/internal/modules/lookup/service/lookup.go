@@ -1,6 +1,10 @@
 package service
 
-import "TA-management/internal/modules/lookup/dto/response"
+import (
+	"TA-management/internal/modules/lookup/dto/response"
+	"TA-management/internal/modules/ta_duty/dto/request"
+	"TA-management/internal/modules/ta_duty/entity"
+)
 
 type LookupService interface {
 	GetCourseProgram() (*[]response.LookupResponse, error)
@@ -8,4 +12,8 @@ type LookupService interface {
 	GetSemester() (*[]response.LookupResponse, error)
 	GetGrade() (*[]response.LookupResponse, error)
 	GetProfessors() (*[]response.LookupResponse, error)
+	SyncOfficialHoliday(apiKey string, url string) error
+	GetHolidays(month int, year int) ([]entity.Holiday, error)
+	AddSpecialHoliday(req request.CreateHoliday) error
+	DeleteHoliday(id int) error
 }
