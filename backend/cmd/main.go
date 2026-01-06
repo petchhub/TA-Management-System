@@ -85,6 +85,6 @@ func main() {
 		Handler: routes,
 	}
 
-	fmt.Println("🚀 TA-Management Server started on :8084")
+	fmt.Printf("🚀 TA-Management Server started on :%d\n", port)
 	log.Fatal(server.ListenAndServe())
 }
