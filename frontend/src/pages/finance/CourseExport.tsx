@@ -1,84 +1,53 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   FileSpreadsheet,
   CheckSquare,
   Square,
 } from "lucide-react";
+import { getAllCoursesForFinance } from "../../services/courseService";
 
 interface Course {
-  id: string;
-  code: string;
-  name: string;
-  taCount: number;
-  totalHours: number;
+  courseID: number;
+  courseCode: string;
+  courseName: string;
+  courseProgram: string;
+  workHour: number;
+  classStart: string;
+  classEnd: string;
+  classday: string;
+  professorName: string;
+  semester: string;
+  section: string;
+  taCount?: number; // Not available from backend yet
 }
 
 export function CourseExport() {
-  const [selectedCourses, setSelectedCourses] = useState<
-    string[]
-  >([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
+  const [hourlyRate, setHourlyRate] = useState<number>(150);
 
-  const courses: Course[] = [
-    {
-      id: "1",
-      code: "01076103",
-      name: "Programming Fundamentals",
-      taCount: 4,
-      totalHours: 36,
-    },
-    {
-      id: "2",
-      code: "01076109",
-      name: "Data Structures",
-      taCount: 6,
-      totalHours: 54,
-    },
-    {
-      id: "3",
-      code: "01076564",
-      name: "Algorithms",
-      taCount: 5,
-      totalHours: 40,
-    },
-    {
-      id: "4",
-      code: "01076263",
-      name: "Database Systems",
-      taCount: 2,
-      totalHours: 16,
-    },
-    {
-      id: "5",
-      code: "01076112",
-      name: "Digital System Fundamentals",
-      taCount: 1,
-      totalHours: 9,
-    },
-    {
-      id: "6",
-      code: "01076011",
-      name: "Operating Systems",
-      taCount: 4,
-      totalHours: 32,
-    },
-    {
-      id: "7",
-      code: "01076035",
-      name: "Software Development Process in Practice",
-      taCount: 3,
-      totalHours: 27,
-    },
-    {
-      id: "8",
-      code: "01076116",
-      name: "Computer Networks",
-      taCount: 3,
-      totalHours: 24,
-    },
-  ];
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getAllCoursesForFinance();
+        setCourses(data);
+      } catch (err) {
+        console.error("Error fetching courses:", err);
+        setError("ไม่สามารถโหลดข้อมูลรายวิชาได้ กรุณาลองใหม่อีกครั้ง");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const toggleCourse = (courseId: string) => {
+    fetchCourses();
+  }, []);
+
+  const toggleCourse = (courseId: number) => {
     setSelectedCourses((prev) =>
       prev.includes(courseId)
         ? prev.filter((id) => id !== courseId)
@@ -90,28 +59,63 @@ export function CourseExport() {
     if (selectedCourses.length === courses.length) {
       setSelectedCourses([]);
     } else {
-      setSelectedCourses(courses.map((c) => c.id));
+      setSelectedCourses(courses.map((c) => c.courseID));
     }
   };
 
-  const handleExport = (format: "csv" | "excel") => {
-    const selectedCoursesData = courses.filter((c) =>
-      selectedCourses.includes(c.id),
-    );
-
-    if (selectedCoursesData.length === 0) {
+  const handleExport = async () => {
+    if (selectedCourses.length === 0) {
       alert("กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ");
       return;
     }
 
-    // Mock export functionality
-    console.log(
-      `Exporting ${selectedCoursesData.length} courses as ${format}`,
-    );
-    alert(
-      `กำลังส่งออกข้อมูล ${selectedCoursesData.length} รายวิชาในรูปแบบ ${format.toUpperCase()}`,
-    );
+    if (hourlyRate <= 0) {
+      alert("กรุณาระบุอัตราค่าตอบแทนต่อชั่วโมง");
+      return;
+    }
+
+    // Export payment report for each selected course
+    for (const courseID of selectedCourses) {
+      try {
+        const url = `http://localhost:8084/TA-management/ta_duty/export-payment-report?courseID=${courseID}&hourlyRate=${hourlyRate}`;
+
+        // Create a temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.download = `Payment_Report_${courseID}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Small delay between downloads to avoid browser blocking
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (error) {
+        console.error(`Error exporting course ${courseID}:`, error);
+      }
+    }
+
+    alert(`กำลังส่งออกรายงาน ${selectedCourses.length} รายวิชา`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#E35205] mb-4"></div>
+          <p className="text-gray-600">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+        <p className="text-red-800">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -125,25 +129,34 @@ export function CourseExport() {
       {/* Export Actions */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-600">
-              เลือกแล้ว {selectedCourses.length} รายวิชา
-            </p>
+          <div className="flex items-center gap-4">
+            <div>
+              <p className="text-sm text-gray-600">
+                เลือกแล้ว {selectedCourses.length} รายวิชา
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="hourlyRate" className="text-sm font-medium text-gray-700">
+                อัตราค่าตอบแทน (บาท/ชม.):
+              </label>
+              <input
+                id="hourlyRate"
+                type="number"
+                min="0"
+                step="10"
+                value={hourlyRate}
+                onChange={(e) => setHourlyRate(Number(e.target.value))}
+                className="w-24 px-3 py-1 border border-gray-300 rounded-md focus:ring-[#E35205] focus:border-[#E35205]"
+              />
+            </div>
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => handleExport("csv")}
+              onClick={handleExport}
               className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
               <Download size={18} />
-              Export CSV
-            </button>
-            <button
-              onClick={() => handleExport("excel")}
-              className="flex items-center gap-2 px-6 py-2 bg-[#E35205] text-white rounded-lg hover:bg-[#c44604] transition-colors"
-            >
-              <FileSpreadsheet size={18} />
-              Export Excel
+              ส่งออกรายงาน
             </button>
           </div>
         </div>
@@ -169,14 +182,18 @@ export function CourseExport() {
         </div>
 
         <div className="divide-y divide-gray-200">
-          {courses.map((course) => {
+          {courses.length === 0 ? (
+            <div className="px-6 py-8 text-center text-gray-500">
+              ไม่พบข้อมูลรายวิชา
+            </div>
+          ) : courses.map((course) => {
             const isSelected = selectedCourses.includes(
-              course.id,
+              course.courseID,
             );
             return (
               <div
-                key={course.id}
-                onClick={() => toggleCourse(course.id)}
+                key={course.courseID}
+                onClick={() => toggleCourse(course.courseID)}
                 className={`px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? "bg-[#fff1ec]" : ""}`}
               >
                 <div className="flex items-center justify-between">
@@ -194,10 +211,10 @@ export function CourseExport() {
                     )}
                     <div>
                       <p className="font-medium">
-                        {course.code}
+                        {course.courseCode}
                       </p>
                       <p className="text-sm text-gray-600">
-                        {course.name}
+                        {course.courseName}
                       </p>
                     </div>
                   </div>
@@ -205,15 +222,15 @@ export function CourseExport() {
                     <div className="text-center">
                       <p className="text-gray-600">จำนวน TA</p>
                       <p className="font-medium">
-                        {course.taCount} คน
+                        {course.taCount ?? "N/A"}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-gray-600">
-                        ชั่วโมงรวม
+                        ชั่วโมงต่อครั้ง
                       </p>
                       <p className="font-medium">
-                        {course.totalHours} ชม.
+                        {course.workHour} ชม.
                       </p>
                     </div>
                   </div>
