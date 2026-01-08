@@ -61,11 +61,12 @@ func (r AuthenRepositoryImplementation) AddStudent(rq request.CreateStudent) err
 		return nil
 	}
 
-	query := `INSERT INTO students(student_ID, firstname, lastname) VALUES($1, $2, $3)`
+	query := `INSERT INTO students(student_ID, firstname, lastname, email) VALUES($1, $2, $3, $4)`
 	_, err = r.db.Exec(query,
 		rq.StudentID,
 		rq.Firstname,
-		rq.Lastname)
+		rq.Lastname,
+		rq.Email)
 
 	if err != nil {
 		return err

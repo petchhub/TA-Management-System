@@ -101,6 +101,7 @@ func (s AuthenServiceImplementation) HandleGoogleCallback(ctx *gin.Context, code
 		rq := request.CreateStudent{
 			StudentID: studentID,
 			Firstname: nameParts[0],
+			Email:     gu.Email,
 		}
 		if len(nameParts) > 1 {
 			rq.Lastname = nameParts[1]

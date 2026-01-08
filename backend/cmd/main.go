@@ -3,6 +3,8 @@ package main
 import (
 	"TA-management/config"
 	"TA-management/internal/logs"
+	announcerepo "TA-management/internal/modules/announce/repository"
+	announceservice "TA-management/internal/modules/announce/service"
 	authenrepo "TA-management/internal/modules/authen/repository"
 	authenservice "TA-management/internal/modules/authen/service"
 	courserepo "TA-management/internal/modules/course/repository"
@@ -60,6 +62,9 @@ func main() {
 	tadutyRepo := tadutyrepo.NewTaDutyRepository(db)
 	tadutySvc := tadutyservice.NewTaDutyServiceImplementation(tadutyRepo, log)
 
+	announceRepo := announcerepo.NewAnnouncementRepository(db)
+	announceSvc := announceservice.NewAnnouncementService(announceRepo)
+
 	//start CRONS JOB
 	c := cron.New(cron.WithLocation(time.FixedZone("ICT", 7*3600)))
 	c.AddFunc("@weekly", func() {
@@ -77,7 +82,7 @@ func main() {
 		}
 	}()
 
-	routes := router.InitRouter(authenSvc, courseSvc, lookupSvc, tadutySvc, googleOAuthConfig, jwtSecret)
+	routes := router.InitRouter(authenSvc, courseSvc, lookupSvc, tadutySvc, announceSvc, googleOAuthConfig, jwtSecret)
 
 	port := 8084
 	server := &http.Server{

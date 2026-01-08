@@ -36,6 +36,7 @@ CREATE TABLE professors(
     professor_ID SERIAL PRIMARY KEY,
     firstname VARCHAR(100) NOT NULL,
     lastname VARCHAR(150) NOT NULL,
+     email VARCHAR(50),
     created_at TIMESTAMP 
 );
 
@@ -43,6 +44,7 @@ CREATE TABLE accountants(
     id SERIAL PRIMARY KEY,
     firstname VARCHAR(100) NOT NULL,
     lastname VARCHAR(150) NOT NULL,
+     email VARCHAR(50),
     created_at TIMESTAMP 
 );
 
@@ -50,6 +52,7 @@ CREATE TABLE students(
     student_ID INTEGER PRIMARY KEY,
     firstname VARCHAR(100),
     lastname VARCHAR(100) ,
+     email VARCHAR(50),
     phone_number  VARCHAR(20) 
 );
 

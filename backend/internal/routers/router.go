@@ -9,6 +9,9 @@ import (
 	tadutycontroller "TA-management/internal/modules/ta_duty/controller"
 	tadutyservice "TA-management/internal/modules/ta_duty/service"
 
+	announcecontroller "TA-management/internal/modules/announce/controller"
+	announceservice "TA-management/internal/modules/announce/service"
+
 	authencontroller "TA-management/internal/modules/authen/controller"
 	authenservice "TA-management/internal/modules/authen/service"
 
@@ -116,6 +119,7 @@ func InitRouter(
 	courseSvc courseservice.CourseService,
 	lookupSvc lookupservice.LookupService,
 	tadutySvc tadutyservice.TaDutyService,
+	announceSvc announceservice.AnnouncementService,
 	oauthCfg *oauth2.Config,
 	jwtSecret []byte,
 ) *gin.Engine {
@@ -145,6 +149,9 @@ func InitRouter(
 
 		tadutyRouter := authenticatedRouter.Group("/ta_duty")
 		tadutycontroller.InitializeController(tadutySvc, tadutyRouter)
+
+		announceRouter := authenticatedRouter.Group("/announce")
+		announcecontroller.InitializeController(announceSvc, announceRouter)
 	}
 
 	return r
