@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Mail,
   Send,
@@ -6,7 +6,16 @@ import {
   BookOpen,
   User,
   Clock,
+  Search,
 } from "lucide-react";
+import {
+  getAllCoursesForFinance,
+  sendEmailAll,
+  sendEmailCourse,
+  sendEmailIndividual,
+  Course
+} from "../../services/courseService";
+import { searchStudents } from "../../services/lookupService";
 
 interface EmailLog {
   id: string;
@@ -21,53 +30,77 @@ export function EmailAnnouncement() {
     "all" | "course" | "individual"
   >("all");
   const [selectedCourse, setSelectedCourse] = useState("");
-  const [selectedIndividual, setSelectedIndividual] =
-    useState("");
+  const [selectedIndividual, setSelectedIndividual] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
 
-  const [emailLogs] = useState<EmailLog[]>([
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Search state
+  const [searchResults, setSearchResults] = useState<{ id: number, name: string }[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Initial logs (mock for now, or fetch if API available)
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([
     {
       id: "1",
-      date: "13 ธ.ค. 2567 14:30",
-      recipients: "ผู้ช่วยสอนทั้งหมด (32 คน)",
-      subject:
-        "แจ้งเตือน: กรุณามาเซ็นชื่อเบิกจ่ายค่าตอบแทนประจำเดือนธันวาคม",
+      date: new Date().toLocaleString('th-TH'),
+      recipients: "ระบบเริ่มทำงาน",
+      subject: "ยินดีต้อนรับสู่ระบบประกาศ",
       status: "sent",
-    },
-    {
-      id: "2",
-      date: "11 ธ.ค. 2567 10:15",
-      recipients: "01076103 - Programming Fundamentals (4 คน)",
-      subject: "แจ้งปัญหาชั่วโมงงาน - ต้องแก้ไข",
-      status: "sent",
-    },
-    {
-      id: "3",
-      date: "10 ธ.ค. 2567 16:45",
-      recipients: "สมชาย ใจดี",
-      subject: "แจ้งแก้ไขเอกสารเบิกจ่าย",
-      status: "sent",
-    },
+    }
   ]);
 
-  const courses = [
-    "01076103 - Programming Fundamentals",
-    "01076109 - Data Structures",
-    "01076564 - Algorithms",
-    "01076112 - Digital System Fundamentals",
-    "01076035 - Software Development Process in Practice",
-  ];
+  useEffect(() => {
+    fetchCourses();
+  }, []);
 
-  const individuals = [
-    "สมชาย ใจดี",
-    "สมหญิง รักเรียน",
-    "วิชัย มานะ",
-    "ประภา สุขสันต์",
-    "ธนากร วิทยา",
-  ];
+  const fetchCourses = async () => {
+    try {
+      const data = await getAllCoursesForFinance();
+      setCourses(data);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+    }
+  };
 
-  const handleSendEmail = () => {
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (selectedIndividual && recipientType === 'individual') {
+        // If the current value matches a selected item (simple check), maybe don't search?
+        // But here we want to allow searching always.
+        // Only search if length > 2 to avoid too many requests
+        if (selectedIndividual.length >= 2) {
+          setIsSearching(true);
+          try {
+            const results = await searchStudents(selectedIndividual);
+            setSearchResults(results || []);
+            setShowDropdown(true);
+          } catch (error) {
+            console.error("Search failed", error);
+          } finally {
+            setIsSearching(false);
+          }
+        } else {
+          setSearchResults([]);
+          setShowDropdown(false);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [selectedIndividual, recipientType]);
+
+  const selectStudent = (student: { id: number, name: string }) => {
+    setSelectedIndividual(`${student.id} ${student.name}`);
+    setSelectedStudentId(student.id);
+    setShowDropdown(false);
+  };
+
+  const handleSendEmail = async () => {
     if (!subject || !message) {
       alert("กรุณากรอกหัวข้อและข้อความ");
       return;
@@ -79,33 +112,74 @@ export function EmailAnnouncement() {
     }
 
     if (recipientType === "individual" && !selectedIndividual) {
-      alert("กรุณาเลือกผู้รับ");
+      alert("กรุณาระบุรหัสนิสิตหรือชื่อ");
       return;
     }
 
-    // Mock send email
-    let recipients = "";
-    switch (recipientType) {
-      case "all":
-        recipients = "ผู้ช่วยสอนทั้งหมด";
-        break;
-      case "course":
-        recipients = selectedCourse;
-        break;
-      case "individual":
-        recipients = selectedIndividual;
-        break;
+    if (recipientType === "individual" && !selectedStudentId) {
+      alert("กรุณาเลือกผู้ช่วยสอนจากรายการค้นหา");
+      return;
     }
 
-    alert(
-      `ส่งอีเมลสำเร็จ\n\nถึง: ${recipients}\nหัวข้อ: ${subject}`,
-    );
+    setLoading(true);
+    try {
+      let recipientText = "";
 
-    // Clear form
-    setSubject("");
-    setMessage("");
-    setSelectedCourse("");
-    setSelectedIndividual("");
+      if (recipientType === "all") {
+        await sendEmailAll({ subject, body: message });
+        recipientText = "ผู้ช่วยสอนทั้งหมด";
+      } else if (recipientType === "course") {
+        await sendEmailCourse({
+          subject,
+          body: message,
+          courseId: parseInt(selectedCourse)
+        });
+        const courseName = courses.find(c => c.courseID.toString() === selectedCourse)?.courseName || selectedCourse;
+        recipientText = `รายวิชา: ${courseName}`;
+      } else if (recipientType === "individual" && selectedStudentId) {
+        await sendEmailIndividual({
+          subject,
+          body: message,
+          studentID: selectedStudentId
+        });
+        recipientText = `รายบุคคล: ${selectedIndividual}`;
+      }
+
+      // Add to log
+      const newLog: EmailLog = {
+        id: Date.now().toString(),
+        date: new Date().toLocaleString('th-TH'),
+        recipients: recipientText,
+        subject: subject,
+        status: "sent",
+      };
+
+      setEmailLogs([newLog, ...emailLogs]);
+
+      alert("ส่งอีเมลสำเร็จ");
+      // Clear form
+      setSubject("");
+      setMessage("");
+      setSelectedCourse("");
+      setSelectedIndividual("");
+
+    } catch (error) {
+      console.error("Failed to send email:", error);
+      alert("เกิดข้อผิดพลาดในการส่งอีเมล");
+
+      // Add failed log
+      const failedLog: EmailLog = {
+        id: Date.now().toString(),
+        date: new Date().toLocaleString('th-TH'),
+        recipients: "ไม่ระบุ",
+        subject: subject,
+        status: "failed",
+      };
+      setEmailLogs([failedLog, ...emailLogs]);
+
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -194,7 +268,7 @@ export function EmailAnnouncement() {
               <div className="text-left">
                 <p className="font-medium">ส่งเฉพาะบุคคล</p>
                 <p className="text-xs text-gray-600">
-                  เลือกรายบุคคล
+                  ค้นหาด้วยชื่อ หรือรหัสนิสิต
                 </p>
               </div>
             </button>
@@ -216,34 +290,65 @@ export function EmailAnnouncement() {
             >
               <option value="">-- เลือกรายวิชา --</option>
               {courses.map((course) => (
-                <option key={course} value={course}>
-                  {course}
+                <option key={course.courseID} value={course.courseID}>
+                  {course.courseCode} - {course.courseName}
                 </option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Individual Selection */}
+        {/* Individual Search */}
         {recipientType === "individual" && (
           <div className="mb-6">
             <label className="block text-sm text-gray-600 mb-2">
-              เลือกผู้ช่วยสอน
+              ค้นหาผู้ช่วยสอน
             </label>
-            <select
-              value={selectedIndividual}
-              onChange={(e) =>
-                setSelectedIndividual(e.target.value)
-              }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
-            >
-              <option value="">-- เลือกผู้ช่วยสอน --</option>
-              {individuals.map((individual) => (
-                <option key={individual} value={individual}>
-                  {individual}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                value={selectedIndividual}
+                onChange={(e) => {
+                  setSelectedIndividual(e.target.value);
+                  setSelectedStudentId(null);
+                  // Don't hide dropdown immediately, let effect handle it or keep it open while typing
+                }}
+                onFocus={() => {
+                  if (searchResults.length > 0) setShowDropdown(true);
+                }}
+                // onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Delay to allow click
+                placeholder="ระบุรหัสนิสิต หรือ ชื่อ-นามสกุล..."
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+              />
+              {/* Dropdown */}
+              {showDropdown && searchResults.length > 0 && (
+                <div className="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {searchResults.map((student) => (
+                    <button
+                      key={student.id}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex flex-col"
+                      onClick={() => selectStudent(student)}
+                    >
+                      <span className="font-medium text-gray-900">{student.name}</span>
+                      <span className="text-sm text-gray-500">{student.id}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {isSearching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              * ระบบจะค้นหาจากฐานข้อมูลและส่งไปยังอีเมลของผู้ที่ตรงกับข้อมูล
+            </p>
+            {/* Click outside listener could be added here or globally to close dropdown */}
+            {showDropdown && (
+              <div className="fixed inset-0 z-0" onClick={() => setShowDropdown(false)}></div>
+            )}
           </div>
         )}
 
@@ -311,10 +416,15 @@ export function EmailAnnouncement() {
         {/* Send Button */}
         <button
           onClick={handleSendEmail}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)] transition-colors"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[var(--color-primary-600)] text-white rounded-lg hover:bg-[var(--color-primary-700)] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          <Send size={18} />
-          ส่งอีเมล
+          {loading ? (
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+          ) : (
+            <Send size={18} />
+          )}
+          {loading ? "กำลังส่ง..." : "ส่งอีเมล"}
         </button>
       </div>
 

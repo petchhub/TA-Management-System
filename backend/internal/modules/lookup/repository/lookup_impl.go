@@ -227,9 +227,10 @@ func (r LookupRepositoryImplementation) GetTA(searchVal string) (*[]response.TaD
 	query := `
 				WITH searchable_students AS(
 					SELECT
-						student_ID,
-						firstname || ' ' || lastname AS name
-					FROM students
+						s.student_ID,
+						s.firstname || ' ' || s.lastname AS name
+					FROM ta_courses tc
+					LEFT JOIN students s ON s.student_id = tc.student_id
 				)
 				SELECT * FROM searchable_students
 				WHERE student_ID::TEXT ILIKE $1

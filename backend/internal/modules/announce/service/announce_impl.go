@@ -76,6 +76,11 @@ func (s AnnouncementServiceImplementation) SendBatchEmail(rq request.EmailReques
 		)
 		d.SSL = true
 
+		fmt.Println("to", rq.To)
+		if len(rq.To) == 0 {
+			someFailed = true
+			return
+		}
 		for _, recipient := range rq.To {
 			m.SetHeader("From", os.Getenv("SMTP_USER"))
 			m.SetHeader("To", recipient)

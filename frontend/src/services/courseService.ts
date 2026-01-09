@@ -419,6 +419,81 @@ export async function rejectApplication(applicationId: number): Promise<any> {
 }
 
 /**
+ * Send email to all TAs
+ */
+export async function sendEmailAll(data: { subject: string; body: string }): Promise<any> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/announce/send-mail/all`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to send email to all: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error sending email to all:', error);
+        throw error;
+    }
+}
+
+/**
+ * Send email to TAs of a specific course
+ */
+export async function sendEmailCourse(data: { subject: string; body: string; courseId: number }): Promise<any> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/announce/send-mail/course`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to send email to course: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error sending email to course:', error);
+        throw error;
+    }
+}
+
+/**
+ * Send email to individual TA (by student ID or Name)
+ */
+export async function sendEmailIndividual(data: { subject: string; body: string; studentID: number }): Promise<any> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/announce/send-mail/individual`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to send email to individual: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error sending email to individual:', error);
+        throw error;
+    }
+}
+
+/**
  * Fetch all applications for a specific student
  * @param studentId - The ID of the student
  * @returns Promise with list of applications

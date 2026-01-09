@@ -4,6 +4,7 @@ import (
 	"TA-management/internal/modules/announce/dto/request"
 	"TA-management/internal/modules/announce/dto/response"
 	"database/sql"
+	"fmt"
 	"slices"
 	"time"
 )
@@ -30,12 +31,20 @@ func (r AnnouncementRepoImplementation) GetStudentEmailByCourseID(courseID int) 
 	var emailRequest request.EmailRequest
 	var courseDetail response.CourseDetail
 	var email string
-	err := r.db.QueryRow(query, courseID).Scan(&email, &courseDetail.CourseName, &courseDetail.CourseCode)
+	rows, err := r.db.Query(query, courseID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	emailRequest.To = append(emailRequest.To, email)
+	for rows.Next() {
+		err := rows.Scan(&email, &courseDetail.CourseName, &courseDetail.CourseCode)
+		if err != nil {
+			rows.Close()
+			return nil, nil, err
+		}
+		emailRequest.To = append(emailRequest.To, email)
+	}
+	rows.Close()
 
 	return &emailRequest, &courseDetail, nil
 }
@@ -72,6 +81,7 @@ func (r AnnouncementRepoImplementation) GetStudentEmailByCourseIDs(courseID []in
 		emailRequest.To = append(emailRequest.To, studentEmails...)
 		rows.Close()
 	}
+	fmt.Println("to", emailRequest.To)
 
 	return &emailRequest, nil
 }

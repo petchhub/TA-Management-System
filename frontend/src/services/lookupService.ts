@@ -127,3 +127,29 @@ export async function getProfessors(): Promise<LookupItem[]> {
         throw error;
     }
 }
+
+/**
+ * Search for students/TAs by ID or Name
+ * @param query - The search query (ID or Name)
+ * @returns Promise with list of students
+ */
+export async function searchStudents(query: string): Promise<{ id: number, name: string }[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/ta?searchVal=${encodeURIComponent(query)}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to search students: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error searching students:', error);
+        throw error;
+    }
+}
