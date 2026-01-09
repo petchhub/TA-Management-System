@@ -6,8 +6,14 @@ type EmailRequest struct {
 	Body    string   `json:"body"`
 }
 
-type MailForCourse struct {
+type MailForAllCourse struct {
 	CourseID []int  `json:"courseID"`
+	Subject  string `json:"subject"`
+	Body     string `json:"body"`
+}
+
+type MailForCourse struct {
+	CourseID int    `json:"courseID"`
 	Subject  string `json:"subject"`
 	Body     string `json:"body"`
 }
@@ -16,4 +22,12 @@ type MailForTA struct {
 	StudentID int    `json:"studentID"`
 	Subject   string `json:"subject"`
 	Body      string `json:"body"`
+}
+
+type CreateEmailHistory struct {
+	Subject      string
+	Body         string
+	ReceivedName string
+	NReceived    int
+	StatusID     int
 }

@@ -16,4 +16,5 @@ type LookupService interface {
 	GetHolidays(month int, year int) ([]entity.Holiday, error)
 	AddSpecialHoliday(req request.CreateHoliday) error
 	DeleteHoliday(id int) error
+	GetTA(searchVal string) (*[]response.TaDetail, error)
 }

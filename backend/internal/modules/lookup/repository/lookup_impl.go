@@ -209,3 +209,45 @@ func (r LookupRepositoryImplementation) DeleteHoliday(id int) error {
 	}
 	return nil
 }
+
+func (r LookupRepositoryImplementation) GetTA(searchVal string) (*[]response.TaDetail, error) {
+
+	searchVal = "%" + searchVal + "%"
+	var TAs []response.TaDetail
+
+	// query := `SELECT
+	// 			student_ID,
+	// 			firstname || ' ' || lastname AS name
+	// 			FROM students
+	// 			WHERE CAST(student_ID as TEXT) LIKE $1
+	// 			OR (firstname || ' ' || lastname) LIKE $2
+	// 		`
+
+	//search first then filter is robust than add where clause in query
+	query := `
+				WITH searchable_students AS(
+					SELECT
+						student_ID,
+						firstname || ' ' || lastname AS name
+					FROM students
+				)
+				SELECT * FROM searchable_students
+				WHERE student_ID::TEXT ILIKE $1
+				OR name ILIKE $1  `
+	rows, err := r.db.Query(query, searchVal)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var TA response.TaDetail
+		if err := rows.Scan(&TA.Id, &TA.Name); err != nil {
+			return nil, err
+		}
+		TAs = append(TAs, TA)
+	}
+
+	return &TAs, nil
+}

@@ -197,3 +197,12 @@ func (s LookupServiceImplementation) DeleteHoliday(id int) error {
 	}
 	return nil
 }
+
+func (s LookupServiceImplementation) GetTA(searchVal string) (*[]response.TaDetail, error) {
+	result, err := s.repo.GetTA(searchVal)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return result, err
+}

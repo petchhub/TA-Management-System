@@ -16,4 +16,5 @@ type LookupRepository interface {
 	GetHolidaysByMonth(month int, year int) ([]entity.Holiday, error)
 	DeleteHoliday(id int) error
 	AddSpecialHoliday(holiday request.CreateHoliday) error
+	GetTA(searchVal string) (*[]response.TaDetail, error)
 }

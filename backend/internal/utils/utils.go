@@ -132,3 +132,12 @@ func GetFileData(ctx *gin.Context, key string) (string, *[]byte, error) {
 
 	return fileHeader.Filename, &fileBytes, nil
 }
+
+func IsDigitOnly(s string) bool {
+	for _, c := range s {
+		if !unicode.IsDigit(c) {
+			return false
+		}
+	}
+	return s != ""
+}

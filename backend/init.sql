@@ -196,6 +196,18 @@ CREATE TABLE ta_duty_historys(
 -- adding for cannot insert duplicate studentid courseid and date
 -- ALTER TABLE ta_duty_historys 
 -- ADD CONSTRAINT unique_attendance UNIQUE (student_ID, course_ID, date);
+CREATE TABLE email_history(
+    id SERIAL PRIMARY KEY,
+    subject VARCHAR(200),
+    body VARCHAR(2000),
+    received_name  VARCHAR(100),
+    n_received INT,
+    status_ID INT,
+    created_date TIMESTAMP,
+    CONSTRAINT FK_status_ID
+        FOREIGN KEY (status_ID)
+        REFERENCES status(status_ID)
+);
 
 CREATE TABLE holidays(
     id SERIAL PRIMARY KEY,
@@ -298,7 +310,9 @@ INSERT INTO status (status_value) VALUES
     ('CLOSE'),
     ('PENDING'),
     ('REJECTED'),
-    ('APPROVED');
+    ('APPROVED'),
+    ('SUCCESSFUL'),
+    ('FAILED');
  
 
 

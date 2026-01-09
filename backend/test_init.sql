@@ -192,6 +192,19 @@ CREATE TABLE ta_duty_historys(
         REFERENCES students(student_ID)
 );
 
+CREATE TABLE email_history(
+    id SERIAL PRIMARY KEY,
+    subject VARCHAR(200),
+    body VARCHAR(2000),
+    received_name  VARCHAR(100),
+    n_received INT,
+    status_ID INT,
+    created_date TIMESTAMP,
+    CONSTRAINT FK_status_ID
+        FOREIGN KEY (status_ID)
+        REFERENCES status(status_ID)
+);
+
 CREATE TABLE holidays(
     id SERIAL PRIMARY KEY,
     holiday_date DATE UNIQUE,
@@ -294,7 +307,9 @@ INSERT INTO status (status_value) VALUES
     ('CLOSE'),
     ('PENDING'),
     ('REJECTED'),
-    ('APPROVED');
+    ('APPROVED'),
+    ('SUCCESSFUL'),
+    ('FAILED');
 
 
 -- class_day

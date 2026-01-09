@@ -32,6 +32,7 @@ func InitializeController(lookupService service.LookupService, r *gin.RouterGrou
 		r.GET("/holiday", c.GetHolidays)
 		r.POST("/holiday", c.AddSpecialHoliday)
 		r.DELETE("/holiday/:id", c.DeleteHoliday)
+		r.GET("/ta", c.getTA)
 	}
 }
 
@@ -137,4 +138,21 @@ func (controller LookupController) DeleteHoliday(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Holiday deleted successfully"})
+}
+
+func (controller LookupController) getTA(ctx *gin.Context) {
+
+	searchVal := ctx.Query("searchVal")
+	if searchVal == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+	}
+
+	result, err := controller.service.GetTA(searchVal)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, result)
+
 }
