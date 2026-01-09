@@ -6,7 +6,7 @@ import (
 )
 
 type AnnouncementRepository interface {
-	GetStudentEmailByCourseIDs(courseID []int) (*request.EmailRequest, error)
+	GetStudentEmailByCourseIDs() (*request.EmailRequest, error)
 	GetStudentEmailByCourseID(courseID int) (*request.EmailRequest, *response.CourseDetail, error)
 	GetStudentEmailByStudentID(studentID int) (*request.EmailRequest, error)
 	SaveEmailHistory(rq request.CreateEmailHistory) error

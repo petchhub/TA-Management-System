@@ -20,7 +20,7 @@ func NewAnnouncementService(repo repository.AnnouncementRepository) Announcement
 }
 
 func (s AnnouncementServiceImplementation) SendMailToAllCourse(rq request.MailForAllCourse) {
-	emailRequest, err := s.repo.GetStudentEmailByCourseIDs(rq.CourseID)
+	emailRequest, err := s.repo.GetStudentEmailByCourseIDs()
 	if err != nil {
 		return
 	}

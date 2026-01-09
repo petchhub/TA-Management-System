@@ -4,8 +4,6 @@ import (
 	"TA-management/internal/modules/announce/dto/request"
 	"TA-management/internal/modules/announce/dto/response"
 	"database/sql"
-	"fmt"
-	"slices"
 	"time"
 )
 
@@ -49,39 +47,28 @@ func (r AnnouncementRepoImplementation) GetStudentEmailByCourseID(courseID int) 
 	return &emailRequest, &courseDetail, nil
 }
 
-func (r AnnouncementRepoImplementation) GetStudentEmailByCourseIDs(courseID []int) (*request.EmailRequest, error) {
+func (r AnnouncementRepoImplementation) GetStudentEmailByCourseIDs() (*request.EmailRequest, error) {
 
-	query := `SELECT 
+	query := `SELECT DISTINCT
 				st.email
 				FROM ta_courses AS tc
-				LEFT JOIN students AS st ON st.student_ID=tc.student_ID
-				WHERE course_ID=$1`
+				JOIN students AS st ON st.student_ID=tc.student_ID`
 
 	var emailRequest request.EmailRequest
 
-	for _, courseID := range courseID {
-		studentEmails := []string{}
-		rows, err := r.db.Query(query, courseID)
-		if err != nil {
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err != nil {
 			return nil, err
 		}
-
-		for rows.Next() {
-			var studentEmail string
-
-			err := rows.Scan(&studentEmail)
-			if err != nil {
-				rows.Close()
-				return nil, err
-			}
-			if !slices.Contains(emailRequest.To, studentEmail) {
-				studentEmails = append(studentEmails, studentEmail)
-			}
-		}
-		emailRequest.To = append(emailRequest.To, studentEmails...)
-		rows.Close()
+		emailRequest.To = append(emailRequest.To, email)
 	}
-	fmt.Println("to", emailRequest.To)
 
 	return &emailRequest, nil
 }
