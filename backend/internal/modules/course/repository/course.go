@@ -25,4 +25,5 @@ type CourseRepository interface {
 	GetApplicationStudentCardPdf(ApplicationId int) (*response.PdfFile, error)
 	GetApplicationByProfessorId(professorId int) ([]response.Application, error)
 	ApproveApplication(ApplicationId int) error
+	RejectApplication(ApplicationId int) error
 }

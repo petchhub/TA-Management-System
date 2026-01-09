@@ -47,6 +47,7 @@ type Application struct {
 	StudentName    string    `json:"studentName"`
 	PhoneNumber    string    `json:"phoneNumber"`
 	Classday       string    `json:"classDay"`
+	ProfessorName  string    `json:"professorName"`
 	ClassStart     string    `json:"classStart"`
 	ClassEnd       string    `json:"classEnd"`
 	CreatedDate    time.Time `json:"createdDate"`

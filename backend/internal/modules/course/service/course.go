@@ -26,4 +26,5 @@ type CourseService interface {
 	ApproveApplication(ApplicationId int) (*response.GeneralResponse, error)
 	GetProfessorCourse(ProfessorId int) (*response.RequestDataResponse, error)
 	GetApplicationByProfessorId(professorId int) (*response.RequestDataResponse, error)
+	RejectApplication(ApplicationId int) (*response.GeneralResponse, error)
 }

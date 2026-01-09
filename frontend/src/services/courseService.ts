@@ -42,6 +42,7 @@ export interface Application {
     grade?: string;
     purpose?: string;
     courseName?: string;
+    professorName?: string;
 }
 
 export interface ApplicationResponse {
@@ -387,6 +388,32 @@ export async function approveApplication(applicationId: number): Promise<any> {
         return await response.json();
     } catch (error) {
         console.error(`Error approving application ${applicationId}:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Reject a TA application
+ * @param applicationId - The ID of the application to reject
+ * @returns Promise with result
+ */
+export async function rejectApplication(applicationId: number): Promise<any> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/application/reject/${applicationId}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to reject application ${applicationId}: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error(`Error rejecting application ${applicationId}:`, error);
         throw error;
     }
 }

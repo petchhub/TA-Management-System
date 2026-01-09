@@ -46,6 +46,7 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 		r.GET("/application/bankaccount/:applicationId", c.getApplicationbankAccountPdf)
 		r.GET("/application/studentcard/:applicationId", c.getApplicationstudentCardPdf)
 		r.POST("/application/approve/:applicationId", c.approveApplication)
+		r.POST("/application/reject/:applicationId", c.rejectApplication)
 	}
 }
 
@@ -398,6 +399,21 @@ func (controller CourseController) approveApplication(ctx *gin.Context) {
 	}
 
 	result, err := controller.service.ApproveApplication(id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, result)
+		return
+	}
+	ctx.JSON(http.StatusCreated, result)
+}
+
+func (controller CourseController) rejectApplication(ctx *gin.Context) {
+	id, ok := utils.ValidateParam(ctx, "applicationId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validate Param Failed."})
+		return
+	}
+
+	result, err := controller.service.RejectApplication(id)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, result)
 		return

@@ -10,6 +10,7 @@ interface Applicant {
   email: string;
   phone: string;
   course: string;
+  courseId: number; // Added courseId
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   documents: {
     transcript: boolean;
@@ -40,10 +41,9 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
         const studentIdNum = parseInt(applicant.studentId.replace(/\D/g, ''));
         if (!isNaN(studentIdNum)) {
           const apps = await getStudentApplications(studentIdNum);
-          // Filter out current application if possible. 
-          // But applicant.id (from TARecruitment) matches app.applicationId (from backend).
-          // Let's filter it out so we only see *other* applications.
-          setOtherApplications(apps.filter(a => a.applicationId !== applicant.id));
+          // Filter out applications for the SAME COURSE (subject) as the current one.
+          // Note: app.courseID from backend might be the ID of the course/subject.
+          setOtherApplications(apps.filter(a => a.courseID !== applicant.courseId));
         }
       } catch (error) {
         console.error("Failed to fetch student history:", error);
@@ -186,6 +186,7 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
                   <thead className="bg-gray-50 text-gray-600">
                     <tr>
                       <th className="px-4 py-2 text-left">วิชา</th>
+                      <th className="px-4 py-2 text-left">อาจารย์ผู้สอน</th>
                       <th className="px-4 py-2 text-left">สถานะ</th>
                     </tr>
                   </thead>
@@ -193,6 +194,7 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
                     {otherApplications.map((app) => (
                       <tr key={app.applicationId}>
                         <td className="px-4 py-2 text-gray-900">{app.courseName || `Course ID: ${app.courseID}`}</td>
+                        <td className="px-4 py-2 text-gray-700">{app.professorName || 'N/A'}</td>
                         <td className="px-4 py-2">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${app.statusCode === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                             app.statusCode === 'APPROVED' ? 'bg-green-100 text-green-800' :
@@ -216,12 +218,6 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
           <div>
             <h3 className="text-gray-900 mb-2">ประสบการณ์</h3>
             <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{applicant.experience}</p>
-          </div>
-
-          {/* Motivation */}
-          <div>
-            <h3 className="text-gray-900 mb-2">เหตุผลในการสมัคร</h3>
-            <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{applicant.motivation}</p>
           </div>
         </div>
         {/* Actions */}

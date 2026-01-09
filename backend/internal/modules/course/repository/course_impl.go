@@ -645,12 +645,16 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 					c.course_name,
 					c.class_day,
 					c.class_start,
-					c.class_end
+					c.class_end,
+					p.firstname,
+					p.lastname
 				FROM ta_application AS ta 
 				LEFT JOIN ta_job_posting AS tp
 					ON ta.job_post_ID = tp.id
 				LEFT JOIN courses AS c
 					ON tp.course_ID = c.course_ID
+				LEFT JOIN professors AS p
+					ON c.professor_ID = p.professor_ID
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
 				WHERE student_ID = $1`
@@ -664,6 +668,7 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 	var applications []response.Application
 	for rows.Next() {
 		var application response.Application
+		var firstname, lastname string
 
 		err := rows.Scan(
 			&application.StudentID,
@@ -675,10 +680,13 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 			&application.Classday,
 			&application.ClassStart,
 			&application.ClassEnd,
+			&firstname,
+			&lastname,
 		)
 		if err != nil {
 			return nil, err
 		}
+		application.ProfessorName = firstname + " " + lastname
 		applications = append(applications, application)
 	}
 
@@ -861,6 +869,30 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to Insert new ta_course : %v", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed on commit transaction")
+	}
+	return nil
+}
+
+func (r CourseRepositoryImplementation) RejectApplication(ApplicationId int) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	// update status on ta_application
+	// Status ID 4 is REJECTED
+	rejectStatus := 4
+	query := `UPDATE ta_application SET status_ID = $1 WHERE id = $2`
+
+	_, err = tx.Exec(query, rejectStatus, ApplicationId)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed update ta_application: %v", err)
 	}
 
 	if err := tx.Commit(); err != nil {

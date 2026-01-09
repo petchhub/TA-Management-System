@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { ApplicantModal } from "./ApplicantModal";
 import { useAuth } from "../../context/AuthContext";
-import { getProfessorApplications, approveApplication } from "../../services/courseService";
+import { getProfessorApplications, approveApplication, rejectApplication } from "../../services/courseService";
 
 interface Applicant {
   id: number;
@@ -20,6 +20,7 @@ interface Applicant {
   email: string;
   phone: string;
   course: string;
+  courseId: number; // Added courseId
   status: "PENDING" | "APPROVED" | "REJECTED";
   documents: {
     transcript: boolean;
@@ -33,7 +34,7 @@ interface Applicant {
 export function TARecruitment() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("PENDING");
   const [gpaFilter, setGpaFilter] = useState<string>("all");
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
 
@@ -69,6 +70,7 @@ export function TARecruitment() {
           : "-",
         phone: app.phoneNumber || "-", // Now using real phone number from backend
         course: app.courseName ? `${app.courseName}` : "Unknown Course",
+        courseId: app.courseID || 0, // Map courseID
         status: (app.statusCode as any) || "PENDING",
         documents: {
           transcript: app.hasTranscript || false, // Real data from backend
@@ -103,10 +105,15 @@ export function TARecruitment() {
     }
   };
 
-  const handleReject = () => {
-    // Backend doesn't have a direct reject endpoint yet, 
-    // we just update local state for UI feedback or alert
-    alert("ระบบการปฏิเสธยังไม่เปิดใช้งานในเวอร์ชันนี้");
+  const handleReject = async (id?: number) => {
+    try {
+      if (!id) return;
+      await rejectApplication(id);
+      await fetchApplications(); // Refresh list
+    } catch (err) {
+      console.error("Failed to reject application:", err);
+      alert("เกิดข้อผิดพลาดในการปฏิเสธ");
+    }
   };
 
   const filteredApplicants = applicants.filter((app) => {
@@ -360,7 +367,7 @@ export function TARecruitment() {
                           </button>
                           <button
                             onClick={() =>
-                              handleReject()
+                              handleReject(applicant.id)
                             }
                             className="p-1 text-red-600 hover:bg-red-50 rounded"
                             title="ปฏิเสธ"
@@ -387,7 +394,7 @@ export function TARecruitment() {
             setSelectedApplicant(null);
           }}
           onReject={() => {
-            handleReject();
+            handleReject(selectedApplicant.id);
             setSelectedApplicant(null);
           }}
         />
