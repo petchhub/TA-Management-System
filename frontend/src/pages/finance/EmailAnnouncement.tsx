@@ -13,17 +13,11 @@ import {
   sendEmailAll,
   sendEmailCourse,
   sendEmailIndividual,
-  Course
+  getEmailHistory,
+  Course,
+  EmailHistory
 } from "../../services/courseService";
 import { searchStudents } from "../../services/lookupService";
-
-interface EmailLog {
-  id: string;
-  date: string;
-  recipients: string;
-  subject: string;
-  status: "sent" | "failed";
-}
 
 export function EmailAnnouncement() {
   const [recipientType, setRecipientType] = useState<
@@ -43,19 +37,11 @@ export function EmailAnnouncement() {
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Initial logs (mock for now, or fetch if API available)
-  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([
-    {
-      id: "1",
-      date: new Date().toLocaleString('th-TH'),
-      recipients: "ระบบเริ่มทำงาน",
-      subject: "ยินดีต้อนรับสู่ระบบประกาศ",
-      status: "sent",
-    }
-  ]);
+  const [emailLogs, setEmailLogs] = useState<EmailHistory[]>([]);
 
   useEffect(() => {
     fetchCourses();
+    fetchEmailLogs();
   }, []);
 
   const fetchCourses = async () => {
@@ -67,12 +53,18 @@ export function EmailAnnouncement() {
     }
   };
 
+  const fetchEmailLogs = async () => {
+    try {
+      const data = await getEmailHistory();
+      setEmailLogs(data || []);
+    } catch (error) {
+      console.error("Error fetching email history:", error);
+    }
+  };
+
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (selectedIndividual && recipientType === 'individual') {
-        // If the current value matches a selected item (simple check), maybe don't search?
-        // But here we want to allow searching always.
-        // Only search if length > 2 to avoid too many requests
         if (selectedIndividual.length >= 2) {
           setIsSearching(true);
           try {
@@ -123,38 +115,21 @@ export function EmailAnnouncement() {
 
     setLoading(true);
     try {
-      let recipientText = "";
-
       if (recipientType === "all") {
         await sendEmailAll({ subject, body: message });
-        recipientText = "ผู้ช่วยสอนทั้งหมด";
       } else if (recipientType === "course") {
         await sendEmailCourse({
           subject,
           body: message,
           courseId: parseInt(selectedCourse)
         });
-        const courseName = courses.find(c => c.courseID.toString() === selectedCourse)?.courseName || selectedCourse;
-        recipientText = `รายวิชา: ${courseName}`;
       } else if (recipientType === "individual" && selectedStudentId) {
         await sendEmailIndividual({
           subject,
           body: message,
           studentID: selectedStudentId
         });
-        recipientText = `รายบุคคล: ${selectedIndividual}`;
       }
-
-      // Add to log
-      const newLog: EmailLog = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleString('th-TH'),
-        recipients: recipientText,
-        subject: subject,
-        status: "sent",
-      };
-
-      setEmailLogs([newLog, ...emailLogs]);
 
       alert("ส่งอีเมลสำเร็จ");
       // Clear form
@@ -163,23 +138,19 @@ export function EmailAnnouncement() {
       setSelectedCourse("");
       setSelectedIndividual("");
 
+      // Refresh logs
+      fetchEmailLogs();
+
     } catch (error) {
       console.error("Failed to send email:", error);
       alert("เกิดข้อผิดพลาดในการส่งอีเมล");
-
-      // Add failed log
-      const failedLog: EmailLog = {
-        id: Date.now().toString(),
-        date: new Date().toLocaleString('th-TH'),
-        recipients: "ไม่ระบุ",
-        subject: subject,
-        status: "failed",
-      };
-      setEmailLogs([failedLog, ...emailLogs]);
-
     } finally {
       setLoading(false);
     }
+  };
+
+  const isSuccessStatus = (status: string) => {
+    return status === "Successful" || status === "Sent" || status === "sent" || status === "Success";
   };
 
   return (
@@ -312,12 +283,10 @@ export function EmailAnnouncement() {
                 onChange={(e) => {
                   setSelectedIndividual(e.target.value);
                   setSelectedStudentId(null);
-                  // Don't hide dropdown immediately, let effect handle it or keep it open while typing
                 }}
                 onFocus={() => {
                   if (searchResults.length > 0) setShowDropdown(true);
                 }}
-                // onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Delay to allow click
                 placeholder="ระบุรหัสนิสิต หรือ ชื่อ-นามสกุล..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
               />
@@ -345,7 +314,6 @@ export function EmailAnnouncement() {
             <p className="text-xs text-gray-500 mt-1">
               * ระบบจะค้นหาจากฐานข้อมูลและส่งไปยังอีเมลของผู้ที่ตรงกับข้อมูล
             </p>
-            {/* Click outside listener could be added here or globally to close dropdown */}
             {showDropdown && (
               <div className="fixed inset-0 z-0" onClick={() => setShowDropdown(false)}></div>
             )}
@@ -446,25 +414,26 @@ export function EmailAnnouncement() {
                     {log.subject}
                   </p>
                   <p className="text-sm text-gray-600 mb-2">
-                    ถึง: {log.recipients}
+                    ถึง: {log.receivedName}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {log.date}
+                    {new Date(log.createDate).toLocaleString('th-TH')}
                   </p>
                 </div>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs ${log.status === "sent"
+                  className={`px-3 py-1 rounded-full text-xs ${isSuccessStatus(log.status)
                     ? "bg-green-100 text-green-700"
                     : "bg-red-100 text-red-700"
                     }`}
                 >
-                  {log.status === "sent"
-                    ? "ส่งสำเร็จ"
-                    : "ส่งไม่สำเร็จ"}
+                  {log.status}
                 </span>
               </div>
             </div>
           ))}
+          {emailLogs.length === 0 && (
+            <p className="text-center text-gray-500 py-4">ไม่พบประวัติการส่งอีเมล</p>
+          )}
         </div>
       </div>
     </div>

@@ -81,13 +81,19 @@ func (r TaDutyRepositoryImplentation) MarkDutyAsDone(courseID int, studentID int
 	return nil
 }
 
-func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int) (*[]request.CreatePaymentData, error) {
+func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int, month int) (*[]request.CreatePaymentData, *request.CourseDutyData, error) {
+
+	var result []request.CreatePaymentData
 
 	query := `SELECT 
 					s.student_ID,
 					s.firstname || ' ' || s.lastname,
 					c.work_hour,
-					c.class_start || ' ' || c.class_end || ' น. ' AS time_range
+					c.class_start || ' ' || c.class_end || ' น. ' AS time_range,
+					c.course_code,
+					c.course_name,
+					c.semester,
+					c.sec
 				FROM ta_courses AS tc
 				LEFT JOIN students AS s
 					ON s.student_ID = tc.student_ID
@@ -97,7 +103,7 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int) (
 				`
 	rows, err := r.db.Query(query, courseID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	type studentBase struct {
@@ -107,12 +113,21 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int) (
 		timeRange string
 	}
 
+	var courseData request.CourseDutyData
 	var students []studentBase
 	for rows.Next() {
 		var student studentBase
-		err := rows.Scan(&student.id, &student.name, &student.workhour, &student.timeRange)
+		err := rows.Scan(&student.id,
+			&student.name,
+			&student.workhour,
+			&student.timeRange,
+			&courseData.CourseCode,
+			&courseData.CourseName,
+			&courseData.Semester,
+			&courseData.Sec,
+		)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		students = append(students, student)
 	}
@@ -147,16 +162,17 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int) (
 		LEFT JOIN ta_duty_historys h ON h.course_ID = c.course_ID 
 			AND h.student_ID = $2 
 			AND h.date::date = ad.d_date
-		WHERE trim(to_char(ad.d_date, 'Day')) = cd.class_day_value
-		AND hol.id IS NULL
+		WHERE trim(to_char(ad.d_date, 'Day')) = cd.class_day_value -- Only show the class days
+		AND hol.id IS NULL -- Exclude Holidays
+		AND EXTRACT(MONTH FROM ad.d_date) = $3
 		ORDER BY ad.d_date ASC;
     `
-	var result []request.CreatePaymentData
+
 	for _, student := range students {
 
-		rows, err := r.db.Query(query, courseID, student.id)
+		rows, err := r.db.Query(query, courseID, student.id, month)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var roadmap []request.DutyChecklistItem
@@ -166,7 +182,7 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int) (
 
 			if err := rows.Scan(&dutyTime, &item.Status, &item.IsChecked); err != nil {
 				rows.Close()
-				return nil, err
+				return nil, nil, err
 			}
 			item.Date = dutyTime.Format("2006-01-02")
 			item.TimeRange = student.timeRange
@@ -180,5 +196,5 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int) (
 		rows.Close()
 	}
 
-	return &result, nil
+	return &result, &courseData, nil
 }

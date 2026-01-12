@@ -78,7 +78,11 @@ func (s AnnouncementServiceImplementation) SendBatchEmail(rq request.EmailReques
 
 		fmt.Println("to", rq.To)
 		if len(rq.To) == 0 {
-			someFailed = true
+			createMailHistory.StatusID = constants.FailedStatusID
+			err := s.repo.SaveEmailHistory(createMailHistory)
+			if err != nil {
+				fmt.Println(err)
+			}
 			return
 		}
 		for _, recipient := range rq.To {

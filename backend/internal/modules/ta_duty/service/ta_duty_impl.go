@@ -1,9 +1,11 @@
 package service
 
 import (
+	"TA-management/internal/constants"
 	"TA-management/internal/modules/ta_duty/dto/request"
 	"TA-management/internal/modules/ta_duty/dto/response"
 	"TA-management/internal/modules/ta_duty/repository"
+	"TA-management/internal/utils"
 	"bytes"
 	"errors"
 	"fmt"
@@ -36,16 +38,27 @@ func (s TaDutyServiceImplementation) GetTADutyRoadmap(courseID int, studentID in
 }
 
 func (s TaDutyServiceImplementation) MarkDutyAsDone(courseID int, studentID int, dutyDate string) (*generalresponse.GeneralResponse, error) {
-	// 1. Validate Date Format and "Future Date" rule
-	parsedDate, err := time.Parse("2006-01-02", dutyDate)
+	// 1. Load Thailand Timezone
+	loc, err := time.LoadLocation("Asia/Bangkok")
+	if err != nil {
+		s.logger.Errorf("Failed to load timezone: %v", err)
+		// Fallback to UTC if timezone loading fails on server
+		loc = time.UTC
+	}
+
+	// 2. Parse the input date IN THE CONTEXT of Thailand
+	// This creates: YYYY-MM-DD 00:00:00 +0700 ICT
+	parsedDate, err := time.ParseInLocation("2006-01-02", dutyDate, loc)
 	if err != nil {
 		return nil, errors.New("invalid date format")
 	}
 
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	// 3. Get "Now" in Thailand and strip the time (get 00:00:00)
+	now := time.Now().In(loc)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
 
 	if parsedDate.After(today) {
+		fmt.Println("Date is in the future")
 		return nil, errors.New("cannot check off future duties")
 	}
 
@@ -60,14 +73,17 @@ func (s TaDutyServiceImplementation) MarkDutyAsDone(courseID int, studentID int,
 	}, nil
 }
 
-func (s TaDutyServiceImplementation) ExportPaymentReport(courseID int, hourlyRate int) (*bytes.Buffer, error) {
-	TAdutyData, err := s.repo.GetTADutyDataExportPayment(courseID)
+func (s TaDutyServiceImplementation) ExportPaymentReport(rq request.ExportPaymentReportRequest) (*bytes.Buffer, error) {
+	TAdutyData, courseData, err := s.repo.GetTADutyDataExportPayment(rq.CourseID, rq.Month)
 	if err != nil {
 		s.logger.Errorf("Failed to Get Ta Duty Data :%v", err)
 		return nil, err
 	}
 
-	fileBytes, err := s.GeneratePaymentExcel(*TAdutyData, hourlyRate)
+	courseData.MonthName = utils.GetThaiMonthName(rq.Month)
+	courseData.Year = fmt.Sprintf("%d", rq.Year+543)
+
+	fileBytes, err := s.GeneratePaymentExcel(*TAdutyData, *courseData, rq.HourlyRate)
 	if err != nil {
 		s.logger.Errorf("Failed on GenearatePaymentExcel")
 		return nil, err
@@ -76,7 +92,7 @@ func (s TaDutyServiceImplementation) ExportPaymentReport(courseID int, hourlyRat
 	return fileBytes, nil
 }
 
-func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.CreatePaymentData, hourlyRate int) (*bytes.Buffer, error) {
+func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.CreatePaymentData, courseData request.CourseDutyData, hourlyRate int) (*bytes.Buffer, error) {
 	f, err := excelize.OpenFile("./prototype/payment-template.xlsx")
 	if err != nil {
 		s.logger.Errorf("cannot open file : %v", err)
@@ -85,6 +101,9 @@ func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.Cre
 	defer f.Close()
 
 	sheetName := "Sheet1"
+
+	f.SetCellValue(sheetName, "A1", constants.PaymentReportTitle+fmt.Sprintf(" %s %s กลุ่ม(%s) ประจำภาคเรียนที่ %s", courseData.CourseCode, courseData.CourseName, courseData.Sec, courseData.Semester))
+	f.SetCellValue(sheetName, "A2", constants.PaymentReportSubTitle+fmt.Sprintf("%s %s", courseData.MonthName, courseData.Year))
 
 	//Fill duty date and Timerange
 	if len(students) > 0 {
@@ -101,6 +120,7 @@ func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.Cre
 	}
 
 	//Fill student data
+	grandTotal := 0
 	for i, student := range students {
 		rowIdx := 7 + i
 		if rowIdx > 20 {
@@ -134,8 +154,10 @@ func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.Cre
 		// Fill total hour and total payment on that student
 		f.SetCellValue(sheetName, fmt.Sprintf("AL%d", rowIdx), totalHours)
 		f.SetCellValue(sheetName, fmt.Sprintf("AM%d", rowIdx), totalHours*hourlyRate)
+		grandTotal += totalHours * hourlyRate
 	}
-
+	toatalThaiText := utils.ThaiBahtText(grandTotal)
+	f.SetCellValue(sheetName, "A22", fmt.Sprintf("%s %s", constants.PaymentReportTotalThaiText, toatalThaiText))
 	var buf bytes.Buffer
 	if _, err := f.WriteTo(&buf); err != nil {
 		return nil, err

@@ -573,3 +573,37 @@ export function getBankAccountUrl(applicationId: number): string {
 export function getStudentCardUrl(applicationId: number): string {
     return `${API_BASE_URL}/course/application/studentcard/${applicationId}`;
 }
+
+export interface EmailHistory {
+    id: number;
+    subject: string;
+    body: string;
+    receivedName: string;
+    nReceived: number;
+    status: string;
+    createDate: string;
+}
+
+/**
+ * Fetch email history
+ */
+export async function getEmailHistory(): Promise<EmailHistory[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/announce/email-history`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch email history: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching email history:', error);
+        throw error;
+    }
+}

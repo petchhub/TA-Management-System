@@ -10,9 +10,25 @@ type CreateHoliday struct {
 }
 
 type CreatePaymentData struct {
-	StudentName string              `json:"studentName"`
-	WorkHour    int                 `json:"workHour"`
-	Duty        []DutyChecklistItem `json:"duty"`
+	StudentName string
+	WorkHour    int
+	Duty        []DutyChecklistItem
+}
+
+type ExportPaymentReportRequest struct {
+	CourseID   int `json:"courseID"`
+	HourlyRate int `json:"hourlyRate"`
+	Month      int `json:"month"`
+	Year       int `json:"year"`
+}
+
+type CourseDutyData struct {
+	CourseCode string
+	CourseName string
+	Semester   string
+	Sec        string
+	MonthName  string
+	Year       string
 }
 
 type DutyChecklistItem struct {

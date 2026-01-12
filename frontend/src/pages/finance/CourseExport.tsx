@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { getAllCoursesForFinance } from "../../services/courseService";
 
+
 interface Course {
   courseID: number;
   courseCode: string;
@@ -19,8 +20,15 @@ interface Course {
   classday: string;
   professorName: string;
   semester: string;
+  year?: string;
   section: string;
   taCount?: number; // Not available from backend yet
+}
+
+interface AvailableMonth {
+  monthID: number;
+  monthName: string;
+  year: number;
 }
 
 export function CourseExport() {
@@ -31,6 +39,9 @@ export function CourseExport() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [modalHourlyRate, setModalHourlyRate] = useState(100);
   const [curriculumFilter, setCurriculumFilter] = useState<string>("all");
+  const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<AvailableMonth | null>(null);
+  const [loadingMonths, setLoadingMonths] = useState(false);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -51,10 +62,29 @@ export function CourseExport() {
   }, []);
 
   const toggleCourse = (courseId: number) => {
+    const courseToToggle = courses.find((c) => c.courseID === courseId);
+    if (!courseToToggle) return;
+
+    // Check semester constraint
+    if (selectedCourses.length > 0 && !selectedCourses.includes(courseId)) {
+      const firstSelectedCourse = courses.find(
+        (c) => c.courseID === selectedCourses[0]
+      );
+      if (
+        firstSelectedCourse &&
+        firstSelectedCourse.semester !== courseToToggle.semester
+      ) {
+        alert(
+          `ไม่สามารถเลือกรายวิชาต่างภาคการศึกษาได้\n(เลือกไว้: ${firstSelectedCourse.semester}, กำลังเลือก: ${courseToToggle.semester})`
+        );
+        return;
+      }
+    }
+
     setSelectedCourses((prev) =>
       prev.includes(courseId)
         ? prev.filter((id) => id !== courseId)
-        : [...prev, courseId],
+        : [...prev, courseId]
     );
   };
 
@@ -65,35 +95,88 @@ export function CourseExport() {
 
   const toggleAll = () => {
     const visibleCourseIds = filteredCourses.map((c) => c.courseID);
+
+    if (visibleCourseIds.length === 0) return;
+
     const allVisibleSelected = visibleCourseIds.every((id) =>
-      selectedCourses.includes(id),
+      selectedCourses.includes(id)
     );
 
     if (allVisibleSelected) {
       setSelectedCourses((prev) =>
-        prev.filter((id) => !visibleCourseIds.includes(id)),
+        prev.filter((id) => !visibleCourseIds.includes(id))
       );
     } else {
-      setSelectedCourses((prev) =>
-        Array.from(new Set([...prev, ...visibleCourseIds])),
-      );
+      // Selecting logic considering semester constraints
+      let newSelection = [...selectedCourses];
+      let semesterConstraint = "";
+
+      if (newSelection.length > 0) {
+        const first = courses.find(c => c.courseID === newSelection[0]);
+        if (first) semesterConstraint = first.semester;
+      }
+
+      for (const id of visibleCourseIds) {
+        if (newSelection.includes(id)) continue;
+
+        const c = courses.find(course => course.courseID === id);
+        if (!c) continue;
+
+        if (semesterConstraint === "") {
+          semesterConstraint = c.semester;
+          newSelection.push(id);
+        } else if (c.semester === semesterConstraint) {
+          newSelection.push(id);
+        }
+      }
+
+      setSelectedCourses(newSelection);
     }
   };
 
-  const openExportModal = () => {
+  const openExportModal = async () => {
     if (selectedCourses.length === 0) {
       alert("กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ");
       return;
     }
     setShowExportModal(true);
+
+    // Fetch available months based on the first selected course
+    // Backend expects 'month' param as courseID
+    try {
+      setLoadingMonths(true);
+      const courseID = selectedCourses[0];
+      // Reuse lookup service or fetch directly
+      const response = await fetch(`http://localhost:8084/TA-management/lookup/available-months?month=${courseID}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error("Failed to fetch months");
+      const data: AvailableMonth[] = await response.json();
+      setAvailableMonths(data);
+      if (data.length > 0) {
+        setSelectedMonth(data[0]);
+      } else {
+        setSelectedMonth(null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch available months", err);
+      // Optional: alert user?
+    } finally {
+      setLoadingMonths(false);
+    }
   };
 
   const closeModal = () => {
     setShowExportModal(false);
+    setAvailableMonths([]);
+    setSelectedMonth(null);
   };
 
   const removeCourseFromModal = (courseID: number) => {
     setSelectedCourses((prev) => prev.filter((id) => id !== courseID));
+    if (selectedCourses.length === 1) { // If we are removing the last one
+      closeModal();
+    }
   };
 
   const confirmExport = async () => {
@@ -108,24 +191,47 @@ export function CourseExport() {
       return;
     }
 
+    if (!selectedMonth) {
+      alert("กรุณาเลือกเดือนที่ต้องการส่งออก");
+      return;
+    }
+
     // Export payment report for each selected course
     for (const courseID of selectedCourses) {
       try {
-        const url = `http://localhost:8084/TA-management/ta_duty/export-payment-report?courseID=${courseID}&hourlyRate=${modalHourlyRate}`;
+        const response = await fetch("http://localhost:8084/TA-management/ta_duty/export-payment-report", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            courseID,
+            hourlyRate: modalHourlyRate,
+            month: selectedMonth.monthID,
+            year: selectedMonth.year,
+          }),
+        });
 
-        // Create a temporary link and trigger download
+        if (!response.ok) {
+          throw new Error(`Export failed for course ${courseID}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.target = '_blank';
-        link.download = `Payment_Report_${courseID}.xlsx`;
+        link.download = `Payment_Report_${courseID}_${selectedMonth.year}_${selectedMonth.monthID}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
 
         // Small delay between downloads to avoid browser blocking
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (error) {
         console.error(`Error exporting course ${courseID}:`, error);
+        alert(`เกิดข้อผิดพลาดในการส่งออกรายวิชา ${courseID}`);
       }
     }
 
@@ -251,20 +357,15 @@ export function CourseExport() {
                 <div
                   key={course.courseID}
                   onClick={() => toggleCourse(course.courseID)}
-                  className={`px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? "bg-[#fff1ec]" : ""}`}
+                  className={`px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? "bg-[#fff1ec]" : ""
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       {isSelected ? (
-                        <CheckSquare
-                          size={20}
-                          className="text-[#E35205]"
-                        />
+                        <CheckSquare size={20} className="text-[#E35205]" />
                       ) : (
-                        <Square
-                          size={20}
-                          className="text-gray-400"
-                        />
+                        <Square size={20} className="text-gray-400" />
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -274,17 +375,22 @@ export function CourseExport() {
                           <span className="text-xs px-2 py-0.5 bg-gray-100 rounded text-gray-600">
                             Section {course.section}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${course.courseProgram === "General"
-                            ? "bg-blue-50 text-blue-700"
-                            : course.courseProgram === "Continuing"
-                              ? "bg-purple-50 text-purple-700"
-                              : "bg-green-50 text-green-700"
-                            }`}>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded font-medium ${course.courseProgram === "General"
+                              ? "bg-blue-50 text-blue-700"
+                              : course.courseProgram === "Continuing"
+                                ? "bg-purple-50 text-purple-700"
+                                : "bg-green-50 text-green-700"
+                              }`}
+                          >
                             {course.courseProgram === "General"
                               ? "หลักสูตรปกติ"
                               : course.courseProgram === "Continuing"
                                 ? "หลักสูตรต่อเนื่อง"
                                 : "หลักสูตรนานาชาติ"}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 bg-orange-50 text-orange-700 rounded border border-orange-100">
+                            {course.semester}/{course.year ?? "2566"}
                           </span>
                         </div>
                         <p className="font-medium text-gray-900 mb-1">
@@ -297,7 +403,9 @@ export function CourseExport() {
                     </div>
                     <div className="flex gap-8 text-sm">
                       <div className="text-center">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">จำนวน TA</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                          จำนวน TA
+                        </p>
                         <p className="font-semibold bg-gray-100 px-3 py-1 rounded text-gray-700">
                           {course.taCount ?? "N/A"} คน
                         </p>
@@ -316,8 +424,8 @@ export function CourseExport() {
         <p className="text-sm text-[#9c3803]">
           <strong>หมายเหตุ:</strong>{" "}
           ไฟล์ที่ส่งออกจะอยู่ในรูปแบบพร้อมใช้งานสำหรับจัดทำเอกสารเบิกจ่ายค่าตอบแทน
-          รวมถึงข้อมูลชื่อผู้ช่วยสอน, ชั่วโมงการทำงาน,
-          วันที่ทำงาน, และสถานะการตรวจสอบ
+          รวมถึงข้อมูลชื่อผู้ช่วยสอน, ชั่วโมงการทำงาน, วันที่ทำงาน,
+          และสถานะการตรวจสอบ
         </p>
       </div>
 
@@ -339,20 +447,56 @@ export function CourseExport() {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto flex-1">
               {/* Hourly Rate Input */}
-              <div className="mb-6">
-                <label htmlFor="modalHourlyRate" className="block text-sm font-medium text-gray-700 mb-2">
-                  อัตราค่าตอบแทน (บาท/ชั่วโมง)
-                </label>
-                <input
-                  id="modalHourlyRate"
-                  type="number"
-                  min="0"
-                  step="10"
-                  value={modalHourlyRate}
-                  onChange={(e) => setModalHourlyRate(Number(e.target.value))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#E35205] focus:border-[#E35205]"
-                  placeholder="กรอกอัตราค่าตอบแทน"
-                />
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label
+                    htmlFor="modalHourlyRate"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    อัตราค่าตอบแทน (บาท/ชั่วโมง)
+                  </label>
+                  <input
+                    id="modalHourlyRate"
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={modalHourlyRate}
+                    onChange={(e) => setModalHourlyRate(Number(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#E35205] focus:border-[#E35205]"
+                    placeholder="กรอกอัตราค่าตอบแทน"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="monthSelect"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    ระบุเดือน
+                  </label>
+                  {loadingMonths ? (
+                    <div className="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+                      กำลังโหลด...
+                    </div>
+                  ) : (
+                    <select
+                      id="monthSelect"
+                      value={selectedMonth ? JSON.stringify(selectedMonth) : ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) setSelectedMonth(JSON.parse(val));
+                        else setSelectedMonth(null);
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#E35205] focus:border-[#E35205]"
+                    >
+                      <option value="">-- เลือกเดือน --</option>
+                      {availableMonths.map((m) => (
+                        <option key={`${m.year}-${m.monthID}`} value={JSON.stringify(m)}>
+                          {m.monthName} {m.year}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
 
               {/* Selected Courses List */}
@@ -361,7 +505,9 @@ export function CourseExport() {
                   รายวิชาที่เลือก ({selectedCourses.length})
                 </h4>
                 {selectedCourses.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">ไม่มีรายวิชาที่เลือก</p>
+                  <p className="text-gray-500 text-center py-8">
+                    ไม่มีรายวิชาที่เลือก
+                  </p>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {selectedCourses.map((courseID) => {
@@ -374,16 +520,20 @@ export function CourseExport() {
                         >
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <p className="font-medium text-sm text-gray-900">{course.courseCode}</p>
+                              <p className="font-medium text-sm text-gray-900">
+                                {course.courseCode}
+                              </p>
                               <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-700">
                                 Sec {course.section}
                               </span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${course.courseProgram === "General"
-                                ? "bg-blue-50 text-blue-700"
-                                : course.courseProgram === "Continuing"
-                                  ? "bg-purple-50 text-purple-700"
-                                  : "bg-green-50 text-green-700"
-                                }`}>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${course.courseProgram === "General"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : course.courseProgram === "Continuing"
+                                    ? "bg-purple-50 text-purple-700"
+                                    : "bg-green-50 text-green-700"
+                                  }`}
+                              >
                                 {course.courseProgram === "General"
                                   ? "ปกติ"
                                   : course.courseProgram === "Continuing"
@@ -391,7 +541,9 @@ export function CourseExport() {
                                     : "นานาชาติ"}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-600 line-clamp-1">{course.courseName}</p>
+                            <p className="text-xs text-gray-600 line-clamp-1">
+                              {course.courseName}
+                            </p>
                           </div>
                           <button
                             onClick={() => removeCourseFromModal(courseID)}
@@ -418,7 +570,7 @@ export function CourseExport() {
               </button>
               <button
                 onClick={confirmExport}
-                disabled={selectedCourses.length === 0 || modalHourlyRate <= 0}
+                disabled={selectedCourses.length === 0 || modalHourlyRate <= 0 || !selectedMonth}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 ส่งออก ({selectedCourses.length} รายวิชา)

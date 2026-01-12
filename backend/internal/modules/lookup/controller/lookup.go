@@ -33,6 +33,7 @@ func InitializeController(lookupService service.LookupService, r *gin.RouterGrou
 		r.POST("/holiday", c.AddSpecialHoliday)
 		r.DELETE("/holiday/:id", c.DeleteHoliday)
 		r.GET("/ta", c.getTA)
+		r.GET("/available-months", c.GetAvailableMonths)
 	}
 }
 
@@ -155,4 +156,20 @@ func (controller LookupController) getTA(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, result)
 
+}
+
+func (controller LookupController) GetAvailableMonths(ctx *gin.Context) {
+	month, err := strconv.Atoi(ctx.Query("month"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Failed on get query param"})
+		return
+	}
+
+	result, err := controller.service.GetAvailableMonths(month)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, result)
 }

@@ -252,3 +252,37 @@ func (r LookupRepositoryImplementation) GetTA(searchVal string) (*[]response.TaD
 
 	return &TAs, nil
 }
+
+func (r LookupRepositoryImplementation) GetAvailableMonths(courseId int) (*[]response.AvailableMonth, error) {
+
+	query := `
+			SELECT DISTINCT
+				EXTRACT(MONTH FROM series_date) AS month_id,
+				TO_CHAR(series_date, 'Month') AS month_name,
+				EXTRACT(YEAR FROM series_date) AS year_val
+			FROM(
+				SELECT generate_series(start_date, end_date, '1 month'::interval)::date AS series_date
+				FROM semester s
+				JOIN courses c ON c.semester_ID=s.semester_ID
+				WHERE c.course_ID = $1
+			)sub
+			ORDER BY year_val, month_id;
+		`
+	rows, err := r.db.Query(query, courseId)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	var months []response.AvailableMonth
+	for rows.Next() {
+		var month response.AvailableMonth
+		err := rows.Scan(&month.MonthID, &month.MonthName, &month.Year)
+		if err != nil {
+			return nil, err
+		}
+		months = append(months, month)
+	}
+
+	return &months, nil
+}

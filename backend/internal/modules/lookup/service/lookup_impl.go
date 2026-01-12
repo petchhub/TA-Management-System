@@ -206,3 +206,12 @@ func (s LookupServiceImplementation) GetTA(searchVal string) (*[]response.TaDeta
 	}
 	return result, err
 }
+
+func (s LookupServiceImplementation) GetAvailableMonths(courseId int) (*[]response.AvailableMonth, error) {
+	result, err := s.repo.GetAvailableMonths(courseId)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return result, err
+}

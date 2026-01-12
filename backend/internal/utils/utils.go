@@ -141,3 +141,64 @@ func IsDigitOnly(s string) bool {
 	}
 	return s != ""
 }
+
+func GetThaiMonthName(month int) string {
+	months := map[int]string{
+		1:  "มกราคม",
+		2:  "กุมภาพันธ์",
+		3:  "มีนาคม",
+		4:  "เมษายน",
+		5:  "พฤษภาคม",
+		6:  "มิถุนายน",
+		7:  "กรกฎาคม",
+		8:  "สิงหาคม",
+		9:  "กันยายน",
+		10: "ตุลาคม",
+		11: "พฤศจิกายน",
+		12: "ธันวาคม",
+	}
+	return months[month]
+}
+
+func ThaiBahtText(amount int) string {
+	if amount == 0 {
+		return "ศูนย์บาทถ้วน"
+	}
+
+	units := []string{"", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"}
+	nums := []string{"ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"}
+
+	var result strings.Builder
+	strNum := fmt.Sprintf("%d", amount)
+	n := len(strNum)
+
+	for i := 0; i < n; i++ {
+		digit := int(strNum[i] - '0')
+		pos := n - i - 1
+
+		if digit != 0 {
+			// Rule 2: 20 is "ยี่สิบ"
+			if pos%6 == 1 && digit == 2 {
+				result.WriteString("ยี่")
+			} else if pos%6 == 1 && digit == 1 {
+				// Rule 1: 10 is "สิบ" (skip "หนึ่ง")
+			} else if pos%6 == 0 && digit == 1 && i > 0 && int(strNum[i-1]-'0') != 0 {
+				// Rule 3: 1 at the end is "เอ็ด"
+				result.WriteString("เอ็ด")
+			} else {
+				result.WriteString(nums[digit])
+			}
+
+			// Add the unit (Ten, Hundred, etc.)
+			result.WriteString(units[pos%6])
+		}
+
+		// Handle Millions (reset for numbers > 1,000,000)
+		if pos != 0 && pos%6 == 0 {
+			result.WriteString("ล้าน")
+		}
+	}
+
+	result.WriteString("บาทถ้วน")
+	return result.String()
+}
