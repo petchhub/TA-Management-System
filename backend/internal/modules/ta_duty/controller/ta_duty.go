@@ -88,10 +88,28 @@ func (controller TaDutyController) exportPaymentReport(ctx *gin.Context) {
 	ctx.Header("Content-Description", "File Transfer")
 	ctx.Header("Content-Transfer-Encoding", "binary")
 	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
-	ctx.Header("Content-Type", "application/vnd.openxmlfomats-officedocument.sheet")
+	ctx.Header("Content-Type", "application/vnd.openxmlformats-officedocument.sheet")
 	ctx.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer.Bytes())
 }
 
 func (controller TaDutyController) exportSignatureSheet(ctx *gin.Context) {
+	var rq request.ExportSignatureSheet
+
+	if err := ctx.ShouldBindJSON(&rq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reqeust data"})
+		return
+	}
+
+	pdfBytes, err := controller.service.ExportSignatureSheet(rq)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+
+	fileName := fmt.Sprintf("Signature_sheet_%d.pdf", rq.CourseID)
+	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
+	ctx.Header("Content-Type", "application/pdf")
+	ctx.Header("Content-Length", fmt.Sprintf("%d", len(*pdfBytes)))
+	ctx.Data(http.StatusOK, "application/pdf", *pdfBytes)
 
 }

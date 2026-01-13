@@ -198,3 +198,89 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int, m
 
 	return &result, &courseData, nil
 }
+
+func (r TaDutyRepositoryImplentation) GetTADutyDataExportSignature(courseId int, month int) (*request.CreateSignatureSheet, *request.CourseDutyData, error) {
+
+	query := `SELECT 
+				c.course_code,
+				c.course_name,
+				c.semester,
+				c.sec
+			FROM ta_courses AS tc
+			LEFT JOIN courses AS c 
+				ON c.course_ID = tc.course_ID
+			WHERE tc.course_ID = $1
+	`
+	var courseData request.CourseDutyData
+	err := r.db.QueryRow(query, courseId).Scan(&courseData.CourseCode, &courseData.CourseName, &courseData.Semester, &courseData.Sec)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	studentDataQuery := `SELECT 
+							s.firstname || ' ' || s.lastname AS name
+						FROM ta_courses AS tc
+						LEFT JOIN students AS s
+							ON s.student_ID = tc.student_ID
+						WHERE tc.course_ID = $1						
+	`
+
+	var rq request.CreateSignatureSheet
+	rows, err := r.db.Query(studentDataQuery, courseId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for rows.Next() {
+		var studentName string
+		err := rows.Scan(&studentName)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rq.TAName = append(rq.TAName, studentName)
+	}
+	rows.Close()
+
+	dutyTimeQuery := `
+		WITH RECURSIVE semester_dates AS (
+			SELECT s.start_date, s.end_date
+			FROM semester s
+			JOIN courses c ON c.semester_ID = s.semester_ID
+			WHERE c.course_ID = $1
+		),
+		all_dates AS (
+			SELECT start_date AS d_date FROM semester_dates
+			UNION ALL
+			SELECT (d_date + INTERVAL '1 day')::date FROM all_dates
+			WHERE d_date < (SELECT end_date FROM semester_dates)
+		)
+		SELECT 
+			ad.d_date
+		FROM all_dates ad
+		JOIN courses c ON c.course_ID = $1
+		JOIN class_days cd ON c.class_day_ID = cd.class_day_ID
+		LEFT JOIN holidays hol ON ad.d_date = hol.holiday_date
+		WHERE trim(to_char(ad.d_date, 'Day')) = cd.class_day_value -- Only show the class days
+		AND hol.id IS NULL -- Exclude Holidays
+		AND EXTRACT(MONTH FROM ad.d_date) = $2
+		ORDER BY ad.d_date ASC;
+    `
+	rows, err = r.db.Query(dutyTimeQuery, courseId, month)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for rows.Next() {
+		var dutyDate string
+		err := rows.Scan(&dutyDate)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rq.DutyDate = append(rq.DutyDate, dutyDate)
+	}
+	rows.Close()
+
+	return &rq, &courseData, nil
+}

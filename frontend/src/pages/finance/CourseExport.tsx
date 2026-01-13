@@ -42,6 +42,10 @@ export function CourseExport() {
   const [availableMonths, setAvailableMonths] = useState<AvailableMonth[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<AvailableMonth | null>(null);
   const [loadingMonths, setLoadingMonths] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatureMonths, setSignatureMonths] = useState<AvailableMonth[]>([]);
+  const [selectedSignatureMonth, setSelectedSignatureMonth] = useState<AvailableMonth | null>(null);
+  const [loadingSignatureMonths, setLoadingSignatureMonths] = useState(false);
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -239,6 +243,95 @@ export function CourseExport() {
     closeModal();
   };
 
+  const openSignatureModal = async () => {
+    if (selectedCourses.length === 0) {
+      alert("กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ");
+      return;
+    }
+    setShowSignatureModal(true);
+
+    // Fetch available months based on the first selected course
+    try {
+      setLoadingSignatureMonths(true);
+      const courseID = selectedCourses[0];
+      const response = await fetch(`http://localhost:8084/TA-management/lookup/available-months?month=${courseID}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error("Failed to fetch months");
+      const data: AvailableMonth[] = await response.json();
+      setSignatureMonths(data);
+      if (data.length > 0) {
+        setSelectedSignatureMonth(data[0]);
+      } else {
+        setSelectedSignatureMonth(null);
+      }
+    } catch (err) {
+      console.error("Failed to fetch available months", err);
+    } finally {
+      setLoadingSignatureMonths(false);
+    }
+  };
+
+  const closeSignatureModal = () => {
+    setShowSignatureModal(false);
+    setSignatureMonths([]);
+    setSelectedSignatureMonth(null);
+  };
+
+  const confirmSignatureExport = async () => {
+    if (selectedCourses.length === 0) {
+      alert("กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ");
+      closeSignatureModal();
+      return;
+    }
+
+    if (!selectedSignatureMonth) {
+      alert("กรุณาเลือกเดือนที่ต้องการส่งออก");
+      return;
+    }
+
+    // Export signature sheet for each selected course
+    for (const courseID of selectedCourses) {
+      try {
+        const response = await fetch("http://localhost:8084/TA-management/ta_duty/export-signature-sheet", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            courseID,
+            month: selectedSignatureMonth.monthID,
+            year: selectedSignatureMonth.year,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Export failed for course ${courseID}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Signature_Sheet_${courseID}_${selectedSignatureMonth.year}_${selectedSignatureMonth.monthID}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+        // Small delay between downloads to avoid browser blocking
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (error) {
+        console.error(`Error exporting signature sheet for course ${courseID}:`, error);
+        alert(`เกิดข้อผิดพลาดในการส่งออกใบลงชื่อรายวิชา ${courseID}`);
+      }
+    }
+
+    alert(`กำลังส่งออกใบลงชื่อ ${selectedCourses.length} รายวิชา`);
+    closeSignatureModal();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -322,7 +415,14 @@ export function CourseExport() {
               className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
               <Download size={18} />
-              ส่งออกรายงาน
+              ส่งออกรายงานการเบิกจ่าย
+            </button>
+            <button
+              onClick={openSignatureModal}
+              className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <FileSpreadsheet size={18} />
+              ส่งออกใบลงชื่อ
             </button>
           </div>
         </div>
@@ -572,6 +672,137 @@ export function CourseExport() {
                 onClick={confirmExport}
                 disabled={selectedCourses.length === 0 || modalHourlyRate <= 0 || !selectedMonth}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                ส่งออก ({selectedCourses.length} รายวิชา)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Signature Sheet Export Modal */}
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-semibold">ยืนยันการส่งออกใบลงชื่อ</h3>
+              <button
+                onClick={closeSignatureModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {/* Month Selector */}
+              <div className="mb-6">
+                <label
+                  htmlFor="signatureMonthSelect"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  ระบุเดือน
+                </label>
+                {loadingSignatureMonths ? (
+                  <div className="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+                    กำลังโหลด...
+                  </div>
+                ) : (
+                  <select
+                    id="signatureMonthSelect"
+                    value={selectedSignatureMonth ? JSON.stringify(selectedSignatureMonth) : ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) setSelectedSignatureMonth(JSON.parse(val));
+                      else setSelectedSignatureMonth(null);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#E35205] focus:border-[#E35205]"
+                  >
+                    <option value="">-- เลือกเดือน --</option>
+                    {signatureMonths.map((m) => (
+                      <option key={`${m.year}-${m.monthID}`} value={JSON.stringify(m)}>
+                        {m.monthName} {m.year}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Selected Courses List */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  รายวิชาที่เลือก ({selectedCourses.length})
+                </h4>
+                {selectedCourses.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">
+                    ไม่มีรายวิชาที่เลือก
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {selectedCourses.map((courseID) => {
+                      const course = courses.find((c) => c.courseID === courseID);
+                      if (!course) return null;
+                      return (
+                        <div
+                          key={courseID}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-sm text-gray-900">
+                                {course.courseCode}
+                              </p>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-700">
+                                Sec {course.section}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${course.courseProgram === "General"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : course.courseProgram === "Continuing"
+                                    ? "bg-purple-50 text-purple-700"
+                                    : "bg-green-50 text-green-700"
+                                  }`}
+                              >
+                                {course.courseProgram === "General"
+                                  ? "ปกติ"
+                                  : course.courseProgram === "Continuing"
+                                    ? "ต่อเนื่อง"
+                                    : "นานาชาติ"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600 line-clamp-1">
+                              {course.courseName}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => removeCourseFromModal(courseID)}
+                            className="ml-4 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                            title="ลบรายวิชานี้"
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={closeSignatureModal}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={confirmSignatureExport}
+                disabled={selectedCourses.length === 0 || !selectedSignatureMonth}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 ส่งออก ({selectedCourses.length} รายวิชา)
               </button>

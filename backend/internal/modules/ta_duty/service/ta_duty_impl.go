@@ -2,20 +2,27 @@ package service
 
 import (
 	"TA-management/internal/constants"
+	generalresponse "TA-management/internal/modules/shared/dto/response"
 	"TA-management/internal/modules/ta_duty/dto/request"
 	"TA-management/internal/modules/ta_duty/dto/response"
 	"TA-management/internal/modules/ta_duty/repository"
 	"TA-management/internal/utils"
 	"bytes"
+	"context"
+	_ "embed"
 	"errors"
 	"fmt"
+	"html/template"
 	"time"
 
-	generalresponse "TA-management/internal/modules/shared/dto/response"
-
+	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/chromedp"
 	"github.com/xuri/excelize/v2"
 	"go.uber.org/zap"
 )
+
+//go:embed templates/signature.html
+var htmlTemplateString string
 
 type TaDutyServiceImplementation struct {
 	repo   repository.TaDutyRepository
@@ -158,10 +165,127 @@ func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.Cre
 	}
 	toatalThaiText := utils.ThaiBahtText(grandTotal)
 	f.SetCellValue(sheetName, "A22", fmt.Sprintf("%s %s", constants.PaymentReportTotalThaiText, toatalThaiText))
+
 	var buf bytes.Buffer
 	if _, err := f.WriteTo(&buf); err != nil {
 		return nil, err
 	}
 	return &buf, nil
 
+}
+
+func (s TaDutyServiceImplementation) ExportSignatureSheet(rq request.ExportSignatureSheet) (*[]byte, error) {
+	TADutydata, courseData, err := s.repo.GetTADutyDataExportSignature(rq.CourseID, rq.Month)
+	if err != nil {
+		s.logger.Errorf("Failed on get duty data: %v", err)
+		return nil, err
+	}
+
+	courseData.MonthName = utils.GetThaiMonthName(rq.Month)
+	courseData.Year = fmt.Sprintf("%d", rq.Year+543)
+
+	filesBytes, err := s.GenerateSignatureSheetPDF(*TADutydata, *courseData)
+	if err != nil {
+		s.logger.Errorf("Failed on generate signature sheet %v", err)
+		return nil, err
+	}
+
+	return &filesBytes, nil
+}
+
+func (s TaDutyServiceImplementation) GenerateSignatureSheet(rq request.CreateSignatureSheet, courseData request.CourseDutyData) (*bytes.Buffer, error) {
+	f, err := excelize.OpenFile("./prototype/signature-template.xlsx")
+	if err != nil {
+		s.logger.Errorf("cannot openfile :%v", err)
+		return nil, err
+	}
+	defer f.Close()
+
+	sheetName := "Sheet1"
+	f.SetCellValue(sheetName, "A2", fmt.Sprintf("วิชาปฎิบัติการ %s %s (กลุ่ม %s) ประจำภาคเรียนที่ %s", courseData.CourseCode, courseData.CourseName, courseData.Sec, courseData.Semester))
+	f.SetCellValue(sheetName, "A4", fmt.Sprintf("ประจำเดือน %s %s", courseData.MonthName, courseData.Year))
+
+	for i, date := range rq.DutyDate {
+		rowIdx := 7 + (i * 6)
+
+		//set index
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", rowIdx), i+1)
+		//set date
+		f.SetCellValue(sheetName, fmt.Sprintf("B%d", rowIdx), date)
+
+		//set TA name
+		for j, name := range rq.TAName {
+			rowIdxx := rowIdx + j + 1
+			f.SetCellValue(sheetName, fmt.Sprintf("B%d", rowIdxx), name)
+		}
+	}
+
+	var buf bytes.Buffer
+	if _, err := f.WriteTo(&buf); err != nil {
+		s.logger.Errorf("Failed on write to buffer: %v", err)
+		return nil, err
+	}
+
+	return &buf, nil
+}
+
+func (s TaDutyServiceImplementation) GenerateSignatureSheetPDF(rq request.CreateSignatureSheet, courseData request.CourseDutyData) ([]byte, error) {
+	// 1. Setup the data (same as before)
+	data := request.SignatureSheetData{
+		CourseCode: courseData.CourseCode,
+		CourseName: courseData.CourseName,
+		Sec:        courseData.Sec,
+		Semester:   courseData.Semester,
+		MonthName:  courseData.MonthName,
+		Year:       courseData.Year,
+	}
+
+	for i, date := range rq.DutyDate {
+		data.Duties = append(data.Duties, request.DutyGroup{
+			Index:   i + 1,
+			Date:    date,
+			TANames: rq.TAName,
+		})
+	}
+
+	// 2. Render HTML using the template
+	tmpl, err := template.New("signature").Parse(htmlTemplateString)
+	if err != nil {
+		return nil, err
+	}
+	var htmlBuf bytes.Buffer
+	tmpl.Execute(&htmlBuf, data)
+
+	// 3. Setup Chromedp Context
+	ctx, cancel := chromedp.NewContext(context.Background())
+	defer cancel()
+
+	var pdfBuffer []byte
+	err = chromedp.Run(ctx,
+		// This loads the HTML string directly into the headless browser
+		chromedp.Navigate("about:blank"),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			frameTree, err := page.GetFrameTree().Do(ctx)
+			if err != nil {
+				return err
+			}
+			return page.SetDocumentContent(frameTree.Frame.ID, htmlBuf.String()).Do(ctx)
+		}),
+		// This triggers the PDF generation
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			buf, _, err := page.PrintToPDF().
+				WithPrintBackground(true).
+				WithPaperWidth(8.27).   // A4 Width in inches
+				WithPaperHeight(11.69). // A4 Height in inches
+				Do(ctx)
+			pdfBuffer = buf
+			return err
+		}),
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate PDF: %v", err)
+	}
+
+	return pdfBuffer, nil
 }
