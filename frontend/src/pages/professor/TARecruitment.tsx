@@ -12,6 +12,14 @@ import { ApplicantModal } from "./ApplicantModal";
 import { useAuth } from "../../context/AuthContext";
 import { getProfessorApplications, approveApplication, rejectApplication } from "../../services/courseService";
 
+const REJECT_TEMPLATES = [
+  "จำนวนผู้ช่วยสอนครบตามจำนวนที่ต้องการแล้ว",
+  "คุณสมบัติไม่ตรงตามเกณฑ์รายวิชา (GPA)",
+  "เวลาปฏิบัติงานของผู้สมัครมากเกินไปแล้ว",
+  "ต้องการผู้ช่วยสอนที่มีประสบการณ์มาก่อน",
+  "เอกสารประกอบการสมัครไม่ครบถ้วน",
+];
+
 interface Applicant {
   id: number;
   name: string;
@@ -37,6 +45,11 @@ export function TARecruitment() {
   const [statusFilter, setStatusFilter] = useState<string>("PENDING");
   const [gpaFilter, setGpaFilter] = useState<string>("all");
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+
+  // Reject Modal State
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [selectedRejectId, setSelectedRejectId] = useState<number | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,15 +118,26 @@ export function TARecruitment() {
     }
   };
 
-  const handleReject = async (id?: number) => {
+  const handleRejectClick = (id: number) => {
+    setSelectedRejectId(id);
+    setRejectReason("");
+    setRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!selectedRejectId) return;
     try {
-      if (!id) return;
-      await rejectApplication(id);
+      await rejectApplication(selectedRejectId, rejectReason);
+      setRejectModalOpen(false);
       await fetchApplications(); // Refresh list
     } catch (err) {
       console.error("Failed to reject application:", err);
       alert("เกิดข้อผิดพลาดในการปฏิเสธ");
     }
+  };
+
+  const handleSelectTemplate = (template: string) => {
+    setRejectReason(template);
   };
 
   const filteredApplicants = applicants.filter((app) => {
@@ -367,7 +391,7 @@ export function TARecruitment() {
                           </button>
                           <button
                             onClick={() =>
-                              handleReject(applicant.id)
+                              handleRejectClick(applicant.id)
                             }
                             className="p-1 text-red-600 hover:bg-red-50 rounded"
                             title="ปฏิเสธ"
@@ -385,6 +409,52 @@ export function TARecruitment() {
         </div>
       </div>
 
+      {/* Reject Reason Modal */}
+      {rejectModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">ระบุเหตุผลในการปฏิเสธ</h3>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">เลือกข้อความอัตโนมัติ:</p>
+              <div className="flex flex-wrap gap-2">
+                {REJECT_TEMPLATES.map((template, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSelectTemplate(template)}
+                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-xs transition-colors border border-gray-200"
+                  >
+                    {template}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <textarea
+              className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none mb-4"
+              placeholder="ระบุเหตุผลเพิ่มเติม..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setRejectModalOpen(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleConfirmReject}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+              >
+                ยืนยันการปฏิเสธ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedApplicant && (
         <ApplicantModal
           applicant={selectedApplicant}
@@ -394,8 +464,10 @@ export function TARecruitment() {
             setSelectedApplicant(null);
           }}
           onReject={() => {
-            handleReject(selectedApplicant.id);
+            // Close details modal and open reject modal
+            const id = selectedApplicant.id;
             setSelectedApplicant(null);
+            handleRejectClick(id);
           }}
         />
       )}

@@ -395,9 +395,10 @@ export async function approveApplication(applicationId: number): Promise<any> {
 /**
  * Reject a TA application
  * @param applicationId - The ID of the application to reject
+ * @param rejectReason - The reason for rejection
  * @returns Promise with result
  */
-export async function rejectApplication(applicationId: number): Promise<any> {
+export async function rejectApplication(applicationId: number, rejectReason: string): Promise<any> {
     try {
         const response = await fetch(`${API_BASE_URL}/course/application/reject/${applicationId}`, {
             method: 'POST',
@@ -405,6 +406,7 @@ export async function rejectApplication(applicationId: number): Promise<any> {
             headers: {
                 'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ rejectReason }),
         });
 
         if (!response.ok) {

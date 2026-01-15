@@ -417,6 +417,13 @@ func (controller CourseController) approveApplication(ctx *gin.Context) {
 
 func (controller CourseController) rejectApplication(ctx *gin.Context) {
 	rq := request.RejectApplication{}
+
+	id, ok := utils.ValidateParam(ctx, "applicationId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validate Param Failed."})
+		return
+	}
+	rq.ApplicationId = id
 	if err := ctx.ShouldBindJSON(&rq); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "body request not valid"})
 		return

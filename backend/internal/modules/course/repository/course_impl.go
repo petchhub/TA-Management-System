@@ -137,9 +137,10 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				FROM ta_application as ta
 				WHERE ta.job_post_ID = j.id
 				AND ta.student_ID = $1)
+			AND j.status_id = $2
 			`
 
-	rows, err := r.db.Query(query, studentId)
+	rows, err := r.db.Query(query, studentId, constants.OpenStatusID)
 	if err != nil {
 		return nil, err
 	}
@@ -261,9 +262,10 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 				ON c.class_day_ID = cd.class_day_ID
 			LEFT JOIN course_programs AS cp
 				ON c.course_program_ID = cp.course_program_ID
-			WHERE c.professor_ID=$1`
+			WHERE c.professor_ID=$1
+			AND status_ID=$2`
 
-	rows, err := r.db.Query(query, professorId)
+	rows, err := r.db.Query(query, professorId, constants.OpenStatusID)
 	if err != nil {
 		return nil, err
 	}
@@ -951,28 +953,26 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 		return fmt.Errorf("failed to Insert new ta_course : %v", err)
 	}
 
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed on commit transaction")
+	}
 	//check ta allocation
 	allocationQuery = `SELECT COUNT(*) FROM ta_application WHERE job_post_id = $1 AND status_id = $2`
 	allocationCount = 0
 	err = r.db.QueryRow(allocationQuery, jobPostId, constants.ApprovedStatusID).Scan(&allocationCount)
 	if err != nil {
-		tx.Rollback()
 		return fmt.Errorf("failed get allocation count : %v", err)
 	}
 
 	if allocationCount == taAllocation {
 		query = `UPDATE ta_job_posting SET status_id = $1 WHERE id = $2`
-		_, err = tx.Exec(query, constants.ApprovedStatusID, jobPostId)
+		_, err = r.db.Exec(query, constants.CloseStatusID, jobPostId)
 		if err != nil {
-			tx.Rollback()
 			return fmt.Errorf("failed update ta_job_posting: %v", err)
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed on commit transaction")
-	}
 	return nil
 }
 
@@ -983,7 +983,6 @@ func (r CourseRepositoryImplementation) RejectApplication(rq request.RejectAppli
 	}
 
 	// update status on ta_application
-	// Status ID 4 is REJECTED
 	rejectStatus := constants.RejectedStatusID
 	query := `UPDATE ta_application SET status_ID = $1, reject_reason = $2 WHERE id = $3`
 

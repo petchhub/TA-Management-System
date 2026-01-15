@@ -323,7 +323,7 @@ INSERT INTO class_days (class_day_value,class_day_value_thai) VALUES
     ('Sunday','จันทร์'),
     ('Monday','อังคาร'),
     ('Tuesday','พุธ'),
-    ('Wednesday','พฤหัส'),
+    ('Wednesday','พฤหัสบดี'),
     ('Thursday','ศุกร์'),
     ('Friday','เสาร์'),
     ('Saturday','อาทิตย์');
