@@ -219,27 +219,36 @@ func (controller CourseController) applyJobPost(ctx *gin.Context) {
 		return
 	}
 
-	transcriptName, transcriptBytes, err := utils.GetFileData(ctx, "Transcript")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	bankAccountName, bankAccountBytes, err := utils.GetFileData(ctx, "BankAccount")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	studentCardName, studentCardBytes, err := utils.GetFileData(ctx, "StudentCard")
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	if err := ctx.ShouldBind(&rq); err != nil {
 		fmt.Println(err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "body request not valid"})
+		return
+	}
+
+	// Transcript handling
+	var transcriptName string
+	var transcriptBytes *[]byte
+	var err error
+
+	if rq.AttachNewPDF {
+		transcriptName, transcriptBytes, err = utils.GetFileData(ctx, "Transcript")
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Transcript file is required"})
+			return
+		}
+	}
+
+	// BankAccount is OPTIONAL
+	bankAccountName, bankAccountBytes, err := utils.GetOptionalFileData(ctx, "BankAccount")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Error reading BankAccount file: " + err.Error()})
+		return
+	}
+
+	// StudentCard is OPTIONAL
+	studentCardName, studentCardBytes, err := utils.GetOptionalFileData(ctx, "StudentCard")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Error reading StudentCard file: " + err.Error()})
 		return
 	}
 

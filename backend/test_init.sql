@@ -50,6 +50,8 @@ CREATE TABLE students(
     student_ID INTEGER PRIMARY KEY,
     firstname VARCHAR(100),
     lastname VARCHAR(100) ,
+    firstname_thai VARCHAR(100),
+    lastname_thai VARCHAR(100),
     email VARCHAR(50),
     phone_number  VARCHAR(20) 
 );
@@ -58,23 +60,34 @@ CREATE TABLE students(
 CREATE TABLE transcript_storage(
     transcript_ID SERIAL PRIMARY KEY,
     file_bytes BYTEA,
-    file_name VARCHAR(30)
+    file_name VARCHAR(100),
+    student_ID INTEGER UNIQUE,
+    CONSTRAINT FK_student_ID
+        FOREIGN KEY (student_ID)
+        REFERENCES students(student_ID)
 );
 
 --verified
 CREATE TABLE bank_account_storage(
     bank_account_ID SERIAL PRIMARY KEY,
     file_bytes BYTEA,
-    file_name VARCHAR(30)
+    file_name VARCHAR(100),
+    student_ID INTEGER UNIQUE,
+    CONSTRAINT FK_student_ID
+        FOREIGN KEY (student_ID)
+        REFERENCES students(student_ID)
 );
 
 --verified
 CREATE TABLE student_card_storage(
     student_card_ID SERIAL PRIMARY KEY,
     file_bytes BYTEA,
-    file_name VARCHAR(30)
+    file_name VARCHAR(100),
+    student_ID INTEGER UNIQUE,
+    CONSTRAINT FK_student_ID
+        FOREIGN KEY (student_ID)
+        REFERENCES students(student_ID)
 );
-
 
 --verified
 CREATE TABLE courses(
@@ -136,9 +149,6 @@ CREATE TABLE ta_job_posting(
 
 CREATE TABLE ta_application(
     id SERIAL PRIMARY KEY,
-    transcript_ID INT NOT NULL,
-    bank_account_ID INT NOT NULL,
-    student_card_ID INT NOT NULL,
     student_ID INT NOT NULL,
     status_ID INT NOT NULL,
     job_post_ID INT NOT NULL,
@@ -154,16 +164,7 @@ CREATE TABLE ta_application(
         REFERENCES status(status_ID),
     CONSTRAINT FK_job_post_ID
         FOREIGN KEY (job_post_ID)
-        REFERENCES ta_job_posting(id),
-    CONSTRAINT FK_transcript_ID
-        FOREIGN KEY (transcript_ID)
-        REFERENCES transcript_storage(transcript_ID),
-    CONSTRAINT FK_bank_account_ID
-        FOREIGN KEY (bank_account_ID)
-        REFERENCES bank_account_storage(bank_account_ID),
-    CONSTRAINT FK_student_card_ID
-        FOREIGN KEY (student_card_ID)
-        REFERENCES student_card_storage(student_card_ID)
+        REFERENCES ta_job_posting(id)
 );
 
 CREATE TABLE ta_courses(
@@ -325,7 +326,8 @@ INSERT INTO class_days (class_day_value) VALUES
 -- course_programs
 INSERT INTO course_programs (course_program_value) VALUES
     ('General'),
-    ('International');
+    ('International'),
+    ('Continue');
 
 --grades
 INSERT INTO grades (grade_value) VALUES

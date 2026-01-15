@@ -134,6 +134,8 @@ func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.Cre
 			break
 		}
 
+		f.SetCellValue(sheetName, fmt.Sprintf("A%d", rowIdx), i+1)
+
 		//Fill student name
 		f.SetCellValue(sheetName, fmt.Sprintf("B%d", rowIdx), student.StudentName)
 
@@ -174,7 +176,7 @@ func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.Cre
 
 }
 
-func (s TaDutyServiceImplementation) ExportSignatureSheet(rq request.ExportSignatureSheet) (*[]byte, error) {
+func (s TaDutyServiceImplementation) ExportSignatureSheet(rq request.ExportSignatureSheet) (*bytes.Buffer, error) {
 	TADutydata, courseData, err := s.repo.GetTADutyDataExportSignature(rq.CourseID, rq.Month)
 	if err != nil {
 		s.logger.Errorf("Failed on get duty data: %v", err)
@@ -184,13 +186,13 @@ func (s TaDutyServiceImplementation) ExportSignatureSheet(rq request.ExportSigna
 	courseData.MonthName = utils.GetThaiMonthName(rq.Month)
 	courseData.Year = fmt.Sprintf("%d", rq.Year+543)
 
-	filesBytes, err := s.GenerateSignatureSheetPDF(*TADutydata, *courseData)
+	filesBytes, err := s.GenerateSignatureSheet(*TADutydata, *courseData)
 	if err != nil {
 		s.logger.Errorf("Failed on generate signature sheet %v", err)
 		return nil, err
 	}
 
-	return &filesBytes, nil
+	return filesBytes, nil
 }
 
 func (s TaDutyServiceImplementation) GenerateSignatureSheet(rq request.CreateSignatureSheet, courseData request.CourseDutyData) (*bytes.Buffer, error) {

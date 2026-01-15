@@ -215,3 +215,33 @@ func (s LookupServiceImplementation) GetAvailableMonths(courseId int) (*[]respon
 	}
 	return result, err
 }
+
+func (s LookupServiceImplementation) GetTranscript(studentID int) (*response.PdfFile, error) {
+	result, err := s.repo.GetTranscript(studentID)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s LookupServiceImplementation) GetBankAccount(studentID int) (*response.PdfFile, error) {
+	result, err := s.repo.GetBankAccount(studentID)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s LookupServiceImplementation) GetStudentCard(studentID int) (*response.PdfFile, error) {
+	result, err := s.repo.GetStudentCard(studentID)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	return result, nil
+}

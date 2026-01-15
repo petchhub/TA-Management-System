@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/gin-gonic/gin"
@@ -109,25 +110,58 @@ func ExtractDigits(s string) (int, bool) {
 	return number, true
 }
 
+// GetFileData enforces that a file MUST be present
 func GetFileData(ctx *gin.Context, key string) (string, *[]byte, error) {
 
 	fileHeader, err := ctx.FormFile(key)
 	if err != nil {
 		fmt.Println(err)
-		return "", nil, fmt.Errorf("file is required.")
+		return "", nil, fmt.Errorf("file %s is required", key)
+	}
+
+	fmt.Println("file header:", fileHeader)
+	if fileHeader == nil {
+		return "", nil, fmt.Errorf("file %s is nil", key)
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
 		fmt.Println(err)
-		return "", nil, fmt.Errorf("failed to open file.")
+		return "", nil, fmt.Errorf("failed to open file %s", key)
 	}
 	defer file.Close()
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
 		fmt.Println(err)
-		return "", nil, fmt.Errorf("failed to read file.")
+		return "", nil, fmt.Errorf("failed to read file %s", key)
+	}
+
+	return fileHeader.Filename, &fileBytes, nil
+}
+
+// GetOptionalFileData allows the file to be missing. Returns nil bytes if missing.
+func GetOptionalFileData(ctx *gin.Context, key string) (string, *[]byte, error) {
+
+	fileHeader, err := ctx.FormFile(key)
+	if err != nil {
+		// Treat error (like http.ErrMissingFile) as just "no file"
+		return "", nil, nil
+	}
+
+	if fileHeader == nil {
+		return "", nil, nil
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to open file %s", key)
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read file %s", key)
 	}
 
 	return fileHeader.Filename, &fileBytes, nil
@@ -201,4 +235,25 @@ func ThaiBahtText(amount int) string {
 
 	result.WriteString("บาทถ้วน")
 	return result.String()
+}
+
+func ConvertTOThaiDate(dateStr string) (string, error) {
+
+	thaiMonths := []string{
+		"", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+		"กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+	}
+
+	parsedDate, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return "", fmt.Errorf("invalid date format: %v", err)
+	}
+
+	day := parsedDate.Day()
+	month := parsedDate.Month()
+	year := parsedDate.Year() + 543
+
+	result := fmt.Sprintf("%d %s พ.ศ. %d", day, thaiMonths[month], year)
+
+	return result, nil
 }

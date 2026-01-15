@@ -562,49 +562,72 @@ func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) 
 		return 0, err
 	}
 
-	var transcriptId int
-	query := "INSERT INTO transcript_storage(file_bytes,file_name) VALUES($1, $2) RETURNING transcript_ID"
-	err = tx.QueryRow(query, body.TranscriptBytes, body.TranscriptName).Scan(&transcriptId)
-	if err != nil {
-		tx.Rollback()
-		return 0, fmt.Errorf("failed on insert to transcript file : %v", err)
+	if body.TranscriptBytes != nil {
+		query := `INSERT INTO transcript_storage(file_bytes,file_name,student_ID) 
+					VALUES($1, $2, $3) 
+					ON CONFLICT (student_ID)
+					DO UPDATE SET
+						file_bytes = EXCLUDED.file_bytes,
+						file_name = EXCLUDED.file_name;`
+		_, err = tx.Exec(query, body.TranscriptBytes, body.TranscriptName, body.StudentID)
+		if err != nil {
+			tx.Rollback()
+			return 0, fmt.Errorf("failed on upsert to transcript file : %v", err)
+		}
+
 	}
 
-	var bankAccountId int
-	query = "INSERT INTO bank_account_storage(file_bytes,file_name) VALUES($1, $2) RETURNING bank_account_ID"
-	err = tx.QueryRow(query, body.BankAccountBytes, body.BankAccountName).Scan(&bankAccountId)
-	if err != nil {
-		tx.Rollback()
-		return 0, fmt.Errorf("failed on insert to bank account file : %v", err)
+	if body.BankAccountBytes != nil {
+		query := `INSERT INTO bank_account_storage(file_bytes,file_name, student_ID) 
+					VALUES($1, $2, $3)
+					ON CONFLICT(student_ID)
+					DO UPDATE SET
+						file_bytes = EXCLUDED.file_bytes,
+						file_name = EXCLUDED.file_name; `
+		_, err = tx.Exec(query, body.BankAccountBytes, body.BankAccountName, body.StudentID)
+		if err != nil {
+			tx.Rollback()
+			return 0, fmt.Errorf("failed on upsert to bank account file : %v", err)
+		}
+
 	}
 
-	var studentCardId int
-	query = "INSERT INTO student_card_storage(file_bytes,file_name) VALUES($1, $2) RETURNING student_card_ID"
-	err = tx.QueryRow(query, body.StudentCardBytes, body.StudentCardName).Scan(&studentCardId)
+	if body.StudentCardBytes != nil {
+		query := `INSERT INTO student_card_storage(file_bytes,file_name, student_ID) 
+					VALUES($1, $2, $3) 
+					ON CONFLICT(student_ID)
+					DO UPDATE SET
+						file_bytes = EXCLUDED.file_bytes,
+						file_name = EXCLUDED.file_name;`
+		_, err = tx.Exec(query, body.StudentCardBytes, body.StudentCardName, body.StudentID)
+		if err != nil {
+			tx.Rollback()
+			return 0, fmt.Errorf("failed on upsert to student card file : %v", err)
+		}
+	}
+
+	updateStudentQuery := `UPDATE students SET 
+							firstname_thai = $1, 
+							lastname_thai = $2 
+							WHERE student_ID=$3`
+	_, err = r.db.Exec(updateStudentQuery, body.FirstnameThai, body.LastnameThai, body.StudentID)
 	if err != nil {
-		tx.Rollback()
-		return 0, fmt.Errorf("failed on insert to student card file : %v", err)
+		return 0, fmt.Errorf("failed on update student data : %v", err)
 	}
 
 	statusId := 3
 	var applicationId int
-	query = `INSERT INTO ta_application(
-				transcript_ID, 
-				bank_account_ID, 
-				student_card_ID,
+	query := `INSERT INTO ta_application(
 				student_ID, 
 				status_ID, 
 				job_post_ID,
 				grade,
 				purpose,
 				created_date)
-			VALUES($1, $2, $3, $4, $5, $6 ,$7, $8, $9)
+			VALUES($1, $2, $3, $4, $5, $6 )
 			RETURNING id`
 
 	err = tx.QueryRow(query,
-		transcriptId,
-		bankAccountId,
-		studentCardId,
 		body.StudentID,
 		statusId,
 		body.JobPostID,
@@ -618,8 +641,8 @@ func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) 
 		return 0, fmt.Errorf("failed on insert to ta_application: %v", err)
 	}
 
-	query = "UPDATE students SET phone_number = $1 WHERE student_ID = $2"
-	_, err = tx.Exec(query, body.PhoneNumber, body.StudentID)
+	query = "UPDATE students SET phone_number = $1, firstname_thai = $2, lastname_thai = $3 WHERE student_ID = $4"
+	_, err = tx.Exec(query, body.PhoneNumber, body.FirstnameThai, body.LastnameThai, body.StudentID)
 	if err != nil {
 		tx.Rollback()
 		return 0, fmt.Errorf("failed on update to students: %v", err)
@@ -915,9 +938,9 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 					stu.firstname,
 					stu.lastname,
 					stu.phone_number,
-					CASE WHEN ta.transcript_ID IS NOT NULL THEN true ELSE false END as has_transcript,
-					CASE WHEN ta.bank_account_ID IS NOT NULL THEN true ELSE false END as has_bank_account,
-					CASE WHEN ta.student_card_ID IS NOT NULL THEN true ELSE false END as has_student_card
+					CASE WHEN ts.transcript_ID IS NOT NULL THEN true ELSE false END as has_transcript,
+					CASE WHEN ba.bank_account_ID IS NOT NULL THEN true ELSE false END as has_bank_account,
+					CASE WHEN sc.student_card_ID IS NOT NULL THEN true ELSE false END as has_student_card
 				FROM ta_application AS ta 
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
@@ -927,6 +950,12 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 					ON jp.course_ID = c.course_ID
 				LEFT JOIN students AS stu
 					ON ta.student_id = stu.student_id
+				LEFT JOIN transcript_storage ts
+					ON ta.student_ID = ts.student_ID
+				LEFT JOIN student_card_storage sc
+					ON ta.student_ID = sc.student_ID
+				LEFT JOIN bank_account_storage ba
+					ON ta.student_ID = ba.student_ID
 				WHERE c.professor_ID = $1`
 
 	rows, err := r.db.Query(query, professorId)

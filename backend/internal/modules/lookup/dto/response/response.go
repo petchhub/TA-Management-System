@@ -15,3 +15,8 @@ type AvailableMonth struct {
 	MonthName string `json:"monthName"`
 	Year      int    `json:"year"`
 }
+
+type PdfFile struct {
+	FileName  string
+	FileBytes []byte
+}

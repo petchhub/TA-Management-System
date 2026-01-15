@@ -18,4 +18,7 @@ type LookupRepository interface {
 	AddSpecialHoliday(holiday request.CreateHoliday) error
 	GetTA(searchVal string) (*[]response.TaDetail, error)
 	GetAvailableMonths(courseId int) (*[]response.AvailableMonth, error)
+	GetStudentCard(studentID int) (*response.PdfFile, error)
+	GetTranscript(studentID int) (*response.PdfFile, error)
+	GetBankAccount(studentID int) (*response.PdfFile, error)
 }

@@ -33,9 +33,10 @@
         </thead>
         <tbody>
             {{range .Duties}}
-                <tr class="date-row">
+                <tr >
                     <td>{{.Index}}</td>
-                    <td colspan="6">วันที่: {{.Date}}</td>
+                    <td  colspan="1">วันที่: {{.Date}}</td>
+                    <td class="date-row" colspan="5"></td>
                 </tr>
                 {{range .TANames}}
                 <tr class="ta-row">

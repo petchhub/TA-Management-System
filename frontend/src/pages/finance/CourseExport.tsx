@@ -314,7 +314,7 @@ export function CourseExport() {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Signature_Sheet_${courseID}_${selectedSignatureMonth.year}_${selectedSignatureMonth.monthID}.pdf`;
+        link.download = `Signature_Sheet_${courseID}_${selectedSignatureMonth.year}_${selectedSignatureMonth.monthID}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

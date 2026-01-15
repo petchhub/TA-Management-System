@@ -153,3 +153,48 @@ export async function searchStudents(query: string): Promise<{ id: number, name:
         throw error;
     }
 }
+
+/**
+ * Get student transcript file URL
+ * @param studentID - The student ID
+ * @returns string URL for the transcript PDF
+ */
+export function getStudentTranscriptUrl(studentID: number): string {
+    return `${API_BASE_URL}/transcript?studentID=${studentID}`;
+}
+
+/**
+ * Get student bank account file URL
+ * @param studentID - The student ID
+ * @returns string URL for the bank account PDF
+ */
+export function getStudentBankAccountUrl(studentID: number): string {
+    return `${API_BASE_URL}/bank-account?studentID=${studentID}`;
+}
+
+/**
+ * Get student card file URL
+ * @param studentID - The student ID
+ * @returns string URL for the student card PDF
+ */
+export function getStudentCardUrl(studentID: number): string {
+    return `${API_BASE_URL}/student-card?studentID=${studentID}`;
+}
+
+/**
+ * Check if a student file exists
+ * @param url - The file URL to check
+ * @returns Promise<boolean> - true if file exists, false otherwise
+ */
+export async function checkFileExists(url: string): Promise<boolean> {
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+        });
+        return response.ok;
+    } catch (error) {
+        console.error('Error checking file existence:', error);
+        return false;
+    }
+}

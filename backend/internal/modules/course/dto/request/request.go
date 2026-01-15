@@ -74,8 +74,12 @@ type UpdateCourse struct {
 
 type ApplyJobPost struct {
 	StudentID        int    `form:"studentID"`
+	FirstName        string `form:"firstName"`
+	LastName         string `form:"lastName"`
 	Grade            string `form:"grade"`
 	Purpose          string `form:"purpose"`
+	Experience       string `form:"experience"`
+	AttachNewPDF     bool   `form:"attachNewPDF"`
 	JobPostID        *int
 	TranscriptBytes  *[]byte
 	TranscriptName   *string
@@ -84,4 +88,6 @@ type ApplyJobPost struct {
 	StudentCardBytes *[]byte
 	StudentCardName  *string
 	PhoneNumber      *string `form:"phoneNumber"`
+	FirstnameThai    *string `form:"firstname_thai"`
+	LastnameThai     *string `form:"lastname_thai"`
 }

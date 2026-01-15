@@ -286,3 +286,42 @@ func (r LookupRepositoryImplementation) GetAvailableMonths(courseId int) (*[]res
 
 	return &months, nil
 }
+
+func (r LookupRepositoryImplementation) GetStudentCard(studentID int) (*response.PdfFile, error) {
+
+	query := `SELECT file_name, file_bytes FROM student_card_storage WHERE student_ID=$1`
+
+	var result response.PdfFile
+	err := r.db.QueryRow(query, studentID).Scan(&result.FileName, &result.FileBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (r LookupRepositoryImplementation) GetTranscript(studentID int) (*response.PdfFile, error) {
+
+	query := `SELECT file_name, file_bytes FROM transcript_storage WHERE student_ID=$1`
+
+	var result response.PdfFile
+	err := r.db.QueryRow(query, studentID).Scan(&result.FileName, &result.FileBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (r LookupRepositoryImplementation) GetBankAccount(studentID int) (*response.PdfFile, error) {
+
+	query := `SELECT file_name, file_bytes FROM bank_account_storage WHERE student_ID=$1`
+
+	var result response.PdfFile
+	err := r.db.QueryRow(query, studentID).Scan(&result.FileName, &result.FileBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}

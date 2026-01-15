@@ -59,10 +59,13 @@ export interface ApplicationData {
     motivation: string;
     experience: string;
     gpa: string;
-    transcript: File;
+    transcript?: File | null;
     phoneNumber?: string;
+    firstname_thai?: string;
+    lastname_thai?: string;
     bankAccount?: File | null;
     studentCard?: File | null;
+    attacheNewPDF:boolean;
 }
 
 /**
@@ -176,7 +179,12 @@ export async function applyToPosition(
         const formData = new FormData();
         formData.append('studentID', applicationData.studentID.toString());
         formData.append('statusID', applicationData.statusID.toString());
-        formData.append('Transcript', applicationData.transcript); // Changed from 'pdfFile'
+        
+        // Only append transcript if a new one is provided
+        if (applicationData.transcript) {
+            formData.append('Transcript', applicationData.transcript);
+        }
+        
         formData.append('grade', applicationData.gpa);
         formData.append('purpose', applicationData.motivation);
         formData.append('experience', applicationData.experience);
@@ -184,6 +192,11 @@ export async function applyToPosition(
         // Phone number is required (NOT NULL in database)
         formData.append('phoneNumber', applicationData.phoneNumber || '');
 
+        // Thai names - required fields
+        formData.append('firstname_thai', applicationData.firstname_thai || '');
+        formData.append('lastname_thai', applicationData.lastname_thai || '');
+
+        formData.append('attachNewPDF', applicationData.attacheNewPDF.toString());
         // Optional files - use correct field names
         if (applicationData.bankAccount) {
             formData.append('BankAccount', applicationData.bankAccount); // Changed from 'bankAccountFile'

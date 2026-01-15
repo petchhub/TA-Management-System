@@ -11,5 +11,5 @@ type TaDutyService interface {
 	GetTADutyRoadmap(courseID int, studentID int) (*[]response.DutyChecklistItem, error)
 	MarkDutyAsDone(courseID int, studentID int, dutyDate string) (*generalresponse.GeneralResponse, error)
 	ExportPaymentReport(rq request.ExportPaymentReportRequest) (*bytes.Buffer, error)
-	ExportSignatureSheet(rq request.ExportSignatureSheet) (*[]byte, error)
+	ExportSignatureSheet(rq request.ExportSignatureSheet) (*bytes.Buffer, error)
 }

@@ -3,6 +3,7 @@ package repository
 import (
 	"TA-management/internal/modules/ta_duty/dto/request"
 	"TA-management/internal/modules/ta_duty/dto/response"
+	"TA-management/internal/utils"
 	"database/sql"
 	"time"
 )
@@ -87,7 +88,7 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int, m
 
 	query := `SELECT 
 					s.student_ID,
-					s.firstname || ' ' || s.lastname,
+					s.firstname_thai || ' ' || s.lastname_thai,
 					c.work_hour,
 					c.class_start || ' ' || c.class_end || ' น. ' AS time_range,
 					c.course_code,
@@ -184,7 +185,13 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportPayment(courseID int, m
 				rows.Close()
 				return nil, nil, err
 			}
-			item.Date = dutyTime.Format("2006-01-02")
+
+			thaiDate, err := utils.ConvertTOThaiDate(dutyTime.Format("2006-01-02"))
+			if err != nil {
+				return nil, nil, err
+			}
+
+			item.Date = thaiDate
 			item.TimeRange = student.timeRange
 			roadmap = append(roadmap, item)
 		}
@@ -218,7 +225,7 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportSignature(courseId int,
 	}
 
 	studentDataQuery := `SELECT 
-							s.firstname || ' ' || s.lastname AS name
+							s.firstname_thai || ' ' || s.lastname_thai AS name
 						FROM ta_courses AS tc
 						LEFT JOIN students AS s
 							ON s.student_ID = tc.student_ID
@@ -272,13 +279,18 @@ func (r TaDutyRepositoryImplentation) GetTADutyDataExportSignature(courseId int,
 	}
 
 	for rows.Next() {
-		var dutyDate string
+		var dutyDate time.Time
 		err := rows.Scan(&dutyDate)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		rq.DutyDate = append(rq.DutyDate, dutyDate)
+		thaiDate, err := utils.ConvertTOThaiDate(dutyDate.Format("2006-01-02"))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		rq.DutyDate = append(rq.DutyDate, thaiDate)
 	}
 	rows.Close()
 

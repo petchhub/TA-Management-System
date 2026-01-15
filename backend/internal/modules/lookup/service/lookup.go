@@ -18,4 +18,7 @@ type LookupService interface {
 	DeleteHoliday(id int) error
 	GetTA(searchVal string) (*[]response.TaDetail, error)
 	GetAvailableMonths(month int) (*[]response.AvailableMonth, error)
+	GetTranscript(studentID int) (*response.PdfFile, error)
+	GetBankAccount(studentID int) (*response.PdfFile, error)
+	GetStudentCard(studentID int) (*response.PdfFile, error)
 }

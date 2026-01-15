@@ -100,16 +100,17 @@ func (controller TaDutyController) exportSignatureSheet(ctx *gin.Context) {
 		return
 	}
 
-	pdfBytes, err := controller.service.ExportSignatureSheet(rq)
+	buffer, err := controller.service.ExportSignatureSheet(rq)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
 		return
 	}
 
-	fileName := fmt.Sprintf("Signature_sheet_%d.pdf", rq.CourseID)
+	fileName := fmt.Sprintf("Signature_sheet_%d.xlsx", rq.CourseID)
+	ctx.Header("Content-Description", "File Transfer")
+	ctx.Header("Content-Transfer-Encoding", "binary")
 	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
-	ctx.Header("Content-Type", "application/pdf")
-	ctx.Header("Content-Length", fmt.Sprintf("%d", len(*pdfBytes)))
-	ctx.Data(http.StatusOK, "application/pdf", *pdfBytes)
+	ctx.Header("Content-Type", "application/vnd.openxmlformats-officedocument.sheet")
+	ctx.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer.Bytes())
 
 }

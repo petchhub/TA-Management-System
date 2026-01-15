@@ -34,6 +34,9 @@ func InitializeController(lookupService service.LookupService, r *gin.RouterGrou
 		r.DELETE("/holiday/:id", c.DeleteHoliday)
 		r.GET("/ta", c.getTA)
 		r.GET("/available-months", c.GetAvailableMonths)
+		r.GET("/transcript", c.GetTranscript)
+		r.GET("/bank-account", c.GetBankAccount)
+		r.GET("/student-card", c.GetStudentCard)
 	}
 }
 
@@ -172,4 +175,78 @@ func (controller LookupController) GetAvailableMonths(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller LookupController) GetTranscript(ctx *gin.Context) {
+	studentID, err := strconv.Atoi(ctx.Query("studentID"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	result, err := controller.service.GetTranscript(studentID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, result)
+		return
+	}
+
+	if result != nil {
+		fileName := "transcript_" + result.FileName + "pdf."
+		ctx.Header("Content-Disposition", "inline; filename="+fileName)
+		ctx.Header("Content-Type", "application/pdf")
+
+		ctx.Data(http.StatusOK, "application/pdf", result.FileBytes)
+	} else {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "NO Transcript data found"})
+	}
+
+}
+
+func (controller LookupController) GetBankAccount(ctx *gin.Context) {
+	studentID, err := strconv.Atoi(ctx.Query("studentID"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	result, err := controller.service.GetBankAccount(studentID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, result)
+		return
+	}
+
+	if result != nil {
+		fileName := "bank_account_" + result.FileName + "pdf."
+		ctx.Header("Content-Disposition", "inline; filename="+fileName)
+		ctx.Header("Content-Type", "application/pdf")
+
+		ctx.Data(http.StatusOK, "application/pdf", result.FileBytes)
+	} else {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "NO Transcript data found"})
+	}
+
+}
+
+func (controller LookupController) GetStudentCard(ctx *gin.Context) {
+	studentID, err := strconv.Atoi(ctx.Query("studentID"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	result, err := controller.service.GetStudentCard(studentID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, result)
+		return
+	}
+
+	if result != nil {
+		fileName := "studetn_card_" + result.FileName + "pdf."
+		ctx.Header("Content-Disposition", "inline; filename="+fileName)
+		ctx.Header("Content-Type", "application/pdf")
+
+		ctx.Data(http.StatusOK, "application/pdf", result.FileBytes)
+	} else {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "NO Transcript data found"})
+	}
 }
