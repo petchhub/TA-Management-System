@@ -3,13 +3,15 @@
 --verified
 CREATE TABLE class_days(
     class_day_ID  SERIAL PRIMARY KEY,
-    class_day_value VARCHAR(20) NOT NULL
+    class_day_value VARCHAR(20) NOT NULL,
+    class_day_value_thai VARCHAR(20) NOT NULL
 );
 
 --verified
 CREATE TABLE course_programs(
     course_program_ID  SERIAL PRIMARY KEY,
-    course_program_value VARCHAR(20) NOT NULL
+    course_program_value VARCHAR(20) NOT NULL,
+    course_program_value_thai VARCHAR(20) NOT NULL
 );
 
 --verified
@@ -36,6 +38,8 @@ CREATE TABLE professors(
     professor_ID SERIAL PRIMARY KEY,
     firstname VARCHAR(100) NOT NULL,
     lastname VARCHAR(150) NOT NULL,
+    firstname_thai VARCHAR(100),
+    lastname_thai VARCHAR(100),
      email VARCHAR(50),
     created_at TIMESTAMP 
 );
@@ -156,6 +160,7 @@ CREATE TABLE ta_application(
     job_post_ID INT NOT NULL,
     grade VARCHAR(10) NOT NULL,
     purpose VARCHAR(100) NOT NULL,
+      reject_reason VARCHAR(200),
     created_date TIMESTAMP,
     deleted_date TIMESTAMP,
     CONSTRAINT FK_student_ID
@@ -319,20 +324,20 @@ INSERT INTO status (status_value) VALUES
 
 
 -- class_day
-INSERT INTO class_days (class_day_value) VALUES
-    ('Sunday'),
-    ('Monday'),
-    ('Tuesday'),
-    ('Wednesday'),
-    ('Thursday'),
-    ('Friday'),
-    ('Saturday');
+INSERT INTO class_days (class_day_value,class_day_value_thai) VALUES
+    ('Sunday','จันทร์'),
+    ('Monday','อังคาร'),
+    ('Tuesday','พุธ'),
+    ('Wednesday','พฤหัส'),
+    ('Thursday','ศุกร์'),
+    ('Friday','เสาร์'),
+    ('Saturday','อาทิตย์');
 
 -- course_programs
-INSERT INTO course_programs (course_program_value) VALUES
-    ('General'),
-    ('International'),
-    ('Continue');
+INSERT INTO course_programs (course_program_value,course_program_value_thai) VALUES
+    ('General','ทั่วไป'),
+    ('International','นานาชาติ'),
+    ('Continuing','ต่อเนื่อง');
 
 --grades
 INSERT INTO grades (grade_value) VALUES

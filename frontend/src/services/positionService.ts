@@ -77,16 +77,11 @@ function mapPositionToCourse(position: PositionResponse, index: number): Course 
     deadline.setDate(deadline.getDate() + 30);
     const deadlineStr = deadline.toISOString().split('T')[0];
 
-    // Infer program from course name (if no Thai characters, assume International)
-    // Backend doesn't send program field, so we must infer it on frontend
-    const programStr =
-        position.program?.includes('International')
-            ? 'International Program'
-            : 'หลักสูตรปกติ(ไทย)';
-
+    // Use program from backend directly (now it's Thai)
+    const programStr = position.program || '';
 
     // Format requirements text
-    const requirementsStr = position.program?.includes('International')
+    const requirementsStr = position.program?.includes('International') || position.program === 'นานาชาติ'
         ? `Must have passed ${position.courseName} with a grade not lower than ${position.grade}`
         : `ต้องเคยผ่านรายวิชา ${position.courseName} โดยได้เกรดไม่ต่ำกว่า ${position.grade}`;
 

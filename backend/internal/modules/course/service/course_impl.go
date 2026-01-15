@@ -234,8 +234,8 @@ func (s CourseServiceImplementation) GetApplicationByProfessorId(professorId int
 	}, nil
 }
 
-func (s CourseServiceImplementation) RejectApplication(applicationId int) (*response.GeneralResponse, error) {
-	err := s.repo.RejectApplication(applicationId)
+func (s CourseServiceImplementation) RejectApplication(rq request.RejectApplication) (*response.GeneralResponse, error) {
+	err := s.repo.RejectApplication(rq)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err

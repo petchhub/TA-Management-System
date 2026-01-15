@@ -20,7 +20,7 @@ func (r LookupRepositoryImplementation) GetCourseProgram() (*[]response.LookupRe
 
 	query := `SELECT 
 				course_program_id, 
-				course_program_value 
+				course_program_value_thai 
 			FROM course_programs`
 
 	rows, err := r.db.Query(query)
@@ -44,7 +44,7 @@ func (r LookupRepositoryImplementation) GetClassday() (*[]response.LookupRespons
 
 	query := `SELECT 
 				class_day_id, 
-				class_day_value 
+				class_day_value_thai 
 			FROM class_days`
 
 	rows, err := r.db.Query(query)

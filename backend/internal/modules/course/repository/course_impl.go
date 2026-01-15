@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"TA-management/internal/constants"
 	"TA-management/internal/modules/course/dto/request"
 	"TA-management/internal/modules/course/dto/response"
 	"database/sql"
@@ -30,8 +31,8 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 				c.class_start,
 				c.class_end,
 				j.location,
-				c.course_program,
-				cd.class_day_value, 
+				cp.course_program_value_thai,
+				cd.class_day_value_thai, 
 				p.firstname,
 				p.lastname,
 				s.semester_value,
@@ -43,6 +44,8 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 				ON j.course_ID = c.course_ID
 			LEFT JOIN class_days AS cd
 				ON c.class_day_ID = cd.class_day_ID 
+			LEFT JOIN course_programs AS cp
+				ON c.course_program_ID = cp.course_program_ID
 			LEFT JOIN professors AS p
 				ON c.professor_ID = p.professor_ID
 			LEFT JOIN semester AS s
@@ -50,9 +53,10 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 			LEFT JOIN status AS st
 				ON j.status_ID = st.status_ID
 			LEFT JOIN grades AS g
-				ON j.grade_ID = g.grade_ID`
+				ON j.grade_ID = g.grade_ID
+			WHERE j.status_ID = $1`
 
-	rows, err := r.db.Query(query)
+	rows, err := r.db.Query(query, constants.OpenStatusID)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +109,8 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				c.class_start,
 				c.class_end,
 				j.location,
-				c.course_program,
-				cd.class_day_value, 
+				cp.course_program_value_thai,
+				cd.class_day_value_thai,
 				p.firstname,
 				p.lastname,
 				s.semester_value,
@@ -118,6 +122,8 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				ON j.course_ID = c.course_ID
 			LEFT JOIN class_days AS cd
 				ON c.class_day_ID = cd.class_day_ID 
+			LEFT JOIN course_programs AS cp
+				ON c.course_program_ID = cp.course_program_ID
 			LEFT JOIN professors AS p
 				ON c.professor_ID = p.professor_ID
 			LEFT JOIN semester AS s
@@ -180,8 +186,8 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				c.course_ID, 
 				c.course_code, 
 				c.course_name, 
-				c.course_program,
-				c.class_day,
+				cp.course_program_value_thai,
+				cd.class_day_value_thai,
 				c.class_start,
 				c.class_end,
 				c.semester,
@@ -192,6 +198,10 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 			FROM courses AS c
 			LEFT JOIN professors AS p
 				ON c.professor_ID = p.professor_ID
+			LEFT JOIN class_days AS cd
+				ON c.class_day_ID = cd.class_day_ID
+			LEFT JOIN course_programs AS cp
+				ON c.course_program_ID = cp.course_program_ID
 			WHERE c.deleted_date IS NULL`
 
 	rows, err := r.db.Query(query)
@@ -235,8 +245,8 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 				c.course_ID,
 				c.course_code, 
 				c.course_name,
-				c.course_program,
-				c.class_day,
+				cp.course_program_value_thai,
+				cd.class_day_value_thai,
 				c.class_start,
 				c.class_end,
 				c.semester,
@@ -247,6 +257,10 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 			FROM courses AS c
 			join professors AS p 
 				on c.professor_ID = p.professor_ID
+			LEFT JOIN class_days AS cd
+				ON c.class_day_ID = cd.class_day_ID
+			LEFT JOIN course_programs AS cp
+				ON c.course_program_ID = cp.course_program_ID
 			WHERE c.professor_ID=$1`
 
 	rows, err := r.db.Query(query, professorId)
@@ -557,6 +571,25 @@ func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) 
 		return 0, fmt.Errorf("student:%d already apply to this job", body.StudentID)
 	}
 
+	//check ta allocation
+	var taAllocation int
+	query := `SELECT ta_allocation FROM ta_job_posting WHERE id = $1`
+	err = r.db.QueryRow(query, body.JobPostID).Scan(&taAllocation)
+	if err != nil {
+		return 0, err
+	}
+
+	allocationQuery := `SELECT COUNT(*) FROM ta_application WHERE job_post_id = $1 AND status_id = $2`
+	allocationCount := 0
+	err = r.db.QueryRow(allocationQuery, body.JobPostID, constants.ApprovedStatusID).Scan(&allocationCount)
+	if err != nil {
+		return 0, err
+	}
+
+	if allocationCount >= taAllocation {
+		return 0, fmt.Errorf("ta allocation is full")
+	}
+
 	tx, err := r.db.Begin()
 	if err != nil {
 		return 0, err
@@ -615,9 +648,9 @@ func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) 
 		return 0, fmt.Errorf("failed on update student data : %v", err)
 	}
 
-	statusId := 3
+	statusId := constants.PendingStatusID
 	var applicationId int
-	query := `INSERT INTO ta_application(
+	query = `INSERT INTO ta_application(
 				student_ID, 
 				status_ID, 
 				job_post_ID,
@@ -856,8 +889,10 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 	pendingStatus := 3
 	var courseId int
 	var studentId int
+	var jobPostId int
 	query := `SELECT 
 					jp.course_ID, 
+					jp.id,
 					ta.student_ID 
 				FROM ta_application as ta
 				LEFT JOIN ta_job_posting as jp
@@ -866,14 +901,36 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 
 	err = tx.QueryRow(query,
 		ApplicationId,
-		pendingStatus).Scan(&courseId, &studentId)
+		pendingStatus).Scan(&courseId, &jobPostId, &studentId)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed get courseId : %v", err)
 	}
 
+	//check ta allocation
+	var taAllocation int
+	query = `SELECT ta_allocation FROM ta_job_posting WHERE id = $1`
+	err = r.db.QueryRow(query, jobPostId).Scan(&taAllocation)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed get ta allocation : %v", err)
+	}
+
+	allocationQuery := `SELECT COUNT(*) FROM ta_application WHERE job_post_id = $1 AND status_id = $2`
+	allocationCount := 0
+	err = r.db.QueryRow(allocationQuery, jobPostId, constants.ApprovedStatusID).Scan(&allocationCount)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed get allocation count : %v", err)
+	}
+
+	if allocationCount >= taAllocation {
+		tx.Rollback()
+		return fmt.Errorf("ta allocation is full")
+	}
+
 	//update status on ta_application
-	approveStatus := 5
+	approveStatus := constants.ApprovedStatusID
 	query = `UPDATE ta_application SET status_ID = $1 WHERE id = $2`
 
 	_, err = tx.Exec(query, approveStatus, ApplicationId)
@@ -894,6 +951,24 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 		return fmt.Errorf("failed to Insert new ta_course : %v", err)
 	}
 
+	//check ta allocation
+	allocationQuery = `SELECT COUNT(*) FROM ta_application WHERE job_post_id = $1 AND status_id = $2`
+	allocationCount = 0
+	err = r.db.QueryRow(allocationQuery, jobPostId, constants.ApprovedStatusID).Scan(&allocationCount)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed get allocation count : %v", err)
+	}
+
+	if allocationCount == taAllocation {
+		query = `UPDATE ta_job_posting SET status_id = $1 WHERE id = $2`
+		_, err = tx.Exec(query, constants.ApprovedStatusID, jobPostId)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed update ta_job_posting: %v", err)
+		}
+	}
+
 	if err := tx.Commit(); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed on commit transaction")
@@ -901,7 +976,7 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 	return nil
 }
 
-func (r CourseRepositoryImplementation) RejectApplication(ApplicationId int) error {
+func (r CourseRepositoryImplementation) RejectApplication(rq request.RejectApplication) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
@@ -909,10 +984,10 @@ func (r CourseRepositoryImplementation) RejectApplication(ApplicationId int) err
 
 	// update status on ta_application
 	// Status ID 4 is REJECTED
-	rejectStatus := 4
-	query := `UPDATE ta_application SET status_ID = $1 WHERE id = $2`
+	rejectStatus := constants.RejectedStatusID
+	query := `UPDATE ta_application SET status_ID = $1, reject_reason = $2 WHERE id = $3`
 
-	_, err = tx.Exec(query, rejectStatus, ApplicationId)
+	_, err = tx.Exec(query, rejectStatus, rq.RejectReason, rq.ApplicationId)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed update ta_application: %v", err)
