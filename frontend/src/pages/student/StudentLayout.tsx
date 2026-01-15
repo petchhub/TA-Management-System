@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { StudentSidebar } from './StudentSidebar';
 import Dashboard from './Dashboard';
-import WorkHours from './WorkHours';
+import ManagedCourses from './ManagedCourses';
 import Courses from './Courses';
 import Profile from './Profile';
 
-type Page = 'dashboard' | 'work-hours' | 'courses' | 'profile';
+type Page = 'dashboard' | 'managed-courses' | 'courses' | 'profile';
 
 interface StudentLayoutProps {
     initialPage?: Page;
@@ -18,8 +18,8 @@ export function StudentLayout({ initialPage = 'dashboard' }: StudentLayoutProps)
         switch (currentPage) {
             case 'dashboard':
                 return <Dashboard />;
-            case 'work-hours':
-                return <WorkHours />;
+            case 'managed-courses':
+                return <ManagedCourses />;
             case 'courses':
                 return <Courses />;
             case 'profile':

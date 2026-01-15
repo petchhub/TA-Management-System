@@ -54,6 +54,7 @@ type Application struct {
 	HasTranscript  bool      `json:"hasTranscript"`
 	HasBankAccount bool      `json:"hasBankAccount"`
 	HasStudentCard bool      `json:"hasStudentCard"`
+	Location       string    `json:"location"`
 }
 
 type PdfFile struct {

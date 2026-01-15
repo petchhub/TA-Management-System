@@ -1,7 +1,7 @@
 import { Users, CheckCircle, Clock, Plus, UserCheck, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CreateTAAnnouncementModal } from './CreateTAAnnouncementModal';
-import { createJobPost } from '../../services/courseService';
+import { createJobPost, getProfessorApplications, Application } from '../../services/courseService';
 import { useAuth } from '../../context/AuthContext';
 
 
@@ -13,6 +13,22 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recentApplications, setRecentApplications] = useState<Application[]>([]);
+
+  useEffect(() => {
+    const fetchApplications = async () => {
+      if (!user?.id) return;
+      try {
+        const apps = await getProfessorApplications(parseInt(user.id));
+        // Sort by ID descending as a proxy for recency, take top 3
+        const sorted = apps.sort((a, b) => b.applicationId - a.applicationId).slice(0, 3);
+        setRecentApplications(sorted);
+      } catch (error) {
+        console.error("Failed to load recent applications", error);
+      }
+    };
+    fetchApplications();
+  }, [user?.id]);
 
   const handleCreateAnnouncement = async (data: any) => {
     try {
@@ -90,19 +106,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       onClick: () => onNavigate?.('recruitment'),
     },
     {
-      title: 'ดูชั่วโมงการทำงาน',
-      description: 'เช็คและอนุมัติชั่วโมงงาน',
+      title: 'ดูชั่วโมงการทำงานของ TA',
+      description: 'เช็คและตรวจสอบชั่วโมงกาารทำงาน',
       icon: FileText,
       color: 'bg-purple-600 hover:bg-purple-700',
       onClick: () => onNavigate?.('work-hours'),
     },
   ];
 
-  const recentApplications = [
-    { name: 'สมชาย ใจดี', studentId: '6512345678', gpa: '3.85', status: 'pending' },
-    { name: 'สมหญิง รักเรียน', studentId: '6512345679', gpa: '3.92', status: 'pending' },
-    { name: 'ประเสริฐ ขยัน', studentId: '6512345680', gpa: '3.78', status: 'pending' },
-  ];
+  // Removed mock recentApplications
+
 
   return (
     <div className="p-8">
@@ -185,13 +198,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </thead>
             <tbody>
               {recentApplications.map((app) => (
-                <tr key={app.studentId} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-gray-900">{app.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{app.studentId}</td>
-                  <td className="px-6 py-4 text-gray-900">{app.gpa}</td>
+                <tr key={app.applicationId} className="border-b border-gray-200 hover:bg-gray-50">
+                  <td className="px-6 py-4 text-gray-900">{app.studentName || 'N/A'}</td>
+                  <td className="px-6 py-4 text-gray-600">{app.studentID}</td>
+                  <td className="px-6 py-4 text-gray-900">{app.grade || '-'}</td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800">
-                      รอพิจารณา
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${app.statusCode === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      app.statusCode === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                      {app.statusCode}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -224,6 +240,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         <CreateTAAnnouncementModal
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateAnnouncement}
+          isSubmitting={isSubmitting}
         />
       )}
     </div>

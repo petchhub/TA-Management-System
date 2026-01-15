@@ -43,6 +43,7 @@ export interface Application {
     purpose?: string;
     courseName?: string;
     professorName?: string;
+    location?: string;
 }
 
 export interface ApplicationResponse {

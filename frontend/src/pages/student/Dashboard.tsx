@@ -38,7 +38,7 @@ export default function Dashboard() {
           // So app.courseID is likely the jobPostID.
           // We need to find the course that corresponds to this jobPostID.
 
-          const course = courses.find(c => c.jobPostID === app.courseID || c.courseID === app.courseID.toString());
+          const course = courses.find(c => c.jobPostID === app.courseID || c.courseID === app.courseID);
           const courseName = course
             ? `${course.courseID} - ${course.courseName}`
             : `Course ID: ${app.courseID}`;

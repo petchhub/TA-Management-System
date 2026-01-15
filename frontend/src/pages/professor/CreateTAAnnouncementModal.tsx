@@ -8,6 +8,7 @@ import { formatTime } from '../../utils/formatUtils';
 interface CreateTAAnnouncementModalProps {
     onClose: () => void;
     onSubmit: (data: any) => void;
+    isSubmitting?: boolean;
 }
 
 export interface TAAnnouncementData {
@@ -19,7 +20,7 @@ export interface TAAnnouncementData {
     location: string;
 }
 
-export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnouncementModalProps) {
+export function CreateTAAnnouncementModal({ onClose, onSubmit, isSubmitting }: CreateTAAnnouncementModalProps) {
     const { user } = useAuth();
     const [courses, setCourses] = useState<Course[]>([]);
     const [gradeOptions, setGradeOptions] = useState<LookupItem[]>([]);
@@ -295,13 +296,13 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit }: CreateTAAnnounc
                         </button>
                         <button
                             type="submit"
-                            disabled={!selectedCourseId}
-                            className={`px-6 py-2 rounded-lg text-white transition-colors ${!selectedCourseId
+                            disabled={!selectedCourseId || isSubmitting}
+                            className={`px-6 py-2 rounded-lg text-white transition-colors ${!selectedCourseId || isSubmitting
                                 ? 'bg-gray-300 cursor-not-allowed'
                                 : 'bg-orange-600 hover:bg-orange-700'
                                 }`}
                         >
-                            สร้างประกาศ
+                            {isSubmitting ? 'กำลังสร้าง...' : 'สร้างประกาศ'}
                         </button>
                     </div>
                 </form>

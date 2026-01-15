@@ -705,7 +705,8 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 					c.class_start,
 					c.class_end,
 					p.firstname,
-					p.lastname
+					p.lastname,
+					tp.location
 				FROM ta_application AS ta 
 				LEFT JOIN ta_job_posting AS tp
 					ON ta.job_post_ID = tp.id
@@ -740,6 +741,7 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 			&application.ClassEnd,
 			&firstname,
 			&lastname,
+			&application.Location,
 		)
 		if err != nil {
 			return nil, err

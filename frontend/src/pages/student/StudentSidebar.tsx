@@ -1,7 +1,7 @@
-import { LayoutDashboard, Clock, BookOpen, User, Settings } from 'lucide-react';
+import { LayoutDashboard, Clock, BookOpen, User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-type Page = 'dashboard' | 'work-hours' | 'courses' | 'profile';
+type Page = 'dashboard' | 'managed-courses' | 'courses' | 'profile';
 
 interface StudentSidebarProps {
     currentPage: Page;
@@ -9,14 +9,14 @@ interface StudentSidebarProps {
 }
 
 export function StudentSidebar({ currentPage, onNavigate }: StudentSidebarProps) {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
 
     const username = user?.name || 'Student';
     const role = user?.role === 'STUDENT' ? 'นักศึกษา' : user?.role || 'Student';
 
     const menuItems = [
         { id: 'dashboard' as Page, label: 'หน้าหลัก', icon: LayoutDashboard },
-        { id: 'work-hours' as Page, label: 'ชั่วโมงงาน', icon: Clock },
+        { id: 'managed-courses' as Page, label: 'รายวิชาที่ดูแลอยู่', icon: Clock },
         { id: 'courses' as Page, label: 'ค้นหาตำแหน่ง', icon: BookOpen },
         { id: 'profile' as Page, label: 'โปรไฟล์', icon: User },
     ];
@@ -52,9 +52,12 @@ export function StudentSidebar({ currentPage, onNavigate }: StudentSidebarProps)
             </nav>
 
             <div className="p-4 border-t border-gray-200">
-                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                    <Settings size={20} />
-                    <span>ตั้งค่า</span>
+                <button
+                    onClick={logout}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors mt-1"
+                >
+                    <LogOut size={20} />
+                    <span>ออกจากระบบ</span>
                 </button>
             </div>
 
