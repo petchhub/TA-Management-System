@@ -263,9 +263,9 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 			LEFT JOIN course_programs AS cp
 				ON c.course_program_ID = cp.course_program_ID
 			WHERE c.professor_ID=$1
-			AND status_ID=$2`
+			AND c.deleted_date IS NULL`
 
-	rows, err := r.db.Query(query, professorId, constants.OpenStatusID)
+	rows, err := r.db.Query(query, professorId)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +443,7 @@ func (r CourseRepositoryImplementation) UpdateCourse(body request.UpdateCourse) 
 
 	// 3. Finalize the query string
 	query = strings.TrimSuffix(query, ", ")
-	query += fmt.Sprintf(" WHERE id = $%d;", placeholderID)
+	query += fmt.Sprintf(" WHERE course_id = $%d;", placeholderID)
 	params = append(params, body.Id)
 
 	// 4. Execute

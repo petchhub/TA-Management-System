@@ -1,8 +1,8 @@
-import { LayoutDashboard, Settings, LogOut, Clock, Download, Calendar, Mail, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Settings, LogOut, Clock, Download, Calendar, Mail, BookOpen, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-type Page = 'dashboard' | 'work-hours' | 'export' | 'holidays' | 'announcement';
+type Page = 'dashboard' | 'semester' | 'work-hours' | 'export' | 'announcement' | 'holidays';
 
 interface FinanceSidebarProps {
     currentPage: Page;
@@ -18,10 +18,11 @@ export function FinanceSidebar({ currentPage, onNavigate }: FinanceSidebarProps)
 
     const menuItems = [
         { id: 'dashboard' as Page, label: 'หน้าหลัก', icon: LayoutDashboard },
+        { id: 'semester' as Page, label: 'จัดการเทอม', icon: GraduationCap },
         { id: 'work-hours' as Page, label: 'จัดการรายวิชา', icon: BookOpen },
         { id: 'export' as Page, label: 'Export ข้อมูล', icon: Download },
-        { id: 'holidays' as Page, label: 'จัดการวันหยุด', icon: Calendar },
         { id: 'announcement' as Page, label: 'ส่งประกาศ', icon: Mail },
+        { id: 'holidays' as Page, label: 'จัดการวันหยุด', icon: Calendar },
     ];
 
     const handleLogout = async () => {
@@ -44,7 +45,17 @@ export function FinanceSidebar({ currentPage, onNavigate }: FinanceSidebarProps)
                         return (
                             <li key={item.id}>
                                 <button
-                                    onClick={() => onNavigate?.(item.id)}
+                                    onClick={() => {
+                                        const routeMap: Record<Page, string> = {
+                                            'dashboard': '/finance/dashboard',
+                                            'semester': '/finance/semester',
+                                            'work-hours': '/finance/courses',
+                                            'export': '/finance/export',
+                                            'announcement': '/finance/announcement',
+                                            'holidays': '/finance/holidays',
+                                        };
+                                        navigate(routeMap[item.id]);
+                                    }}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
                                         ? 'text-orange-600 bg-orange-50'
                                         : 'text-gray-700 hover:bg-gray-50'

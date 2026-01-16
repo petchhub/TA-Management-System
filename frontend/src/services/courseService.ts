@@ -108,7 +108,7 @@ export async function createCourseAnnouncement(data: {
     courseName: string;
     section: string;
     term: string;
-    programType: 'regular' | 'international';
+    programTypeId: number;
     workingDay: string;
     classTime: { startTime: string; endTime: string };
     professorID?: number; // Optional override
@@ -128,8 +128,9 @@ export async function createCourseAnnouncement(data: {
 
         // Map program type to ID
         const programMapping: { [key: string]: number } = {
-            'regular': 1,
+            'general': 1,
             'international': 2,
+            'continuing': 3,
         };
 
 
@@ -149,8 +150,8 @@ export async function createCourseAnnouncement(data: {
             courseName: data.courseName,
             courseCode: data.courseCode,
             professorID: data.professorID || 1, // Use provided ID or default to 1
-            courseProgramID: programMapping[data.programType] || 1,
-            courseProgram: data.programType === 'international' ? 'International' : 'General',
+            courseProgramID: data.programTypeId,
+            courseProgram: data.programTypeId === 1 ? 'General' : data.programTypeId === 2 ? 'International' : 'Continuing',
             sec: data.section,
             semesterID: data.semesterId || 1, // Use resolved ID
             semester: data.term,
@@ -189,6 +190,111 @@ export async function createCourseAnnouncement(data: {
         throw error;
     }
 }
+
+/**
+ * Update an existing course
+ * @param courseId - The ID of the course to update
+ * @param data - The course data to update
+ * @returns Promise with the update result
+ */
+export async function updateCourse(courseId: number, data: {
+    courseCode: string;
+    courseName: string;
+    section: string;
+    term: string;
+    programTypeId: number;
+    workingDay: string;
+    classTime: { startTime: string; endTime: string };
+    professorID: number;
+    semesterId: number;
+}): Promise<any> {
+    try {
+        // Map day names to IDs
+        const dayMapping: { [key: string]: number } = {
+            'sunday': 1,
+            'monday': 2,
+            'tuesday': 3,
+            'wednesday': 4,
+            'thursday': 5,
+            'friday': 6,
+            'saturday': 7,
+        };
+
+        const calculateWorkHours = (startTime: string, endTime: string): number => {
+            const [startHour, startMin] = startTime.split(':').map(Number);
+            const [endHour, endMin] = endTime.split(':').map(Number);
+            const startMinutes = startHour * 60 + startMin;
+            const endMinutes = endHour * 60 + endMin;
+            const diffMinutes = endMinutes - startMinutes;
+            return Math.round(diffMinutes / 60);
+        };
+
+        const workHour = calculateWorkHours(data.classTime.startTime, data.classTime.endTime);
+
+        const requestData = {
+            courseName: data.courseName,
+            courseCode: data.courseCode,
+            professorID: data.professorID,
+            courseProgramID: data.programTypeId,
+            courseProgram: data.programTypeId === 1 ? 'General' : data.programTypeId === 2 ? 'International' : 'Continuing',
+            sec: data.section,
+            semesterID: data.semesterId,
+            semester: data.term,
+            classdayID: dayMapping[data.workingDay.toLowerCase()] || 1,
+            classday: data.workingDay.charAt(0).toUpperCase() + data.workingDay.slice(1),
+            // Backend expects ISO datetime format for time.Time fields
+            classStart: `1970-01-01T${data.classTime.startTime}:00Z`,
+            classEnd: `1970-01-01T${data.classTime.endTime}:00Z`,
+        };
+
+        const response = await fetch(`${API_BASE_URL}/course/${courseId}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Backend error:', errorText);
+            throw new Error(`Failed to update course: ${response.statusText}`);
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating course:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete a course
+ * @param courseId - The ID of the course to delete
+ * @returns Promise with the delete result
+ */
+export async function deleteCourse(courseId: number): Promise<any> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/${courseId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete course: ${response.statusText}`);
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting course:', error);
+        throw error;
+    }
+}
+
 
 /**
  * Fetch all applications for a specific course

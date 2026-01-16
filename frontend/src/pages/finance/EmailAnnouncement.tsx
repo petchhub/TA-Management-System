@@ -7,7 +7,18 @@ import {
   User,
   Clock,
   Search,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 import {
   getAllCoursesForFinance,
   sendEmailAll,
@@ -38,6 +49,20 @@ export function EmailAnnouncement() {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [emailLogs, setEmailLogs] = useState<EmailHistory[]>([]);
+
+  const [alertState, setAlertState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success'
+  });
+
+
 
   useEffect(() => {
     fetchCourses();
@@ -94,22 +119,42 @@ export function EmailAnnouncement() {
 
   const handleSendEmail = async () => {
     if (!subject || !message) {
-      alert("กรุณากรอกหัวข้อและข้อความ");
+      setAlertState({
+        isOpen: true,
+        title: 'ข้อมูลไม่ครบถ้วน',
+        message: 'กรุณาระบุหัวข้อและข้อความ',
+        type: 'error'
+      });
       return;
     }
 
     if (recipientType === "course" && !selectedCourse) {
-      alert("กรุณาเลือกรายวิชา");
+      setAlertState({
+        isOpen: true,
+        title: 'ข้อมูลไม่ครบถ้วน',
+        message: 'กรุณาเลือกรายวิชา',
+        type: 'error'
+      });
       return;
     }
 
     if (recipientType === "individual" && !selectedIndividual) {
-      alert("กรุณาระบุรหัสนิสิตหรือชื่อ");
+      setAlertState({
+        isOpen: true,
+        title: 'ข้อมูลไม่ครบถ้วน',
+        message: 'กรุณาระบุรหัสนิสิตหรือชื่อ',
+        type: 'error'
+      });
       return;
     }
 
     if (recipientType === "individual" && !selectedStudentId) {
-      alert("กรุณาเลือกผู้ช่วยสอนจากรายการค้นหา");
+      setAlertState({
+        isOpen: true,
+        title: 'ข้อมูลไม่ครบถ้วน',
+        message: 'กรุณาเลือกผู้ช่วยสอนจากรายการค้นหา',
+        type: 'error'
+      });
       return;
     }
 
@@ -131,7 +176,12 @@ export function EmailAnnouncement() {
         });
       }
 
-      alert("ส่งอีเมลสำเร็จ");
+      setAlertState({
+        isOpen: true,
+        title: 'สำเร็จ',
+        message: 'ส่งอีเมลเรียบร้อยแล้ว',
+        type: 'success'
+      });
       // Clear form
       setSubject("");
       setMessage("");
@@ -143,14 +193,19 @@ export function EmailAnnouncement() {
 
     } catch (error) {
       console.error("Failed to send email:", error);
-      alert("เกิดข้อผิดพลาดในการส่งอีเมล");
+      setAlertState({
+        isOpen: true,
+        title: 'เกิดข้อผิดพลาด',
+        message: 'เกิดข้อผิดพลาดในการส่งอีเมล',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const isSuccessStatus = (status: string) => {
-    return status === "Successful" || status === "Sent" || status === "sent" || status === "Success";
+    return ["successful", "success", "sent"].includes(status.toLowerCase());
   };
 
   return (
@@ -178,7 +233,7 @@ export function EmailAnnouncement() {
             <button
               onClick={() => setRecipientType("all")}
               className={`p-4 border-2 rounded-lg flex items-center gap-3 transition-colors ${recipientType === "all"
-                ? "border-[var(--color-primary-600)] bg-[var(--color-primary-50)]"
+                ? "border-[#E35205] bg-orange-50"
                 : "border-gray-200 hover:border-gray-300"
                 }`}
             >
@@ -186,7 +241,7 @@ export function EmailAnnouncement() {
                 size={20}
                 className={
                   recipientType === "all"
-                    ? "text-[var(--color-primary-600)]"
+                    ? "text-[#E35205]"
                     : "text-gray-600"
                 }
               />
@@ -201,7 +256,7 @@ export function EmailAnnouncement() {
             <button
               onClick={() => setRecipientType("course")}
               className={`p-4 border-2 rounded-lg flex items-center gap-3 transition-colors ${recipientType === "course"
-                ? "border-[var(--color-primary-600)] bg-[var(--color-primary-50)]"
+                ? "border-[#E35205] bg-orange-50"
                 : "border-gray-200 hover:border-gray-300"
                 }`}
             >
@@ -209,7 +264,7 @@ export function EmailAnnouncement() {
                 size={20}
                 className={
                   recipientType === "course"
-                    ? "text-[var(--color-primary-600)]"
+                    ? "text-[#E35205]"
                     : "text-gray-600"
                 }
               />
@@ -224,7 +279,7 @@ export function EmailAnnouncement() {
             <button
               onClick={() => setRecipientType("individual")}
               className={`p-4 border-2 rounded-lg flex items-center gap-3 transition-colors ${recipientType === "individual"
-                ? "border-[var(--color-primary-600)] bg-[var(--color-primary-50)]"
+                ? "border-[#E35205] bg-orange-50"
                 : "border-gray-200 hover:border-gray-300"
                 }`}
             >
@@ -232,7 +287,7 @@ export function EmailAnnouncement() {
                 size={20}
                 className={
                   recipientType === "individual"
-                    ? "text-[var(--color-primary-600)]"
+                    ? "text-[#E35205]"
                     : "text-gray-600"
                 }
               />
@@ -244,81 +299,85 @@ export function EmailAnnouncement() {
               </div>
             </button>
           </div>
-        </div>
+        </div >
 
         {/* Course Selection */}
-        {recipientType === "course" && (
-          <div className="mb-6">
-            <label className="block text-sm text-gray-600 mb-2">
-              เลือกรายวิชา
-            </label>
-            <select
-              value={selectedCourse}
-              onChange={(e) =>
-                setSelectedCourse(e.target.value)
-              }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
-            >
-              <option value="">-- เลือกรายวิชา --</option>
-              {courses.map((course) => (
-                <option key={course.courseID} value={course.courseID}>
-                  {course.courseCode} - {course.courseName}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {
+          recipientType === "course" && (
+            <div className="mb-6">
+              <label className="block text-sm text-gray-600 mb-2">
+                เลือกรายวิชา
+              </label>
+              <select
+                value={selectedCourse}
+                onChange={(e) =>
+                  setSelectedCourse(e.target.value)
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+              >
+                <option value="">-- เลือกรายวิชา --</option>
+                {courses.map((course) => (
+                  <option key={course.courseID} value={course.courseID}>
+                    {course.courseCode} - {course.courseName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        }
 
         {/* Individual Search */}
-        {recipientType === "individual" && (
-          <div className="mb-6">
-            <label className="block text-sm text-gray-600 mb-2">
-              ค้นหาผู้ช่วยสอน
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                value={selectedIndividual}
-                onChange={(e) => {
-                  setSelectedIndividual(e.target.value);
-                  setSelectedStudentId(null);
-                }}
-                onFocus={() => {
-                  if (searchResults.length > 0) setShowDropdown(true);
-                }}
-                placeholder="ระบุรหัสนิสิต หรือ ชื่อ-นามสกุล..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
-              />
-              {/* Dropdown */}
-              {showDropdown && searchResults.length > 0 && (
-                <div className="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {searchResults.map((student) => (
-                    <button
-                      key={student.id}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 flex flex-col"
-                      onClick={() => selectStudent(student)}
-                    >
-                      <span className="font-medium text-gray-900">{student.name}</span>
-                      <span className="text-sm text-gray-500">{student.id}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {isSearching && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
-                </div>
+        {
+          recipientType === "individual" && (
+            <div className="mb-6">
+              <label className="block text-sm text-gray-600 mb-2">
+                ค้นหาผู้ช่วยสอน
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  value={selectedIndividual}
+                  onChange={(e) => {
+                    setSelectedIndividual(e.target.value);
+                    setSelectedStudentId(null);
+                  }}
+                  onFocus={() => {
+                    if (searchResults.length > 0) setShowDropdown(true);
+                  }}
+                  placeholder="ระบุรหัสนิสิต หรือ ชื่อ-นามสกุล..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)]"
+                />
+                {/* Dropdown */}
+                {showDropdown && searchResults.length > 0 && (
+                  <div className="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {searchResults.map((student) => (
+                      <button
+                        key={student.id}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-50 flex flex-col"
+                        onClick={() => selectStudent(student)}
+                      >
+                        <span className="font-medium text-gray-900">{student.name}</span>
+                        <span className="text-sm text-gray-500">{student.id}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {isSearching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin h-4 w-4 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                * ระบบจะค้นหาจากฐานข้อมูลและส่งไปยังอีเมลของผู้ที่ตรงกับข้อมูล
+              </p>
+              {showDropdown && (
+                <div className="fixed inset-0 z-0" onClick={() => setShowDropdown(false)}></div>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              * ระบบจะค้นหาจากฐานข้อมูลและส่งไปยังอีเมลของผู้ที่ตรงกับข้อมูล
-            </p>
-            {showDropdown && (
-              <div className="fixed inset-0 z-0" onClick={() => setShowDropdown(false)}></div>
-            )}
-          </div>
-        )}
+          )
+        }
 
         {/* Subject */}
         <div className="mb-6">
@@ -394,10 +453,10 @@ export function EmailAnnouncement() {
           )}
           {loading ? "กำลังส่ง..." : "ส่งอีเมล"}
         </button>
-      </div>
+      </div >
 
       {/* Email Log */}
-      <div className="bg-white rounded-lg shadow p-6">
+      < div className="bg-white rounded-lg shadow p-6" >
         <div className="flex items-center gap-2 mb-4">
           <Clock size={20} className="text-gray-600" />
           <h3 className="text-lg">ประวัติการส่งอีเมล</h3>
@@ -435,7 +494,32 @@ export function EmailAnnouncement() {
             <p className="text-center text-gray-500 py-4">ไม่พบประวัติการส่งอีเมล</p>
           )}
         </div>
-      </div>
-    </div>
+      </div >
+      <AlertDialog open={alertState.isOpen} onOpenChange={(open) => setAlertState(prev => ({ ...prev, isOpen: open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {alertState.type === 'success' ? (
+                <CheckCircle2 className="text-green-500" size={24} />
+              ) : (
+                <AlertCircle className="text-red-500" size={24} />
+              )}
+              {alertState.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {alertState.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => setAlertState(prev => ({ ...prev, isOpen: false }))}
+              className={alertState.type === 'success' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+            >
+              ตกลง
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div >
   );
 }

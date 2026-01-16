@@ -55,6 +55,7 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={['FINANCE']} />}>
             <Route path="/finance/*" element={<FinanceLayout />} />
             <Route path="/finance/dashboard" element={<FinanceLayout initialPage="dashboard" />} />
+            <Route path="/finance/semester" element={<FinanceLayout initialPage="semester" />} />
             <Route path="/finance/courses" element={<FinanceLayout initialPage="work-hours" />} />
             <Route path="/finance/export" element={<FinanceLayout initialPage="export" />} />
             <Route path="/finance/holidays" element={<FinanceLayout initialPage="holidays" />} />

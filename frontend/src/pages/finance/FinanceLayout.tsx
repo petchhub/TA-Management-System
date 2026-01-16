@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FinanceSidebar } from './FinanceSidebar';
 import { Dashboard } from './Dashboard';
 import { CourseManagement } from './CourseManagement';
 import { CourseExport } from './CourseExport';
 import { HolidayCalendar } from './HolidayCalendar';
 import { EmailAnnouncement } from './EmailAnnouncement';
+import { SemesterManagement } from './SemesterManagement';
 
-type Page = 'dashboard' | 'work-hours' | 'export' | 'holidays' | 'announcement';
+type Page = 'dashboard' | 'semester' | 'work-hours' | 'export' | 'holidays' | 'announcement';
 
 interface FinanceLayoutProps {
     initialPage?: Page;
@@ -15,10 +16,16 @@ interface FinanceLayoutProps {
 export function FinanceLayout({ initialPage = 'dashboard' }: FinanceLayoutProps) {
     const [currentPage, setCurrentPage] = useState<Page>(initialPage);
 
+    useEffect(() => {
+        setCurrentPage(initialPage);
+    }, [initialPage]);
+
     const renderPage = () => {
         switch (currentPage) {
             case 'dashboard':
                 return <Dashboard />;
+            case 'semester':
+                return <SemesterManagement />;
             case 'work-hours':
                 return <CourseManagement />;
             case 'export':

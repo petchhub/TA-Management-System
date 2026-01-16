@@ -77,6 +77,7 @@ func (s CourseServiceImplementation) CreateCourse(body request.CreateCourse) (re
 func (s CourseServiceImplementation) UpdateCourse(body request.UpdateCourse) (response.GeneralResponse, error) {
 	err := s.repo.UpdateCourse(body)
 	if err != nil {
+		fmt.Println(err)
 		return response.GeneralResponse{Message: "Update Failed!"}, err
 	}
 	return response.GeneralResponse{Message: "Update Successful"}, err

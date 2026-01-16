@@ -5,7 +5,19 @@ import {
   CheckSquare,
   Square,
   X,
+  Loader2,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 import { getAllCoursesForFinance } from "../../services/courseService";
 
 
@@ -46,6 +58,27 @@ export function CourseExport() {
   const [signatureMonths, setSignatureMonths] = useState<AvailableMonth[]>([]);
   const [selectedSignatureMonth, setSelectedSignatureMonth] = useState<AvailableMonth | null>(null);
   const [loadingSignatureMonths, setLoadingSignatureMonths] = useState(false);
+
+  // Export Progress State
+  const [exportStatus, setExportStatus] = useState<{
+    isOpen: boolean;
+    status: 'processing' | 'success' | 'complete_with_failures';
+    message: string;
+    total: number;
+    current: number;
+    successCount: number;
+    failCount: number;
+    title: string;
+  }>({
+    isOpen: false,
+    status: 'processing',
+    message: '',
+    total: 0,
+    current: 0,
+    successCount: 0,
+    failCount: 0,
+    title: '',
+  });
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -140,7 +173,16 @@ export function CourseExport() {
 
   const openExportModal = async () => {
     if (selectedCourses.length === 0) {
-      alert("กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ");
+      setExportStatus({
+        isOpen: true,
+        status: 'complete_with_failures',
+        title: 'ไม่สามารถส่งออกได้',
+        message: 'กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ',
+        total: 0,
+        current: 0,
+        successCount: 0,
+        failCount: 0,
+      });
       return;
     }
     setShowExportModal(true);
@@ -185,23 +227,73 @@ export function CourseExport() {
 
   const confirmExport = async () => {
     if (selectedCourses.length === 0) {
-      alert("กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ");
+      setExportStatus({
+        isOpen: true,
+        status: 'complete_with_failures',
+        title: 'ไม่สามารถส่งออกได้',
+        message: 'กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ',
+        total: 0,
+        current: 0,
+        successCount: 0,
+        failCount: 0,
+      });
       closeModal();
       return;
     }
 
     if (modalHourlyRate <= 0) {
-      alert("กรุณาระบุอัตราค่าตอบแทนต่อชั่วโมง");
+      setExportStatus({
+        isOpen: true,
+        status: 'complete_with_failures',
+        title: 'ข้อมูลไม่ครบถ้วน',
+        message: 'กรุณาระบุอัตราค่าตอบแทนต่อชั่วโมง',
+        total: 0,
+        current: 0,
+        successCount: 0,
+        failCount: 0,
+      });
       return;
     }
 
     if (!selectedMonth) {
-      alert("กรุณาเลือกเดือนที่ต้องการส่งออก");
+      setExportStatus({
+        isOpen: true,
+        status: 'complete_with_failures',
+        title: 'ข้อมูลไม่ครบถ้วน',
+        message: 'กรุณาเลือกเดือนที่ต้องการส่งออก',
+        total: 0,
+        current: 0,
+        successCount: 0,
+        failCount: 0,
+      });
       return;
     }
 
+    // Start batch export
+    setExportStatus({
+      isOpen: true,
+      status: 'processing',
+      title: 'กำลังส่งออกรายงานการเบิกจ่าย',
+      message: `กำลังส่งออกรายงาน ${selectedCourses.length} รายวิชา...`,
+      total: selectedCourses.length,
+      current: 0,
+      successCount: 0,
+      failCount: 0,
+    });
+
+    closeModal();
+
+    let successCount = 0;
+    let failCount = 0;
+
     // Export payment report for each selected course
     for (const courseID of selectedCourses) {
+      setExportStatus(prev => ({
+        ...prev,
+        current: prev.current + 1,
+        message: `กำลังส่งออกรายวิชารหัส ${courseID} (${prev.current + 1}/${selectedCourses.length})`
+      }));
+
       try {
         const response = await fetch("http://localhost:8084/TA-management/ta_duty/export-payment-report", {
           method: "POST",
@@ -212,8 +304,8 @@ export function CourseExport() {
           body: JSON.stringify({
             courseID,
             hourlyRate: modalHourlyRate,
-            month: selectedMonth.monthID,
-            year: selectedMonth.year,
+            month: selectedMonth?.monthID,
+            year: selectedMonth?.year,
           }),
         });
 
@@ -225,27 +317,44 @@ export function CourseExport() {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Payment_Report_${courseID}_${selectedMonth.year}_${selectedMonth.monthID}.xlsx`;
+        link.download = `Payment_Report_${courseID}_${selectedMonth?.year}_${selectedMonth?.monthID}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
 
+        successCount++;
         // Small delay between downloads to avoid browser blocking
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (error) {
         console.error(`Error exporting course ${courseID}:`, error);
-        alert(`เกิดข้อผิดพลาดในการส่งออกรายวิชา ${courseID}`);
+        failCount++;
       }
     }
 
-    alert(`กำลังส่งออกรายงาน ${selectedCourses.length} รายวิชา`);
-    closeModal();
+    setExportStatus(prev => ({
+      ...prev,
+      status: failCount === 0 ? 'success' : 'complete_with_failures',
+      message: failCount === 0
+        ? `ส่งออกรายงานการเบิกจ่ายสำเร็จครบทั้ง ${successCount} รายวิชา`
+        : `ส่งออกสำเร็จ ${successCount} รายวิชา และไม่สำเร็จ ${failCount} รายวิชา`,
+      successCount,
+      failCount,
+    }));
   };
 
   const openSignatureModal = async () => {
     if (selectedCourses.length === 0) {
-      alert("กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ");
+      setExportStatus({
+        isOpen: true,
+        status: 'complete_with_failures',
+        title: 'ไม่สามารถส่งออกได้',
+        message: 'กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ',
+        total: 0,
+        current: 0,
+        successCount: 0,
+        failCount: 0,
+      });
       return;
     }
     setShowSignatureModal(true);
@@ -280,18 +389,59 @@ export function CourseExport() {
 
   const confirmSignatureExport = async () => {
     if (selectedCourses.length === 0) {
-      alert("กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ");
+      setExportStatus({
+        isOpen: true,
+        status: 'complete_with_failures',
+        title: 'ไม่สามารถส่งออกได้',
+        message: 'กรุณาเลือกรายวิชาอย่างน้อย 1 รายการ',
+        total: 0,
+        current: 0,
+        successCount: 0,
+        failCount: 0,
+      });
       closeSignatureModal();
       return;
     }
 
     if (!selectedSignatureMonth) {
-      alert("กรุณาเลือกเดือนที่ต้องการส่งออก");
+      setExportStatus({
+        isOpen: true,
+        status: 'complete_with_failures',
+        title: 'ข้อมูลไม่ครบถ้วน',
+        message: 'กรุณาเลือกเดือนที่ต้องการส่งออก',
+        total: 0,
+        current: 0,
+        successCount: 0,
+        failCount: 0,
+      });
       return;
     }
 
+    // Start batch export
+    setExportStatus({
+      isOpen: true,
+      status: 'processing',
+      title: 'กำลังส่งออกใบลงชื่อ',
+      message: `กำลังส่งออกใบลงชื่อ ${selectedCourses.length} รายวิชา...`,
+      total: selectedCourses.length,
+      current: 0,
+      successCount: 0,
+      failCount: 0,
+    });
+
+    closeSignatureModal();
+
+    let successCount = 0;
+    let failCount = 0;
+
     // Export signature sheet for each selected course
     for (const courseID of selectedCourses) {
+      setExportStatus(prev => ({
+        ...prev,
+        current: prev.current + 1,
+        message: `กำลังส่งออกรายวิชารหัส ${courseID} (${prev.current + 1}/${selectedCourses.length})`
+      }));
+
       try {
         const response = await fetch("http://localhost:8084/TA-management/ta_duty/export-signature-sheet", {
           method: "POST",
@@ -301,8 +451,8 @@ export function CourseExport() {
           },
           body: JSON.stringify({
             courseID,
-            month: selectedSignatureMonth.monthID,
-            year: selectedSignatureMonth.year,
+            month: selectedSignatureMonth?.monthID,
+            year: selectedSignatureMonth?.year,
           }),
         });
 
@@ -314,22 +464,30 @@ export function CourseExport() {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Signature_Sheet_${courseID}_${selectedSignatureMonth.year}_${selectedSignatureMonth.monthID}.xlsx`;
+        link.download = `Signature_Sheet_${courseID}_${selectedSignatureMonth?.year}_${selectedSignatureMonth?.monthID}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
 
+        successCount++;
         // Small delay between downloads to avoid browser blocking
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (error) {
         console.error(`Error exporting signature sheet for course ${courseID}:`, error);
-        alert(`เกิดข้อผิดพลาดในการส่งออกใบลงชื่อรายวิชา ${courseID}`);
+        failCount++;
       }
     }
 
-    alert(`กำลังส่งออกใบลงชื่อ ${selectedCourses.length} รายวิชา`);
-    closeSignatureModal();
+    setExportStatus(prev => ({
+      ...prev,
+      status: failCount === 0 ? 'success' : 'complete_with_failures',
+      message: failCount === 0
+        ? `ส่งออกใบลงชื่อสำเร็จครบทั้ง ${successCount} รายวิชา`
+        : `ส่งออกสำเร็จ ${successCount} รายวิชา และไม่สำเร็จ ${failCount} รายวิชา`,
+      successCount,
+      failCount,
+    }));
   };
 
   if (loading) {
@@ -810,6 +968,69 @@ export function CourseExport() {
           </div>
         </div>
       )}
+      {/* Progress / Status Popup */}
+      <AlertDialog
+        open={exportStatus.isOpen}
+        onOpenChange={(open) => {
+          if (exportStatus.status !== 'processing') {
+            setExportStatus(prev => ({ ...prev, isOpen: open }));
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {exportStatus.status === 'processing' && (
+                <Loader2 className="animate-spin text-orange-500" size={24} />
+              )}
+              {exportStatus.status === 'success' && (
+                <CheckCircle2 className="text-green-500" size={24} />
+              )}
+              {exportStatus.status === 'complete_with_failures' && (
+                <AlertCircle className="text-red-500" size={24} />
+              )}
+              {exportStatus.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pt-4">
+              <div className="space-y-4">
+                <p className="text-gray-600">{exportStatus.message}</p>
+
+                {exportStatus.status === 'processing' && (
+                  <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-orange-500 h-full transition-all duration-300 ease-out"
+                      style={{ width: `${(exportStatus.current / exportStatus.total) * 100}%` }}
+                    />
+                  </div>
+                )}
+
+                {(exportStatus.status === 'success' || (exportStatus.status === 'complete_with_failures' && exportStatus.total > 0)) && (
+                  <div className="grid grid-cols-2 gap-4 py-2">
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-100 text-center">
+                      <p className="text-xs text-green-600 uppercase font-bold tracking-wider mb-1">สำเร็จ</p>
+                      <p className="text-2xl font-bold text-green-700">{exportStatus.successCount}</p>
+                    </div>
+                    <div className={`p-3 rounded-lg border text-center ${exportStatus.failCount > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                      <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${exportStatus.failCount > 0 ? 'text-red-600' : 'text-gray-400'}`}>ไม่สำเร็จ</p>
+                      <p className={`text-2xl font-bold ${exportStatus.failCount > 0 ? 'text-red-700' : 'text-gray-400'}`}>{exportStatus.failCount}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {exportStatus.status !== 'processing' && (
+              <AlertDialogAction
+                onClick={() => setExportStatus(prev => ({ ...prev, isOpen: false }))}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                ตกลง
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
