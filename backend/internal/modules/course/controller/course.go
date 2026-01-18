@@ -32,6 +32,7 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 
 		r.POST("/jobpost", c.createJobPost)
 		r.GET("/jobpost", c.findAllJobPost)
+		r.GET("/jobpost/all", c.findAllJobPostAllStatus)
 		r.GET("", c.getAllCourse)
 		r.GET("/student/:studentId", c.GetAllJobPostByStudentId)
 		r.PATCH("/jobpost/:jobpostId", c.updateJobPost)
@@ -58,6 +59,16 @@ func InitializePublicController(courseService service.CourseService, r *gin.Rout
 func (controller CourseController) findAllJobPost(ctx *gin.Context) {
 	//validate
 	result, err := controller.service.GetAllJobPost()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller CourseController) findAllJobPostAllStatus(ctx *gin.Context) {
+	//validate
+	result, err := controller.service.GetAllJobPostAllStatus()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
 		return

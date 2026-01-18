@@ -32,6 +32,7 @@ type JobPost struct {
 	ProfessorName string `json:"professorName"`
 	Semester      string `json:"semester"`
 	Status        string `json:"status"`
+	StatusID      int    `json:"statusID"`
 	JobPostID     int    `json:"jobPostID"`
 	CourseID      int    `json:"courseID"`
 }

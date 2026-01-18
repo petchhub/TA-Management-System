@@ -6,18 +6,36 @@ import {
   ChevronRight,
   AlertCircle,
 } from "lucide-react";
-import { TADetailModal } from "./TADetailModal";
-import { getAllCourses } from "../../services/courseService";
+import { CourseDetailModal } from "./CourseDetailModal";
+import { getAllCourses, getAllJobPostsAllStatus, getApplicationsForCourse } from "../../services/courseService";
+
+import { formatTime as formatTimeFn } from "@/utils/formatUtils";
 
 interface Course {
   id: string;
   code: string;
   name: string;
   semester: string;
+  section: string;
+  program: string;
+  day: string;
+  timeStart: string;
+  timeEnd: string;
   requiredTAs: number;
   approvedTAs: number;
   pendingApplications: number;
   totalHours: number;
+  recruitment: {
+    announced: boolean;
+    status?: string;
+    totalSeats?: number;
+    filledSeats?: number; // if backend provides
+    jobPostID?: number;
+    location?: string;
+    grade?: string;
+    gradeID?: number;
+    task?: string;
+  };
   tas: {
     id: string;
     name: string;
@@ -35,60 +53,85 @@ export function CourseManagement() {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch courses from backend
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        setLoading(true);
-        const backendCourses = await getAllCourses();
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const [backendCourses, jobPosts] = await Promise.all([
+        getAllCourses(),
+        getAllJobPostsAllStatus()
+      ]);
 
-        // Transform backend data to match frontend Course interface
-        const transformedCourses: Course[] = backendCourses.map((course, index) => ({
+      // Fetch applications for all courses to count approved TAs
+      // We use map to create an array of promises
+      const applicationsPromises = backendCourses.map(course =>
+        getApplicationsForCourse(course.courseID)
+      );
+
+      const allApplicationsResults = await Promise.all(applicationsPromises);
+
+      // Transform backend data to match frontend Course interface
+      const transformedCourses: Course[] = backendCourses.map((course, index) => {
+        // Find if this course has a job post
+        const jobPost = jobPosts.find(jp => jp.courseID === course.courseID);
+
+        // Get applications for this specific course
+        const courseApplications = allApplicationsResults[index] || [];
+
+        // Count approved TAs using StatusIDs (5=Approved, 6=Successful)
+        const approvedCount = courseApplications.filter(app =>
+          app.statusID === 5 || app.statusID === 6
+        ).length;
+
+        // Pending applications count (StatusID 3=Pending)
+        const pendingCount = courseApplications.filter(app =>
+          app.statusID === 3
+        ).length;
+
+        // Determine required TAs: prefer JobPost allocation, fallback to Course allocation
+        const requiredCount = jobPost?.taAllocation || course.taAllocation || 0;
+
+        return {
           id: (index + 1).toString(),
-          code: course.courseID,
+          code: course.courseCode,
           name: course.courseName,
-          semester: "1/2568", // Default value - will be updated when backend provides it
-          requiredTAs: 0,
-          approvedTAs: 0,
-          pendingApplications: 0,
-          totalHours: 0,
-          tas: [],
-        }));
+          semester: course.semester || "1/2568",
+          section: course.section,
+          program: course.courseProgram,
+          day: course.classday,
+          timeStart: course.classStart,
+          timeEnd: course.classEnd,
+          requiredTAs: requiredCount,
+          approvedTAs: approvedCount,
+          pendingApplications: pendingCount,
+          totalHours: course.workHour || 0,
+          recruitment: {
+            announced: !!jobPost,
+            status: jobPost?.status,
+            totalSeats: requiredCount,
+            jobPostID: jobPost?.jobPostID,
+            location: jobPost?.location,
+            grade: jobPost?.grade,
+            task: jobPost?.task,
+          },
+          tas: [], // We could populate this from approved applications if we wanted to show names immediately
+        };
+      });
 
-        setCourses(transformedCourses);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch courses:', err);
-        setError('ไม่สามารถโหลดข้อมูลรายวิชาได้');
-        // Use fallback data if API fails
-        setCourses([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+      setCourses(transformedCourses);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch courses:', err);
+      setError('ไม่สามารถโหลดข้อมูลรายวิชาได้');
+      // Use fallback data if API fails
+      setCourses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchCourses();
   }, []);
-
-
-
-  const getStatusColor = (
-    approved: number,
-    required: number
-  ) => {
-    if (approved === 0) return "text-red-600 bg-red-50";
-    if (approved < required)
-      return "text-yellow-600 bg-yellow-50";
-    return "text-green-600 bg-green-50";
-  };
-
-  const getStatusText = (
-    approved: number,
-    required: number
-  ) => {
-    if (approved === 0) return "ยังไม่มี TA";
-    if (approved < required) return "TA ไม่ครบ";
-    return "ครบแล้ว";
-  };
 
   if (loading) {
     return (
@@ -129,9 +172,9 @@ export function CourseManagement() {
     return (
       <div className="p-8">
         <div className="mb-8">
-          <h1 className="text-gray-900 mb-2">จัดการรายวิชา</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">จัดการรายวิชา</h1>
           <p className="text-gray-600">
-            จัดการ TA และติดตามชั่วโมงการทำงาน
+            จัดการ
           </p>
         </div>
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
@@ -148,9 +191,9 @@ export function CourseManagement() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-gray-900 mb-2">จัดการรายวิชา</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">จัดการรายวิชา</h1>
         <p className="text-gray-600">
-          จัดการ TA และติดตามชั่วโมงการทำงาน
+          จัดการรายวิชาในภาคการศึกษานี้
         </p>
       </div>
 
@@ -225,27 +268,29 @@ export function CourseManagement() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-gray-900 font-medium">
-                      {course.code} - {course.name}
-                    </h3>
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
-                        course.approvedTAs,
-                        course.requiredTAs
-                      )}`}
-                    >
-                      {getStatusText(
-                        course.approvedTAs,
-                        course.requiredTAs
-                      )}
-                    </span>
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {course.code} | {course.name}
+                      </h3>
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                        Sec {course.section}
+                      </span>
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">
+                        {course.program}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Clock size={14} className="text-[#E35205]" />
+                        {course.day} {formatTimeFn(course.timeStart)} - {formatTimeFn(course.timeEnd)}
+                      </span>
+                      <span className="text-gray-300">|</span>
+                      <span>ภาคการศึกษา {course.semester}</span>
+                    </div>
                   </div>
-                  <p className="text-gray-600 text-sm mb-3">
-                    ภาคการศึกษา {course.semester}
-                  </p>
 
-                  <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex flex-wrap gap-4 text-sm mt-3">
                     <div className="flex items-center gap-2">
                       <Users size={16} className="text-gray-400" />
                       <span className="text-gray-600">
@@ -300,11 +345,15 @@ export function CourseManagement() {
         </div>
       </div>
 
-      {/* TA Detail Modal */}
+      {/* Course Detail Modal */}
       {selectedCourse && (
-        <TADetailModal
+        <CourseDetailModal
           course={selectedCourse}
           onClose={() => setSelectedCourse(null)}
+          onUpdate={() => {
+            fetchCourses();
+            setSelectedCourse(null);
+          }}
         />
       )}
     </div>

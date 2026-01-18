@@ -31,6 +31,21 @@ func (s CourseServiceImplementation) GetAllJobPost() (*response.RequestDataRespo
 	return &response, nil
 }
 
+func (s CourseServiceImplementation) GetAllJobPostAllStatus() (*response.RequestDataResponse, error) {
+
+	courses, err := s.repo.GetAllJobPostAllStatus()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	response := response.RequestDataResponse{
+		Data:    courses,
+		Message: "Success",
+	}
+
+	return &response, nil
+}
+
 func (s CourseServiceImplementation) GetAllJobPostByStudentId(studentId int) (*response.RequestDataResponse, error) {
 	courses, err := s.repo.GetAllJobPostByStudentId(studentId)
 	if err != nil {

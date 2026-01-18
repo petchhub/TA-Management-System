@@ -1,8 +1,9 @@
-import { Users, CheckCircle, Clock, Plus, UserCheck, FileText } from 'lucide-react';
+import { Users, CheckCircle, Clock, Plus, UserCheck, FileText, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { CreateTAAnnouncementModal } from './CreateTAAnnouncementModal';
-import { createJobPost, getProfessorApplications, Application } from '../../services/courseService';
+import { createJobPost, getProfessorApplications, getProfessorCourses, Application } from '../../services/courseService';
 import { useAuth } from '../../context/AuthContext';
+import { Toast, ToastType } from '../../components/Toast';
 
 
 interface DashboardProps {
@@ -15,19 +16,44 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
 
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  // Stats State
+  const [loading, setLoading] = useState(true);
+  const [totalApplicants, setTotalApplicants] = useState(0);
+  const [totalApproved, setTotalApproved] = useState(0);
+  const [totalCourses, setTotalCourses] = useState(0);
+
   useEffect(() => {
-    const fetchApplications = async () => {
+    const fetchData = async () => {
       if (!user?.id) return;
       try {
-        const apps = await getProfessorApplications(parseInt(user.id));
-        // Sort by ID descending as a proxy for recency, take top 3
+        setLoading(true);
+        const professorId = parseInt(user.id);
+        const [apps, courses] = await Promise.all([
+          getProfessorApplications(professorId),
+          getProfessorCourses(professorId)
+        ]);
+
+        // Recent apps logic
         const sorted = apps.sort((a, b) => b.applicationId - a.applicationId).slice(0, 3);
         setRecentApplications(sorted);
+
+        // Stats logic
+        setTotalApplicants(apps.length);
+        setTotalApproved(apps.filter(a => a.statusCode === 'APPROVED').length);
+
+        // Courses logic: Count of courses
+        setTotalCourses(courses.length);
+
       } catch (error) {
-        console.error("Failed to load recent applications", error);
+        console.error("Failed to load dashboard data", error);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchApplications();
+    fetchData();
   }, [user?.id]);
 
   const handleCreateAnnouncement = async (data: any) => {
@@ -36,10 +62,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       // Add professor ID from auth context if available
       const professorID = user?.id ? parseInt(user.id) : 1;
-
-      // The modal now returns data structure ready for createJobPost
-      // But let's ensure we use the explicit createJobPost service
-      // We need to import it first
 
       const result = await createJobPost({
         courseID: data.courseID,
@@ -51,41 +73,37 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       });
 
       console.log('Job post created:', result);
-      alert(`ประกาศรับสมัคร TA สำเร็จ!`);
+      setToast({ message: 'ประกาศรับสมัคร TA สำเร็จ!', type: 'success' });
       setShowCreateModal(false);
     } catch (error) {
       console.error('Failed to create announcement:', error);
-      alert(`เกิดข้อผิดพลาดในการสร้างประกาศ: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setToast({
+        message: `เกิดข้อผิดพลาดในการสร้างประกาศ: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: 'error'
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-
-  const stats = [
+  const summaryCards = [
     {
       title: 'จำนวนผู้สมัคร TA',
-      value: '24',
+      value: loading ? "..." : totalApplicants.toString(),
       icon: Users,
-      bgColor: '#FEF3EE',
-      iconColor: '#E35205',
-      change: '+3 ใหม่',
+      color: "bg-orange-500",
     },
     {
       title: 'ผู้ช่วยสอนที่อนุมัติแล้ว',
-      value: '18',
+      value: loading ? "..." : totalApproved.toString(),
       icon: CheckCircle,
-      bgColor: 'bg-green-50',
-      iconColor: 'text-green-600',
-      change: 'จาก 24 คน',
+      color: "bg-green-600",
     },
     {
-      title: 'ชั่วโมงงานที่เช็คแล้วรายเดือน',
-      value: '342',
-      icon: Clock,
-      bgColor: 'bg-purple-50',
-      iconColor: 'text-purple-600',
-      change: 'พฤศจิกายน 2025',
+      title: 'รายวิชาที่รับผิดชอบ',
+      value: loading ? "..." : totalCourses.toString(),
+      icon: BookOpen,
+      color: "bg-purple-600",
     },
   ];
 
@@ -114,34 +132,34 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     },
   ];
 
-  // Removed mock recentApplications
-
 
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-gray-900 mb-2">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">แดชบอร์ดภาพรวม</h1>
         <p className="text-gray-600">ภาพรวมการจัดการผู้ช่วยสอน</p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Finance Style */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          const isCustomColor = typeof stat.bgColor === 'string' && stat.bgColor.startsWith('#');
+        {summaryCards.map((card, index) => {
+          const Icon = card.icon;
           return (
-            <div key={stat.title} className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div
-                  className={isCustomColor ? '' : `${stat.bgColor} ${stat.iconColor} p-3 rounded-lg`}
-                  style={isCustomColor ? { backgroundColor: stat.bgColor, color: stat.iconColor, padding: '0.75rem', borderRadius: '0.5rem' } : {}}
-                >
-                  <Icon size={24} />
+            <div
+              key={index}
+              className="bg-white rounded-lg shadow p-6 border border-gray-100"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm mb-2">
+                    {card.title}
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900">{card.value}</p>
+                </div>
+                <div className={`${card.color} p-3 rounded-lg shadow-md`}>
+                  <Icon className="text-white" size={24} />
                 </div>
               </div>
-              <h3 className="text-gray-900 mb-1">{stat.value}</h3>
-              <p className="text-gray-600 text-sm mb-2">{stat.title}</p>
-              <p className="text-xs text-gray-500">{stat.change}</p>
             </div>
           );
         })}
@@ -149,7 +167,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* Quick Actions */}
       <div className="mb-8">
-        <h2 className="text-gray-900 mb-4">Quick Actions</h2>
+        <h2 className="text-lg font-medium mb-4">เมนูด่วน</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {quickActions.map((action) => {
             const Icon = action.icon;
@@ -207,7 +225,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                       app.statusCode === 'APPROVED' ? 'bg-green-100 text-green-800' :
                         'bg-red-100 text-red-800'
                       }`}>
-                      {app.statusCode}
+                      {app.statusCode === 'PENDING' ? 'รอพิจารณา' :
+                        app.statusCode === 'APPROVED' ? 'อนุมัติแล้ว' :
+                          'ไม่ผ่านการคัดเลือก'
+                      }
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -241,6 +262,15 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateAnnouncement}
           isSubmitting={isSubmitting}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>

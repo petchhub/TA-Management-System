@@ -97,6 +97,86 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 	return courses, nil
 }
 
+func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.JobPost, error) {
+
+	query := `SELECT 
+				j.task,
+				j.id,
+				c.course_code, 
+				c.course_name, 
+				j.ta_allocation, 
+				c.work_hour,
+				c.class_start,
+				c.class_end,
+				j.location,
+				cp.course_program_value_thai,
+				cd.class_day_value_thai, 
+				p.firstname,
+				p.lastname,
+				s.semester_value,
+				st.status_value,
+				g.grade_value,
+				j.course_ID,
+				j.status_ID
+			FROM ta_job_posting AS j
+			LEFT JOIN courses AS c
+				ON j.course_ID = c.course_ID
+			LEFT JOIN class_days AS cd
+				ON c.class_day_ID = cd.class_day_ID 
+			LEFT JOIN course_programs AS cp
+				ON c.course_program_ID = cp.course_program_ID
+			LEFT JOIN professors AS p
+				ON c.professor_ID = p.professor_ID
+			LEFT JOIN semester AS s
+				ON c.semester_ID = s.semester_ID
+			LEFT JOIN status AS st
+				ON j.status_ID = st.status_ID
+			LEFT JOIN grades AS g
+				ON j.grade_ID = g.grade_ID
+			WHERE j.deleted_date IS NULL`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	//garantees that connection is released back to the pool ,prevent leak
+	defer rows.Close()
+
+	var courses []response.JobPost
+	for rows.Next() {
+		var course response.JobPost
+		var firstname string
+		var lastname string
+		err := rows.Scan(
+			&course.Task,
+			&course.JobPostID,
+			&course.CourseCode,
+			&course.CourseName,
+			&course.TaAllocation,
+			&course.WorkHour,
+			&course.ClassStart,
+			&course.ClassEnd,
+			&course.Location,
+			&course.CourseProgram,
+			&course.Classday,
+			&firstname,
+			&lastname,
+			&course.Semester,
+			&course.Status,
+			&course.Grade,
+			&course.CourseID,
+			&course.StatusID,
+		)
+		if err != nil {
+			return nil, err
+		}
+		course.ProfessorName = firstname + " " + lastname
+		courses = append(courses, course)
+	}
+
+	return courses, nil
+}
+
 func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) ([]response.JobPost, error) {
 
 	query := `SELECT 
@@ -969,7 +1049,7 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 
 	if allocationCount == taAllocation {
 		query = `UPDATE ta_job_posting SET status_id = $1 WHERE id = $2`
-		_, err = r.db.Exec(query, constants.CloseStatusID, jobPostId)
+		_, err = r.db.Exec(query, constants.SuccessFulStatusID, jobPostId)
 		if err != nil {
 			return fmt.Errorf("failed update ta_job_posting: %v", err)
 		}

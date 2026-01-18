@@ -7,6 +7,7 @@ import (
 
 type CourseRepository interface {
 	GetAllJobPost() ([]response.JobPost, error)
+	GetAllJobPostAllStatus() ([]response.JobPost, error)
 	GetAllJobPostByStudentId(studentId int) ([]response.JobPost, error)
 	GetAllCourse() ([]response.Course, error)
 	GetProfessorCourse(professorId int) ([]response.Course, error)

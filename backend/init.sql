@@ -325,13 +325,13 @@ INSERT INTO status (status_value) VALUES
 
 -- class_day
 INSERT INTO class_days (class_day_value,class_day_value_thai) VALUES
-    ('Sunday','จันทร์'),
-    ('Monday','อังคาร'),
-    ('Tuesday','พุธ'),
-    ('Wednesday','พฤหัสบดี'),
-    ('Thursday','ศุกร์'),
-    ('Friday','เสาร์'),
-    ('Saturday','อาทิตย์');
+    ('Sunday','อาทิตย์'),
+    ('Monday','จันทร์'),
+    ('Tuesday','อังคาร'),
+    ('Wednesday','พุธ'),
+    ('Thursday','พฤหัสบดี'),
+    ('Friday','ศุกร์'),
+    ('Saturday','เสาร์');
 
 -- course_programs
 INSERT INTO course_programs (course_program_value,course_program_value_thai) VALUES

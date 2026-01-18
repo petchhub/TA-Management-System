@@ -6,16 +6,17 @@ type Page = 'dashboard' | 'recruitment' | 'work-hours' | 'courses';
 interface SidebarProps {
   currentPage: Page;
   onNavigate: (page: Page) => void;
+  pendingCount?: number;
 }
 
-export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+export function Sidebar({ currentPage, onNavigate, pendingCount = 0 }: SidebarProps) {
   const { user, logout } = useAuth();
 
   const username = user?.name || 'Professor';
   const role = user?.role === 'PROFESSOR' ? 'อาจารย์' : user?.role || 'Professor';
   const menuItems = [
-    { id: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'recruitment' as Page, label: 'การรับสมัคร TA', icon: Users },
+    { id: 'dashboard' as Page, label: 'หน้าหลัก', icon: LayoutDashboard },
+    { id: 'recruitment' as Page, label: 'การรับสมัคร TA', icon: Users, showBadge: true },
     { id: 'work-hours' as Page, label: 'ชั่วโมงการทำงาน', icon: Clock },
     { id: 'courses' as Page, label: 'จัดการรายวิชา', icon: BookOpen },
   ];
@@ -23,8 +24,8 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
       <div className="p-6 border-b border-gray-200">
-        <h1 className="text-orange-600">TA Management</h1>
-        <p className="text-gray-600 text-sm mt-1">Professor Dashboard</p>
+        <h1 className="text-orange-600 font-bold text-xl">TA Management</h1>
+        <p className="text-gray-600 text-sm mt-1">ระบบสำหรับอาจารย์</p>
       </div>
 
       <nav className="flex-1 p-4">
@@ -36,13 +37,21 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               <li key={item.id}>
                 <button
                   onClick={() => onNavigate(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${isActive
                     ? 'text-orange-600 bg-orange-50'
                     : 'text-gray-700 hover:bg-gray-50'
                     }`}
                 >
-                  <Icon size={20} />
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon size={20} />
+                    <span>{item.label}</span>
+                  </div>
+                  {/* Badge for Pending Applications */}
+                  {item.showBadge && pendingCount > 0 && (
+                    <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                      {pendingCount > 99 ? '99+' : pendingCount}
+                    </span>
+                  )}
                 </button>
               </li>
             );

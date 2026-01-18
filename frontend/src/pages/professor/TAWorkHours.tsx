@@ -9,6 +9,9 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { getProfessorCourses, getApplicationsForCourse, Course, Application } from "../../services/courseService";
 import { getTADutyRoadmap, markDutyAsDone, DutyChecklistItem } from "../../services/taDutyService";
+import { formatTime } from "../../utils/formatUtils";
+import { ConfirmationModal } from "../../components/ConfirmationModal";
+import { Toast, ToastType } from "../../components/Toast";
 
 interface TADutyData {
   ta: Application;
@@ -23,6 +26,17 @@ export function TAWorkHours() {
   const [taDutiesList, setTaDutiesList] = useState<TADutyData[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    studentID: number;
+    studentName?: string;
+    date: string;
+  } | null>(null);
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   const handlePrevMonth = () => {
     setCurrentMonth(prev => {
@@ -111,12 +125,22 @@ export function TAWorkHours() {
     setTaDutiesList([]);
   };
 
-  const handleMarkDone = async (studentID: number, date: string) => {
-    if (!selectedCourse) return;
+  const handleMarkDone = (studentID: number, date: string, studentName?: string) => {
+    // Find the TA data to get student name
+    const taData = taDutiesList.find(item => item.ta.studentID === studentID);
 
-    if (!confirm(`ยืนยันการเช็คชื่อวันที่ ${new Date(date).toLocaleDateString("th-TH")}?`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      studentID,
+      studentName: taData?.ta.studentName || studentName,
+      date
+    });
+  };
+
+  const handleConfirmMarkDone = async () => {
+    if (!selectedCourse || !confirmModal) return;
+
+    const { studentID, date } = confirmModal;
 
     try {
       await markDutyAsDone(selectedCourse.courseID, studentID, date);
@@ -128,15 +152,18 @@ export function TAWorkHours() {
             return {
               ...item,
               duties: item.duties.map(duty =>
-                duty.date === date ? { ...duty, isChecked: true, status: "Done" } : duty // Assuming 'Done' is the status string backend sets, or just use isChecked
+                duty.date === date ? { ...duty, isChecked: true, status: "Done" } : duty
               )
             };
           }
           return item;
         })
       );
+
+      setToast({ message: 'บันทึกการเช็คชื่อสำเร็จ!', type: 'success' });
     } catch (error) {
-      alert("Failed to mark duty as done");
+      console.error('Failed to mark duty as done:', error);
+      setToast({ message: 'ไม่สามารถบันทึกการเช็คชื่อได้ กรุณาลองใหม่อีกครั้ง', type: 'error' });
     }
   };
 
@@ -180,15 +207,19 @@ export function TAWorkHours() {
                     </span>
                   </div>
                   <h3 className="text-lg font-bold text-gray-900 mb-1">
-                    {course.courseCode}
+                    {course.courseCode} {course.courseName}
                   </h3>
-                  <p className="text-gray-600 mb-4 line-clamp-1">{course.courseName}</p>
+                  <div className="flex flex-col gap-1 mt-2">
+                    <p className="text-sm text-gray-600 flex items-center gap-2">
+                      <Clock size={16} className="text-[#E35205]" />
+                      <span className="font-medium text-gray-900">
+                        {course.classday} {formatTime(course.classStart)} - {formatTime(course.classEnd)}
+                      </span>
+                    </p>
+                  </div>
 
                   <div className="flex items-center text-sm text-gray-500 gap-4">
-                    <div className="flex items-center gap-1">
-                      <Clock size={16} />
-                      <span>{course.classday}</span>
-                    </div>
+                    {/* Additional info can go here if needed, removed redundant day */}
                   </div>
                 </div>
               ))
@@ -335,6 +366,27 @@ export function TAWorkHours() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal(null)}
+          onConfirm={handleConfirmMarkDone}
+          studentID={confirmModal.studentID}
+          studentName={confirmModal.studentName}
+          date={confirmModal.date}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );

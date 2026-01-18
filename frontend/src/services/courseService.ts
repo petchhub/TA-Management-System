@@ -110,13 +110,15 @@ export async function createCourseAnnouncement(data: {
     term: string;
     programTypeId: number;
     workingDay: string;
+    classDayId?: number;
     classTime: { startTime: string; endTime: string };
     professorID?: number; // Optional override
     semesterId?: number;
 }): Promise<any> {
     try {
-        // Map day names to IDs (based on typical database setup)
+        // Map day names to IDs (supports both English and Thai)
         const dayMapping: { [key: string]: number } = {
+            // English
             'sunday': 1,
             'monday': 2,
             'tuesday': 3,
@@ -124,6 +126,14 @@ export async function createCourseAnnouncement(data: {
             'thursday': 5,
             'friday': 6,
             'saturday': 7,
+            // Thai
+            'อาทิตย์': 1,
+            'จันทร์': 2,
+            'อังคาร': 3,
+            'พุธ': 4,
+            'พฤหัสบดี': 5,
+            'ศุกร์': 6,
+            'เสาร์': 7,
         };
 
         // Map program type to ID
@@ -146,6 +156,9 @@ export async function createCourseAnnouncement(data: {
 
         const workHour = calculateWorkHours(data.classTime.startTime, data.classTime.endTime);
 
+        // Get the class day ID from mapping or use provided ID
+        const classdayID = data.classDayId || dayMapping[data.workingDay] || dayMapping[data.workingDay.toLowerCase()] || 1;
+
         const requestData: CreateCourseRequest = {
             courseName: data.courseName,
             courseCode: data.courseCode,
@@ -155,8 +168,8 @@ export async function createCourseAnnouncement(data: {
             sec: data.section,
             semesterID: data.semesterId || 1, // Use resolved ID
             semester: data.term,
-            classdayID: dayMapping[data.workingDay.toLowerCase()] || 1,
-            classday: data.workingDay.charAt(0).toUpperCase() + data.workingDay.slice(1),
+            classdayID: classdayID,
+            classday: data.workingDay,
             classStart: `${data.classTime.startTime}:00`,
             classEnd: `${data.classTime.endTime}:00`,
             taAllocation: 0,
@@ -204,13 +217,15 @@ export async function updateCourse(courseId: number, data: {
     term: string;
     programTypeId: number;
     workingDay: string;
+    classDayId?: number;
     classTime: { startTime: string; endTime: string };
     professorID: number;
     semesterId: number;
 }): Promise<any> {
     try {
-        // Map day names to IDs
+        // Map day names to IDs (supports both English and Thai)
         const dayMapping: { [key: string]: number } = {
+            // English
             'sunday': 1,
             'monday': 2,
             'tuesday': 3,
@@ -218,6 +233,14 @@ export async function updateCourse(courseId: number, data: {
             'thursday': 5,
             'friday': 6,
             'saturday': 7,
+            // Thai
+            'อาทิตย์': 1,
+            'จันทร์': 2,
+            'อังคาร': 3,
+            'พุธ': 4,
+            'พฤหัสบดี': 5,
+            'ศุกร์': 6,
+            'เสาร์': 7,
         };
 
         const calculateWorkHours = (startTime: string, endTime: string): number => {
@@ -231,6 +254,9 @@ export async function updateCourse(courseId: number, data: {
 
         const workHour = calculateWorkHours(data.classTime.startTime, data.classTime.endTime);
 
+        // Get the class day ID from mapping or use provided ID
+        const classdayID = data.classDayId || dayMapping[data.workingDay] || dayMapping[data.workingDay.toLowerCase()] || 1;
+
         const requestData = {
             courseName: data.courseName,
             courseCode: data.courseCode,
@@ -240,8 +266,8 @@ export async function updateCourse(courseId: number, data: {
             sec: data.section,
             semesterID: data.semesterId,
             semester: data.term,
-            classdayID: dayMapping[data.workingDay.toLowerCase()] || 1,
-            classday: data.workingDay.charAt(0).toUpperCase() + data.workingDay.slice(1),
+            classdayID: classdayID,
+            classday: data.workingDay,
             // Backend expects ISO datetime format for time.Time fields
             classStart: `1970-01-01T${data.classTime.startTime}:00Z`,
             classEnd: `1970-01-01T${data.classTime.endTime}:00Z`,
@@ -395,6 +421,52 @@ export async function createJobPost(data: {
 }
 
 /**
+ * Update an existing job post
+ * @param data - The job post data to update
+ * @returns Promise with the update result
+ */
+export async function updateJobPost(data: {
+    id: number;
+    courseID?: number;
+    professorID?: number;
+    location?: string;
+    taAllocation?: number;
+    gradeID?: number;
+    task?: string;
+}): Promise<any> {
+    try {
+        const requestBody: any = { id: data.id };
+
+        // Only include fields that are provided
+        if (data.courseID !== undefined) requestBody.courseID = data.courseID;
+        if (data.professorID !== undefined) requestBody.professorID = data.professorID;
+        if (data.location !== undefined) requestBody.location = data.location;
+        if (data.taAllocation !== undefined) requestBody.taAllocation = data.taAllocation;
+        if (data.gradeID !== undefined) requestBody.gradeID = data.gradeID;
+        if (data.task !== undefined) requestBody.task = data.task;
+
+        const response = await fetch(`${API_BASE_URL}/course/jobpost/${data.id}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Failed to update job post: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error updating job post:', error);
+        throw error;
+    }
+}
+
+/**
  * Fetch all job posts
  * @returns Promise with list of job posts
  */
@@ -443,6 +515,32 @@ export async function getAllCoursesForFinance(): Promise<Course[]> {
     } catch (error) {
         console.error('Error fetching courses for finance:', error);
         throw error;
+    }
+}
+
+/**
+ * Fetch all job posts (including CLOSED/SUCCESSFUL)
+ * @returns Promise with list of job posts
+ */
+export async function getAllJobPostsAllStatus(): Promise<any[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/jobpost/all`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch all job posts: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error('Error fetching all job posts:', error);
+        return [];
     }
 }
 

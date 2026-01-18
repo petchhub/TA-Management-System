@@ -132,8 +132,8 @@ export default function PublicHomePage() {
       {/* Mock Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex">
         <div className="p-6 border-b border-gray-200">
-          <h1 className="text-[var(--color-primary-600)] font-bold text-xl">TA Management</h1>
-          <p className="text-gray-600 text-sm mt-1">Student Portal</p>
+          <h1 className="text-orange-600 font-bold text-xl">TA Management</h1>
+          <p className="text-gray-600 text-sm mt-1">สำหรับผู้ใช้ทั่วไป</p>
         </div>
 
         <nav className="flex-1 p-4">

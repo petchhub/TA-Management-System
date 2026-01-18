@@ -43,6 +43,7 @@ export function CourseManagement() {
         professorID: "",
         programTypeId: "", // Store ID instead of value
         workingDay: "",
+        classDayId: "",
         startTime: "09:00",
         endTime: "12:00",
         semesterId: "",
@@ -80,7 +81,11 @@ export function CourseManagement() {
                 setFormData(prev => ({ ...prev, programTypeId: progs[0].id.toString() }));
             }
             if (days.length > 0 && !formData.workingDay) {
-                setFormData(prev => ({ ...prev, workingDay: days[0].value }));
+                setFormData(prev => ({
+                    ...prev,
+                    workingDay: days[0].value,
+                    classDayId: days[0].id.toString()
+                }));
             }
         } catch (error) {
             console.error("Error fetching initial data:", error);
@@ -101,6 +106,7 @@ export function CourseManagement() {
                     term: semesters.find(s => s.id.toString() === formData.semesterId)?.value || "",
                     programTypeId: parseInt(formData.programTypeId),
                     workingDay: formData.workingDay,
+                    classDayId: parseInt(formData.classDayId),
                     classTime: {
                         startTime: formData.startTime,
                         endTime: formData.endTime
@@ -122,6 +128,7 @@ export function CourseManagement() {
                     term: semesters.find(s => s.id.toString() === formData.semesterId)?.value || "",
                     programTypeId: parseInt(formData.programTypeId),
                     workingDay: formData.workingDay,
+                    classDayId: parseInt(formData.classDayId),
                     classTime: {
                         startTime: formData.startTime,
                         endTime: formData.endTime
@@ -163,6 +170,7 @@ export function CourseManagement() {
             professorID: professor?.id.toString() || "",
             programTypeId: program?.id.toString() || "",
             workingDay: classDay?.value || "",
+            classDayId: classDay?.id.toString() || "",
             // Extract HH:MM from ISO string 2024-01-01T09:00:00Z
             startTime: course.classStart.split('T')[1] ? course.classStart.split('T')[1].substring(0, 5) : course.classStart.substring(0, 5),
             endTime: course.classEnd.split('T')[1] ? course.classEnd.split('T')[1].substring(0, 5) : course.classEnd.substring(0, 5),
@@ -376,10 +384,17 @@ export function CourseManagement() {
                                     <select
                                         required
                                         className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-orange-500 outline-none"
-                                        value={formData.workingDay}
-                                        onChange={e => setFormData({ ...formData, workingDay: e.target.value })}
+                                        value={formData.classDayId}
+                                        onChange={e => {
+                                            const selectedDay = classDays.find(d => d.id.toString() === e.target.value);
+                                            setFormData({
+                                                ...formData,
+                                                classDayId: e.target.value,
+                                                workingDay: selectedDay?.value || ""
+                                            });
+                                        }}
                                     >
-                                        {classDays.map(d => <option key={d.id} value={d.value}>{d.value}</option>)}
+                                        {classDays.map(d => <option key={d.id} value={d.id}>{d.value}</option>)}
                                     </select>
                                 </div>
                             </div>

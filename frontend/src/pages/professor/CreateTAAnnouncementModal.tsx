@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getGrades, LookupItem } from '../../services/lookupService';
-import { getProfessorCourses, getAllJobPosts, Course } from '../../services/courseService';
+import { getProfessorCourses, getAllJobPostsAllStatus, Course } from '../../services/courseService';
 import { useAuth } from '../../context/AuthContext';
 import { formatTime } from '../../utils/formatUtils';
 
@@ -50,19 +50,18 @@ export function CreateTAAnnouncementModal({ onClose, onSubmit, isSubmitting }: C
                 const [profCourses, grades, jobPosts] = await Promise.all([
                     getProfessorCourses(parseInt(user.id)),
                     getGrades(),
-                    getAllJobPosts()
+                    getAllJobPostsAllStatus()
                 ]);
 
-                // Filter out courses that already have an OPEN announcement
-                // We check if the courseID exists in jobPosts (now supported by backend)
-                // Filter where status is OPEN (or just check existence if that's the rule, but usually openness matters)
-                const openCourseIDs = new Set(
+                // Filter where status is OPEN (1) or SUCCESSFUL (6)
+                const activeStatusIds = [1, 6];
+                const activeJobPostCourseIDs = new Set(
                     jobPosts
-                        .filter((jp: any) => jp.status === 'OPEN')
+                        .filter((jp: any) => activeStatusIds.includes(jp.statusID))
                         .map((jp: any) => jp.courseID)
                 );
 
-                const availableCourses = profCourses.filter((c: Course) => !openCourseIDs.has(c.courseID));
+                const availableCourses = profCourses.filter((c: Course) => !activeJobPostCourseIDs.has(c.courseID));
                 setCourses(availableCourses);
                 setGradeOptions(grades);
             } catch (error) {

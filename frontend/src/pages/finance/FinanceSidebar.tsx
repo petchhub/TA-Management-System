@@ -33,7 +33,7 @@ export function FinanceSidebar({ currentPage, onNavigate }: FinanceSidebarProps)
     return (
         <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
             <div className="p-6 border-b border-gray-200">
-                <h1 className="text-orange-600 font-bold text-xl">TA System</h1>
+                <h1 className="text-orange-600 font-bold text-xl">TA Management</h1>
                 <p className="text-gray-600 text-sm mt-1">ระบบสำหรับเจ้าหน้าที่การเงิน</p>
             </div>
 
