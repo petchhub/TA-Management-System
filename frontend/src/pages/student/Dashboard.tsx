@@ -1,19 +1,28 @@
 import { useState, useEffect } from "react";
 import {
-  CheckCircle,
   Clock,
-  Calendar,
-  Award,
+  BookOpen,
+  MapPin,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-import StatusCard from "./StatusCard";
 import { useAuth } from "../../context/AuthContext";
-import { getStudentApplications, getAllCoursesByStudentId, Application, Course } from "../../services/courseService";
+import { getStudentApplications, getAllCourses, Course } from "../../services/courseService";
+import { getNextClassDate } from "../../utils/dateUtils";
+import { formatTime } from "../../utils/formatUtils";
+
+const statusDist: Record<string, string> = {
+  pending: "รออนุมัติ",
+  approved: "อนุมัติแล้ว",
+  rejected: "ไม่อนุมัติ"
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [activities, setActivities] = useState<any[]>([]); // Using any for composite activity type or define interface
+  const [activities, setActivities] = useState<any[]>([]);
+  const [registeredCourses, setRegisteredCourses] = useState<Course[]>([]);
+  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -21,46 +30,99 @@ export default function Dashboard() {
 
       try {
         setLoading(true);
-        // Fetch both applications and courses to map names
-        const studentId = parseInt(user.id); // Assuming user.id is the student ID
-        const [apps, courses] = await Promise.all([
+        const studentId = parseInt(user.id);
+        const [apps, allCourses] = await Promise.all([
           getStudentApplications(studentId),
-          getAllCoursesByStudentId(studentId)
+          getAllCourses()
         ]);
 
-        // Map applications to activities
+        // 1. Map Applications to Activities (Backend now provides all needed fields)
         const mappedActivities = apps.map((app, index) => {
-          // Find course details
-          // Note: app.courseID from backend might be jobPostID or courseID depending on how it was saved.
-          // We try to match with jobPostID or courseID in courses list.
-          // Backend 'getApplicationByStudentId' returns course_ID column from ta_application.
-          // And 'applyJobPost' inserts job_post_id into that column.
-          // So app.courseID is likely the jobPostID.
-          // We need to find the course that corresponds to this jobPostID.
+          // Debug logging for rejected applications
+          if (app.statusCode === "REJECTED") {
+            console.log("Rejected application:", {
+              courseName: app.courseName,
+              statusCode: app.statusCode,
+              rejectReason: app.rejectReason,
+              fullApp: app
+            });
+          }
 
-          const course = courses.find(c => c.jobPostID === app.courseID || c.courseID === app.courseID);
-          const courseName = course
-            ? `${course.courseID} - ${course.courseName}`
-            : `Course ID: ${app.courseID}`;
+          // Use the course name and schedule directly from the backend response
+          let courseDisplay = app.courseName || `Course ID: ${app.courseID}`;
+          let schedule = app.classDay && app.classStart && app.classEnd
+            ? `${app.classDay} ${formatTime(app.classStart)} - ${formatTime(app.classEnd)}`
+            : "";
 
-          // Determine status string for UI
           let statusUI = "pending";
           if (app.statusCode === "APPROVED") statusUI = "approved";
-          if (app.statusCode === "REJECTED") statusUI = "rejected"; // If exists
+          if (app.statusCode === "REJECTED") statusUI = "rejected";
 
           return {
             id: index,
             date: app.createdDate,
-            course: courseName,
-            hours: course?.workHour || 0, // Use work hour from course or 0
+            courseName: courseDisplay,
+            schedule: schedule,
+            hours: 0, // Not provided in the response
             status: statusUI,
+            rejectReason: app.rejectReason || null
           };
         });
-
         setActivities(mappedActivities);
+
+        // 2. Identify Registered (Approved) Courses
+        // Filter for approved applications only (case-insensitive)
+        const approvedApps = apps.filter(app => app.statusCode?.toUpperCase() === "APPROVED");
+
+        // Map approved applications to full course details
+        const approvedCourses = approvedApps
+          .map(app => {
+            // Find matching course logic:
+            // 1. Match by jobPostID (preferred if available)
+            // 2. Match by courseID (fallback, handle string/number types)
+            const course = allCourses.find(c =>
+              c.jobPostID === app.courseID ||
+              c.courseID === app.courseID ||
+              c.courseID.toString() === app.courseID.toString()
+            );
+
+            if (course) {
+              return { ...course, location: app.location || course.location };
+            }
+            return undefined;
+          })
+          .filter((c): c is Course => c !== undefined);
+
+        // Remove duplicates if any
+        const uniqueCourses = Array.from(new Map(approvedCourses.map(c => [c.courseID, c])).values());
+        setRegisteredCourses(uniqueCourses);
+
+        // 3. Calculate Upcoming Sessions
+        const sessions = approvedCourses.map(course => {
+          if (!course.classday || !course.classStart) return null;
+
+          // Based on init.sql it seems to be single selection or string.
+          // Let's assume single day for simplicity or simple parsing.
+          const nextDate = getNextClassDate(course.classday, course.classStart);
+
+          return {
+            courseCode: course.courseCode,
+            courseName: course.courseName,
+            location: course.location,
+            startTime: course.classStart,
+            endTime: course.classEnd,
+            date: nextDate,
+            dayName: course.classday
+          };
+        }).filter(Boolean) as any[];
+
+        // Sort by nearest date
+        sessions.sort((a, b) => a.date.getTime() - b.date.getTime());
+        setUpcomingSessions(sessions.slice(0, 3)); // Take top 3
+
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
-        setError("ไม่สามารถโหลดข้อมูลกิจกรรมได้");
+        // setError("ไม่สามารถโหลดข้อมูลกิจกรรมได้"); 
       } finally {
         setLoading(false);
       }
@@ -71,285 +133,160 @@ export default function Dashboard() {
 
   const applicationStatus = activities.some(a => a.status === "approved") ? "approved" : "pending";
 
-  // Mock monthly hours for now as API doesn't provide this yet
-  const monthlyHours = {
-    completed: 0,
-    total: activities.reduce((sum, a) => sum + (a.status === 'approved' ? a.hours : 0), 0),
-    month: "ธันวาคม 2025",
-  };
+  /* Removed monthly hours and top stats row as requested */
 
-  const stats = [
-    {
-      title: "ชั่วโมงประจำเดือน",
-      value: `${monthlyHours.completed}/${monthlyHours.total}`,
-      subtitle: "ชั่วโมง",
-      icon: Clock,
-      color: "orange" as const,
-    },
-    {
-      title: "สถานะการสมัคร",
-      value:
-        applicationStatus === "approved"
-          ? "อนุมัติแล้ว"
-          : "รอดำเนินการ",
-      subtitle: "ตำแหน่ง TA",
-      icon: CheckCircle,
-      color: "purple" as const,
-    },
-    {
-      title: "รายการทั้งหมด",
-      value: activities.length.toString(),
-      subtitle: "กิจกรรม",
-      icon: Award,
-      color: "green" as const,
-    },
-  ];
-
-  const progress = monthlyHours.total > 0
-    ? (monthlyHours.completed / monthlyHours.total) * 100
-    : 0;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto pb-12">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-gray-900 mb-2">ภาพรวม</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">แดชบอร์ดภาพรวม</h1>
         <p className="text-gray-600">
           ยินดีต้อนรับสู่ระบบจัดการผู้ช่วยสอน
         </p>
       </div>
 
-      {/* Top Row - Status and Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Application Status - Takes 2 columns on large screens */}
-        <div className="lg:col-span-2">
-          <StatusCard status={applicationStatus} />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Upcoming & Registered */}
+        <div className="lg:col-span-2 space-y-8">
 
-        {/* Quick Stats */}
-        <div className="space-y-4">
-          {stats.slice(2, 3).map((stat, index) => {
-            const Icon = stat.icon;
-            const colorClasses = {
-              orange: "bg-orange-50 text-orange-600",
-              purple: "bg-purple-50 text-purple-600",
-              green: "bg-green-50 text-green-600",
-            };
-            return (
-              <div
-                key={index}
-                className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-gray-600 mb-2">
-                      {stat.title}
-                    </p>
-                    <p className="text-gray-900">
-                      {stat.value} {stat.subtitle}
-                    </p>
-                  </div>
-                  <div
-                    className={`p-3 rounded-lg ${colorClasses[stat.color]}`}
-                  >
-                    <Icon className="w-6 h-6" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Middle Row - Monthly Progress and Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Monthly Hours Summary */}
-        <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-gray-900 mb-1">
-                ชั่วโมงงานประจำเดือน
-              </h2>
-              <p className="text-gray-600">
-                {monthlyHours.month}
-              </p>
+          {/* Upcoming Teaching Sessions */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">การสอนที่จะถึงนี้</h2>
+              <span className="text-sm text-gray-500"></span>
             </div>
-            <Calendar className="w-6 h-6 text-orange-600" />
-          </div>
 
-          {/* Progress Bar */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-gray-700">ความคืบหน้า</span>
-              <span className="text-orange-600">
-                {monthlyHours.completed} / {monthlyHours.total}{" "}
-                ชั่วโมง
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-4">
-              <div
-                className="bg-orange-500 h-4 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {stats.slice(0, 2).map((stat, index) => {
-              const Icon = stat.icon;
-              const colorClasses = {
-                orange:
-                  "bg-orange-50 border-orange-100 text-orange-600",
-                purple:
-                  "bg-purple-50 border-purple-100 text-purple-600",
-                green:
-                  "bg-green-50 border-green-100 text-green-600",
-              }[stat.color];
-              return (
-                <div
-                  key={index}
-                  className={`p-4 rounded-lg border ${colorClasses}`}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <Icon className="w-5 h-5" />
-                    <span>{stat.title}</span>
-                  </div>
-                  <p className="text-gray-900">
-                    {stat.value} {stat.subtitle}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Summary Card */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 shadow-sm text-white">
-          <h3 className="mb-2">สรุปภาพรวม</h3>
-          <p className="text-orange-100 mb-6">
-            ประจำเดือนนี้
-          </p>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-orange-100">
-                ชั่วโมงที่เหลือ
-              </span>
-              <span className="text-white">
-                {monthlyHours.total - monthlyHours.completed}{" "}
-                ชม.
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-orange-100">
-                ความสำเร็จ
-              </span>
-              <span className="text-white">
-                {Math.round(progress)}%
-              </span>
-            </div>
-            <div className="pt-4 border-t border-orange-400">
-              <p className="text-orange-100 mb-1">
-                สถานะ
-              </p>
-              <p className="text-white">กำลังดำเนินการ</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activities */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <h2 className="text-gray-900 mb-6">กิจกรรมล่าสุด</h2>
-
-        {loading && (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-          </div>
-        )}
-
-        {error && <div className="text-red-500 py-4 text-center">{error}</div>}
-
-        {!loading && !error && (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left pb-3 text-gray-600">
-                    วันที่
-                  </th>
-                  <th className="text-left pb-3 text-gray-600">
-                    รายวิชา
-                  </th>
-                  <th className="text-left pb-3 text-gray-600">
-                    ชั่วโมง
-                  </th>
-                  <th className="text-left pb-3 text-gray-600">
-                    สถานะ
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {activities.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-gray-400">
-                      ไม่มีข้อมูลกิจกรรม (ยังไม่ได้สมัคร TA)
-                    </td>
-                  </tr>
-                ) : (
-                  activities.map((activity) => (
-                    <tr
-                      key={activity.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="py-4 text-gray-700">
-                        {new Date(activity.date).toLocaleDateString(
-                          "th-TH",
-                          {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          },
-                        )}
-                      </td>
-                      <td className="py-4 text-gray-900 font-medium">
-                        {activity.course}
-                      </td>
-                      <td className="py-4 text-gray-700">
-                        {activity.hours} ชั่วโมง
-                      </td>
-                      <td className="py-4">
-                        <div className="flex items-center gap-2">
-                          {activity.status === "approved" ? (
-                            <>
-                              <CheckCircle className="w-5 h-5 text-green-600" />
-                              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                                ตรวจสอบแล้ว
-                              </span>
-                            </>
-                          ) : activity.status === "rejected" ? (
-                            <>
-                              <Clock className="w-5 h-5 text-red-600" />
-                              <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
-                                ปฏิเสธ
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="w-5 h-5 text-yellow-600" />
-                              <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-                                รอการตรวจสอบ
-                              </span>
-                            </>
-                          )}
+            {upcomingSessions.length > 0 ? (
+              <div className="space-y-4">
+                {upcomingSessions.map((session, idx) => (
+                  <div key={idx} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-start gap-4 hover:border-orange-200 transition-colors">
+                    <div className="flex-shrink-0 w-14 h-14 bg-orange-50 rounded-lg flex flex-col items-center justify-center text-orange-600 border border-orange-100">
+                      <span className="text-xs font-bold uppercase">{session.date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                      <span className="text-xl font-bold">{session.date.getDate()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 truncate">{session.courseCode} {session.courseName}</h4>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <span>{formatTime(session.startTime)} - {formatTime(session.endTime)}</span>
                         </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span>{session.location}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-100">
+                <p className="text-gray-500">ไม่มีตารางสอนเร็วๆ นี้</p>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Registered Courses */}
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">รายวิชาที่ดูแล</h2>
+            {registeredCourses.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {registeredCourses.map(course => (
+                  <div key={course.courseID} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm group hover:shadow-md transition-all">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                        <BookOpen className="w-5 h-5" />
+                      </div>
+                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">กำลังดำเนินการ</span>
+                    </div>
+                    <h3 className="font-bold text-gray-900 mb-1">{course.courseCode}</h3>
+                    <p className="text-sm text-gray-600 line-clamp-1 mb-4">{course.courseName}</p>
+
+                    <div className="flex items-center justify-between text-sm pt-3 border-t border-gray-100">
+                      <span className="text-gray-500">Sec {course.section}</span>
+                      <span className="text-gray-900 font-medium">{course.taAllocation} TAs</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-100">
+                <p className="text-gray-500">ยังไม่มีรายวิชาที่ลงทะเบียน</p>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Right Column: Status & Recent Activity */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 mb-2">สถานะล่าสุด</h2>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${applicationStatus === 'approved' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>
+                {applicationStatus === 'approved' ? <CheckCircle className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">
+                  {applicationStatus === 'approved' ? 'อนุมัติเป็นผู้ช่วยสอน' : 'รอการตรวจสอบ'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {applicationStatus === 'approved' ? 'คุณสามารถเริ่มปฏิบัติงานได้' : 'ใบสมัครของคุณกำลังถูกพิจารณา'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-full">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">ประวัติการสมัคร</h2>
+            <div className="space-y-4">
+              {activities.slice(0, 5).map((activity) => (
+                <div key={activity.id} className="pb-4 border-b border-gray-50 last:border-0 last:pb-0">
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${activity.status === 'approved' ? 'bg-green-500' :
+                      activity.status === 'rejected' ? 'bg-red-500' : 'bg-yellow-500'
+                      }`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 line-clamp-1">{activity.courseName}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {activity.schedule}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(activity.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                      </p>
+
+                      {activity.status === 'rejected' && activity.rejectReason && (
+                        <div className="mt-2 p-2 bg-red-50 rounded-md flex items-start gap-2">
+                          <AlertCircle className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-red-600">
+                            {activity.rejectReason}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full capitalize ${activity.status === 'approved' ? 'bg-green-50 text-green-700' :
+                      activity.status === 'rejected' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'
+                      }`}>
+                      {statusDist[activity.status] || activity.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {activities.length === 0 && (
+                <p className="text-center text-gray-400 text-sm py-4">ไม่มีข้อมูลการสมัคร</p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

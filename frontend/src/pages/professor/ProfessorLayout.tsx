@@ -33,9 +33,9 @@ export function ProfessorLayout({ initialPage = 'dashboard' }: ProfessorLayoutPr
         fetchPendingCount(); // Initial fetch
 
         // Poll every 5 seconds to keep updated without heavy load
-        const intervalId = setInterval(fetchPendingCount, 9000);
+        // const intervalId = setInterval(fetchPendingCount, 9000);
 
-        return () => clearInterval(intervalId);
+        // return () => clearInterval(intervalId);
     }, [user?.id]);
 
     const renderPage = () => {

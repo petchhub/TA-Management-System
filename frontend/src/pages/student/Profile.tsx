@@ -121,7 +121,7 @@ export default function Profile() {
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-gray-900 mb-2">โปรไฟล์</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">โปรไฟล์</h1>
         <p className="text-gray-600">
           ข้อมูลส่วนตัวและประวัติการทำงาน
         </p>

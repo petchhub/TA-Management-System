@@ -15,6 +15,8 @@ type Course struct {
 	Semester      string `json:"semester"`
 	Status        string `json:"status"`
 	Section       string `json:"section"`
+	SemesterStart string `json:"semesterStart"`
+	SemesterEnd   string `json:"semesterEnd"`
 }
 
 type JobPost struct {
@@ -56,6 +58,8 @@ type Application struct {
 	HasBankAccount bool      `json:"hasBankAccount"`
 	HasStudentCard bool      `json:"hasStudentCard"`
 	Location       string    `json:"location"`
+	RejectReason   string    `json:"rejectReason"`
+	JobPostID      int       `json:"jobPostID"`
 }
 
 type PdfFile struct {

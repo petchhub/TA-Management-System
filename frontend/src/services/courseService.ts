@@ -22,6 +22,8 @@ export interface Course {
     status: string;
     jobPostID: number;
     section: string;
+    semesterStart?: string;
+    semesterEnd?: string;
 }
 
 export interface CourseResponse {
@@ -44,6 +46,11 @@ export interface Application {
     courseName?: string;
     professorName?: string;
     location?: string;
+    rejectReason?: string;
+    classDay?: string;
+    classStart?: string;
+    classEnd?: string;
+    jobPostID?: number;
 }
 
 export interface ApplicationResponse {

@@ -165,15 +165,6 @@ export default function PublicHomePage() {
                 <span>ลงเวลาทำงาน</span>
               </button>
             </li>
-            <li>
-              <button
-                onClick={redirectToLogin}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <User size={20} />
-                <span>โปรไฟล์</span>
-              </button>
-            </li>
           </ul>
         </nav>
 

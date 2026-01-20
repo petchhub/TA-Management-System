@@ -631,7 +631,7 @@ export function CourseExport() {
                             {course.courseCode}
                           </p>
                           <span className="text-xs px-2 py-0.5 bg-gray-100 rounded text-gray-600">
-                            Section {course.section}
+                            Sec {course.section}
                           </span>
                           <span
                             className={`text-xs px-2 py-0.5 rounded font-medium ${course.courseProgram === "General"
@@ -648,7 +648,7 @@ export function CourseExport() {
                                 : "หลักสูตรนานาชาติ"}
                           </span>
                           <span className="text-xs px-2 py-0.5 bg-orange-50 text-orange-700 rounded border border-orange-100">
-                            {course.semester}/{course.year ?? "2566"}
+                            {course.semester}{course.year ?? ""}
                           </span>
                         </div>
                         <p className="font-medium text-gray-900 mb-1">
@@ -665,7 +665,7 @@ export function CourseExport() {
                           จำนวน TA
                         </p>
                         <p className="font-semibold bg-gray-100 px-3 py-1 rounded text-gray-700">
-                          {course.taCount ?? "N/A"} คน
+                          {course.taCount ?? "0"} คน
                         </p>
                       </div>
                     </div>
@@ -682,8 +682,7 @@ export function CourseExport() {
         <p className="text-sm text-[#9c3803]">
           <strong>หมายเหตุ:</strong>{" "}
           ไฟล์ที่ส่งออกจะอยู่ในรูปแบบพร้อมใช้งานสำหรับจัดทำเอกสารเบิกจ่ายค่าตอบแทน
-          รวมถึงข้อมูลชื่อผู้ช่วยสอน, ชั่วโมงการทำงาน, วันที่ทำงาน,
-          และสถานะการตรวจสอบ
+          รวมถึงข้อมูลชื่อผู้ช่วยสอน, ชั่วโมงการทำงาน และวันที่ทำงาน
         </p>
       </div>
 

@@ -275,7 +275,9 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				c.sec,
 				p.firstname,
 				p.lastname,
-				c.work_hour
+				c.work_hour,
+				s.start_date,
+				s.end_date
 			FROM courses AS c
 			LEFT JOIN professors AS p
 				ON c.professor_ID = p.professor_ID
@@ -283,6 +285,8 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				ON c.class_day_ID = cd.class_day_ID
 			LEFT JOIN course_programs AS cp
 				ON c.course_program_ID = cp.course_program_ID
+			LEFT JOIN semester AS s
+				ON c.semester_ID = s.semester_ID
 			WHERE c.deleted_date IS NULL`
 
 	rows, err := r.db.Query(query)
@@ -309,6 +313,8 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 			&firstname,
 			&lastname,
 			&course.WorkHour,
+			&course.SemesterStart,
+			&course.SemesterEnd,
 		)
 		if err != nil {
 			return nil, err
@@ -775,8 +781,10 @@ func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) 
 
 func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int) ([]response.Application, error) {
 	query := `SELECT 
+					ta.id,
 					ta.student_ID, 
 					ta.status_ID, 
+					tp.id,
 					tp.course_ID, 
 					ta.created_date,
 					st.status_value,
@@ -786,7 +794,8 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 					c.class_end,
 					p.firstname,
 					p.lastname,
-					tp.location
+					tp.location,
+					ta.reject_reason
 				FROM ta_application AS ta 
 				LEFT JOIN ta_job_posting AS tp
 					ON ta.job_post_ID = tp.id
@@ -809,9 +818,13 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 		var application response.Application
 		var firstname, lastname string
 
+		var jobPostID *int
+		var rejectReason *string
 		err := rows.Scan(
+			&application.ApplicationId,
 			&application.StudentID,
 			&application.StatusID,
+			&jobPostID,
 			&application.CourseID,
 			&application.CreatedDate,
 			&application.StatusCode,
@@ -822,11 +835,18 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 			&firstname,
 			&lastname,
 			&application.Location,
+			&rejectReason,
 		)
 		if err != nil {
 			return nil, err
 		}
 		application.ProfessorName = firstname + " " + lastname
+		if jobPostID != nil {
+			application.JobPostID = *jobPostID
+		}
+		if rejectReason != nil {
+			application.RejectReason = *rejectReason
+		}
 		applications = append(applications, application)
 	}
 

@@ -16,7 +16,7 @@ export function StudentSidebar({ currentPage, onNavigate }: StudentSidebarProps)
 
     const menuItems = [
         { id: 'dashboard' as Page, label: 'หน้าหลัก', icon: LayoutDashboard },
-        { id: 'managed-courses' as Page, label: 'รายวิชาที่ดูแลอยู่', icon: Clock },
+        { id: 'managed-courses' as Page, label: 'ตารางปฏิบัติงาน', icon: Clock },
         { id: 'courses' as Page, label: 'ค้นหาตำแหน่ง', icon: BookOpen },
         { id: 'profile' as Page, label: 'โปรไฟล์', icon: User },
     ];
