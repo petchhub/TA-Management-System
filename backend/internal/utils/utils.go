@@ -119,7 +119,6 @@ func GetFileData(ctx *gin.Context, key string) (string, *[]byte, error) {
 		return "", nil, fmt.Errorf("file %s is required", key)
 	}
 
-	fmt.Println("file header:", fileHeader)
 	if fileHeader == nil {
 		return "", nil, fmt.Errorf("file %s is nil", key)
 	}

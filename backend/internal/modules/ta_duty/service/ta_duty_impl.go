@@ -80,11 +80,11 @@ func (s TaDutyServiceImplementation) MarkDutyAsDone(courseID int, studentID int,
 	}, nil
 }
 
-func (s TaDutyServiceImplementation) ExportPaymentReport(rq request.ExportPaymentReportRequest) (*bytes.Buffer, error) {
+func (s TaDutyServiceImplementation) ExportPaymentReport(rq request.ExportPaymentReportRequest) (*bytes.Buffer, *request.CourseDutyData, error) {
 	TAdutyData, courseData, err := s.repo.GetTADutyDataExportPayment(rq.CourseID, rq.Month)
 	if err != nil {
 		s.logger.Errorf("Failed to Get Ta Duty Data :%v", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	courseData.MonthName = utils.GetThaiMonthName(rq.Month)
@@ -93,10 +93,10 @@ func (s TaDutyServiceImplementation) ExportPaymentReport(rq request.ExportPaymen
 	fileBytes, err := s.GeneratePaymentExcel(*TAdutyData, *courseData, rq.HourlyRate)
 	if err != nil {
 		s.logger.Errorf("Failed on GenearatePaymentExcel")
-		return nil, err
+		return nil, nil, err
 	}
 
-	return fileBytes, nil
+	return fileBytes, courseData, nil
 }
 
 func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.CreatePaymentData, courseData request.CourseDutyData, hourlyRate int) (*bytes.Buffer, error) {
@@ -176,11 +176,11 @@ func (s TaDutyServiceImplementation) GeneratePaymentExcel(students []request.Cre
 
 }
 
-func (s TaDutyServiceImplementation) ExportSignatureSheet(rq request.ExportSignatureSheet) (*bytes.Buffer, error) {
+func (s TaDutyServiceImplementation) ExportSignatureSheet(rq request.ExportSignatureSheet) (*bytes.Buffer, *request.CourseDutyData, error) {
 	TADutydata, courseData, err := s.repo.GetTADutyDataExportSignature(rq.CourseID, rq.Month)
 	if err != nil {
 		s.logger.Errorf("Failed on get duty data: %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	courseData.MonthName = utils.GetThaiMonthName(rq.Month)
@@ -189,10 +189,10 @@ func (s TaDutyServiceImplementation) ExportSignatureSheet(rq request.ExportSigna
 	filesBytes, err := s.GenerateSignatureSheet(*TADutydata, *courseData)
 	if err != nil {
 		s.logger.Errorf("Failed on generate signature sheet %v", err)
-		return nil, err
+		return nil, nil, err
 	}
 
-	return filesBytes, nil
+	return filesBytes, courseData, nil
 }
 
 func (s TaDutyServiceImplementation) GenerateSignatureSheet(rq request.CreateSignatureSheet, courseData request.CourseDutyData) (*bytes.Buffer, error) {

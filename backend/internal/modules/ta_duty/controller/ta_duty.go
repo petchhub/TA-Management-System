@@ -78,13 +78,13 @@ func (controller TaDutyController) exportPaymentReport(ctx *gin.Context) {
 		return
 	}
 	fmt.Println(rq)
-	buffer, err := controller.service.ExportPaymentReport(rq)
+	buffer, courseData, err := controller.service.ExportPaymentReport(rq)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		return
 	}
 
-	fileName := fmt.Sprintf("Payment_Report_%d.xlsx", rq.CourseID)
+	fileName := fmt.Sprintf("Payment_Report_%s-sec(%s)(%s).xlsx", courseData.CourseName, courseData.Sec, courseData.Semester)
 	ctx.Header("Content-Description", "File Transfer")
 	ctx.Header("Content-Transfer-Encoding", "binary")
 	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
@@ -100,13 +100,13 @@ func (controller TaDutyController) exportSignatureSheet(ctx *gin.Context) {
 		return
 	}
 
-	buffer, err := controller.service.ExportSignatureSheet(rq)
+	buffer, courseData, err := controller.service.ExportSignatureSheet(rq)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
 		return
 	}
 
-	fileName := fmt.Sprintf("Signature_sheet_%d.xlsx", rq.CourseID)
+	fileName := fmt.Sprintf("Signature_sheet_%s-sec(%s)(%s).xlsx", courseData.CourseName, courseData.Sec, courseData.Semester)
 	ctx.Header("Content-Description", "File Transfer")
 	ctx.Header("Content-Transfer-Encoding", "binary")
 	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
