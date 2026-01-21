@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Plus, Trash2, Save, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
+import { addSemester, updateSemester, getSemesters, Semester } from '../../services/lookupService';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -11,44 +12,80 @@ import {
     AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 
-interface Semester {
-    id: number;
-    year: number;
-    term: number;
-    startDate: string;
-    endDate: string;
-    isActive: boolean;
-}
-
 export function SemesterManagement() {
-    // Mock Data
-    const [semesters, setSemesters] = useState<Semester[]>([
-        { id: 1, year: 2567, term: 1, startDate: '2024-06-01', endDate: '2024-10-31', isActive: false },
-        { id: 2, year: 2567, term: 2, startDate: '2024-11-01', endDate: '2025-03-31', isActive: true },
-        { id: 3, year: 2568, term: 1, startDate: '2025-06-01', endDate: '2025-10-31', isActive: false },
-    ]);
+    const [semesters, setSemesters] = useState<Semester[]>([]);
+
+    useEffect(() => {
+        fetchSemesters();
+    }, []);
+
+    const fetchSemesters = async () => {
+        try {
+            const data = await getSemesters();
+            // Backend already filters >= CURRENT_DATE and sorts by StartDate ASC
+            // Frontend might want to sort differently if needed, but keeping default for now
+            // Or sort desc by year/term as per previous mock?
+            // "Sort Newest First" logic exists in render
+            setSemesters(data);
+        } catch (error) {
+            console.error("Failed to fetch semesters:", error);
+        }
+    };
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [newYear, setNewYear] = useState(new Date().getFullYear() + 543);
     const [newTerm, setNewTerm] = useState(1);
     const [newStartDate, setNewStartDate] = useState('');
     const [newEndDate, setNewEndDate] = useState('');
+    const [editingId, setEditingId] = useState<number | null>(null);
 
-    const handleAddSemester = () => {
-        const newId = Math.max(...semesters.map(s => s.id), 0) + 1;
-        setSemesters([
-            ...semesters,
-            {
-                id: newId,
-                year: newYear,
-                term: newTerm,
-                startDate: newStartDate,
-                endDate: newEndDate,
-                isActive: false
+    const handleSaveSemester = async () => {
+        try {
+            if (editingId) {
+                // Edit Mode
+                await updateSemester({
+                    id: editingId,
+                    semester: `${newTerm}/${newYear}`,
+                    startDate: new Date(newStartDate).toISOString(),
+                    endDate: new Date(newEndDate).toISOString()
+                });
+
+                alert("แก้ไขภาคการศึกษาเรียบร้อยแล้ว");
+                await fetchSemesters();
+            } else {
+                // Add Mode
+                await addSemester({
+                    semester: newTerm.toString(),
+                    year: newYear.toString(),
+                    startDate: new Date(newStartDate).toISOString(),
+                    endDate: new Date(newEndDate).toISOString()
+                });
+
+                alert("เพิ่มภาคการศึกษาเรียบร้อยแล้ว");
+                await fetchSemesters();
             }
-        ]);
+
+            closeModal();
+        } catch (error) {
+            alert(`เกิดข้อผิดพลาดในการ${editingId ? 'แก้ไข' : 'เพิ่ม'}ภาคการศึกษา: ` + error);
+        }
+    };
+
+    const openEditModal = (semester: Semester) => {
+        setEditingId(semester.id);
+        setNewYear(semester.year);
+        setNewTerm(semester.term);
+        // Ensure date format is YYYY-MM-DD for input type="date"
+        setNewStartDate(semester.startDate.split('T')[0]);
+        setNewEndDate(semester.endDate.split('T')[0]);
+        setIsAddModalOpen(true);
+    };
+
+    const closeModal = () => {
         setIsAddModalOpen(false);
-        // Reset form
+        setEditingId(null);
+        setNewYear(new Date().getFullYear() + 543);
+        setNewTerm(1);
         setNewStartDate('');
         setNewEndDate('');
     };
@@ -59,12 +96,7 @@ export function SemesterManagement() {
         }
     };
 
-    const handleToggleActive = (id: number) => {
-        setSemesters(semesters.map(s => ({
-            ...s,
-            isActive: s.id === id
-        })));
-    };
+
 
     // Format date for display (DD/MM/YYYY)
     const formatDate = (dateString: string) => {
@@ -101,7 +133,7 @@ export function SemesterManagement() {
                             <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">ภาคเรียน</th>
                             <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">วันเริ่มภาคเรียน</th>
                             <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">วันสิ้นสุดภาคเรียน</th>
-                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">สถานะ</th>
+
                             <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">จัดการ</th>
                         </tr>
                     </thead>
@@ -115,31 +147,22 @@ export function SemesterManagement() {
                                         <td className="px-6 py-4 text-gray-900">{semester.term}</td>
                                         <td className="px-6 py-4 text-gray-900">{formatDate(semester.startDate)}</td>
                                         <td className="px-6 py-4 text-gray-900">{formatDate(semester.endDate)}</td>
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleToggleActive(semester.id)}
-                                                className={`px-3 py-1 rounded-full text-xs font-semibold border ${semester.isActive
-                                                    ? 'bg-green-100 text-green-700 border-green-200'
-                                                    : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
-                                                    }`}
-                                            >
-                                                {semester.isActive ? 'ปัจจุบัน' : 'ไม่ใช้งาน'}
-                                            </button>
-                                        </td>
+
                                         <td className="px-6 py-4 text-right">
                                             <button
-                                                onClick={() => handleDeleteClick(semester.id)}
-                                                className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-full transition-colors"
-                                                title="ลบ"
+                                                onClick={() => openEditModal(semester)}
+                                                className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-full transition-colors mr-2"
+                                                title="แก้ไข"
                                             >
-                                                <Trash2 size={18} />
+                                                <Pencil size={18} />
                                             </button>
+
                                         </td>
                                     </tr>
                                 ))
                         ) : (
                             <tr>
-                                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                                     ไม่พบข้อมูลภาคการศึกษา
                                 </td>
                             </tr>
@@ -148,11 +171,11 @@ export function SemesterManagement() {
                 </table>
             </div>
 
-            {/* Add Semester Modal */}
-            <AlertDialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+            {/* Add/Edit Semester Modal */}
+            <AlertDialog open={isAddModalOpen} onOpenChange={(open) => !open && closeModal()}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>เพิ่มภาคการศึกษาใหม่</AlertDialogTitle>
+                        <AlertDialogTitle>{editingId ? 'แก้ไขภาคการศึกษา' : 'เพิ่มภาคการศึกษาใหม่'}</AlertDialogTitle>
                         <AlertDialogDescription>
                             กรุณาระบุปีการศึกษา ภาคเรียน และช่วงเวลา
                         </AlertDialogDescription>
@@ -207,12 +230,12 @@ export function SemesterManagement() {
                     </div>
 
                     <AlertDialogFooter>
-                        <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                        <AlertDialogCancel onClick={closeModal}>ยกเลิก</AlertDialogCancel>
                         <AlertDialogAction
-                            onClick={handleAddSemester}
+                            onClick={handleSaveSemester}
                             className="bg-orange-600 hover:bg-orange-700 text-white"
                         >
-                            ยืนยัน
+                            {editingId ? 'บันทึกการแก้ไข' : 'ยืนยัน'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

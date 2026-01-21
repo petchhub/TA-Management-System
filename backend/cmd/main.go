@@ -3,6 +3,7 @@ package main
 import (
 	"TA-management/config"
 	"TA-management/internal/logs"
+	"TA-management/internal/modules/announce/discord"
 	announcerepo "TA-management/internal/modules/announce/repository"
 	announceservice "TA-management/internal/modules/announce/service"
 	authenrepo "TA-management/internal/modules/authen/repository"
@@ -49,6 +50,10 @@ func main() {
 		Endpoint:     google.Endpoint,
 	}
 
+	// discord credential
+	discordClientUrl := os.Getenv("DISCORD_CLIENT_URL")
+	guilID := os.Getenv("GUILD_ID")
+
 	//Initialize Repositories & Services
 	authenRepo := authenrepo.NewAuthenRepository(db)
 	authenSvc := authenservice.NewAuthenService(authenRepo, googleOAuthConfig, jwtSecret)
@@ -62,8 +67,10 @@ func main() {
 	tadutyRepo := tadutyrepo.NewTaDutyRepository(db)
 	tadutySvc := tadutyservice.NewTaDutyServiceImplementation(tadutyRepo, log)
 
+	discordClient := discord.NewDiscordClient(discordClientUrl, guilID)
+
 	announceRepo := announcerepo.NewAnnouncementRepository(db)
-	announceSvc := announceservice.NewAnnouncementService(announceRepo)
+	announceSvc := announceservice.NewAnnouncementService(announceRepo, discordClient)
 
 	//start CRONS JOB
 	c := cron.New(cron.WithLocation(time.FixedZone("ICT", 7*3600)))

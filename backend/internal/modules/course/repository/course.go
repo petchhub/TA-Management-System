@@ -16,6 +16,7 @@ type CourseRepository interface {
 	DeleteCourse(id int) error
 	CreateJobPost(body request.CreateJobPost) (int, error)
 	UpdateJobPost(body request.UpdateJobPost) error
+	GetJobPostByID(jobPostId int) (*response.JobPost, error)
 	DeleteJobPost(jobPostId int) error
 	ApplyJobPost(body request.ApplyJobPost) (int, error)
 	GetApplicationByStudentId(studentId int) ([]response.Application, error)

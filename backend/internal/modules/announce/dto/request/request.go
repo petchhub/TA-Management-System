@@ -31,3 +31,12 @@ type CreateEmailHistory struct {
 	NReceived    int
 	StatusID     int
 }
+
+type CreateDiscordChannel struct {
+	CourseID   int    `json:"courseID"`
+	CourseCode string `json:"courseCode"`
+	CourseName string `json:"courseName"`
+	Semester   string `json:"semester"`
+	Sec        string `json:"sec"`
+	GuildID    string
+}

@@ -152,3 +152,39 @@ func (r AnnouncementRepoImplementation) GetEmailHistory() (*[]response.EmailHist
 	return &emailHistorys, err
 
 }
+
+func (r AnnouncementRepoImplementation) GetDiscordRoleID(courseID int) (string, error) {
+	query := `SELECT 
+				role_id
+				FROM discord_channels
+				WHERE course_ID = $1
+	`
+	var roleID string
+	err := r.db.QueryRow(query, courseID).Scan(&roleID)
+	if err != nil {
+		return "", err
+	}
+
+	return roleID, nil
+}
+
+func (r AnnouncementRepoImplementation) CreateNewDiscordChannel(roleID string, channelID string, channelName string, courseID int) error {
+
+	query := `INSERT INTO discord_channels (
+				channel_ID, 
+				channel_name,
+				role_ID, 
+				course_ID) VALUES($1, $2, $3, $4)`
+
+	_, err := r.db.Exec(query,
+		channelID,
+		channelName,
+		roleID,
+		courseID)
+
+	if err != nil {
+		return err
+	}
+	return nil
+
+}

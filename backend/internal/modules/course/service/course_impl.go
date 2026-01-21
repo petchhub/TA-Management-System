@@ -121,12 +121,21 @@ func (s CourseServiceImplementation) CreateJobPost(body request.CreateJobPost) (
 	}, nil
 }
 
-func (s CourseServiceImplementation) UpdateJobPost(body request.UpdateJobPost) (response.GeneralResponse, error) {
+func (s CourseServiceImplementation) UpdateJobPost(body request.UpdateJobPost) (*response.RequestDataResponse, error) {
 	err := s.repo.UpdateJobPost(body)
 	if err != nil {
-		return response.GeneralResponse{Message: "Update Job Post Failed!"}, err
+		return nil, err
 	}
-	return response.GeneralResponse{Message: "Update Job Post Successful"}, err
+
+	jobPost, err := s.repo.GetJobPostByID(body.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &response.RequestDataResponse{
+		Data:    jobPost,
+		Message: "Update Job Post Successful",
+	}, nil
 }
 
 func (s CourseServiceImplementation) DeleteJobPost(jobPostId int) (response.GeneralResponse, error) {

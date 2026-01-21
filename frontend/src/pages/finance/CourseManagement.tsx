@@ -18,7 +18,7 @@ import {
     AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 import { getAllCoursesForFinance, createCourseAnnouncement, updateCourse, deleteCourse, Course } from '../../services/courseService';
-import { getProfessors, getCourseProgram, getClassDays, getSemesters, LookupItem } from '../../services/lookupService';
+import { getProfessors, getCourseProgram, getClassDays, getSemesters, LookupItem, getSemestersDropdown } from '../../services/lookupService';
 import { formatTime } from '../../utils/formatUtils';
 
 export function CourseManagement() {
@@ -67,7 +67,7 @@ export function CourseManagement() {
                 getProfessors(),
                 getCourseProgram(),
                 getClassDays(),
-                getSemesters()
+                getSemestersDropdown()
             ]);
             console.log(coursesData); 7
             setCourses(coursesData);

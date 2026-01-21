@@ -1,9 +1,9 @@
 package service
 
 import (
+	"TA-management/internal/modules/lookup/dto/request"
 	"TA-management/internal/modules/lookup/dto/response"
 	"TA-management/internal/modules/lookup/repository"
-	"TA-management/internal/modules/ta_duty/dto/request"
 	"TA-management/internal/modules/ta_duty/entity"
 	"encoding/json"
 	"fmt"
@@ -35,8 +35,16 @@ func (s LookupServiceImplementation) GetClassday() (*[]response.LookupResponse, 
 	return result, nil
 }
 
-func (s LookupServiceImplementation) GetSemester() (*[]response.LookupResponse, error) {
+func (s LookupServiceImplementation) GetSemester() (*[]response.SemesterResponse, error) {
 	result, err := s.repo.GetSemester()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s LookupServiceImplementation) GetSemesterDropdown() (*[]response.LookupResponse, error) {
+	result, err := s.repo.GetSemesterDropdown()
 	if err != nil {
 		return nil, err
 	}
@@ -240,6 +248,34 @@ func (s LookupServiceImplementation) GetStudentCard(studentID int) (*response.Pd
 	result, err := s.repo.GetStudentCard(studentID)
 	if err != nil {
 		fmt.Println(err)
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s LookupServiceImplementation) AddSemester(rq request.CreateSemester) error {
+
+	err := s.repo.AddSemester(rq)
+	if err != nil {
+		fmt.Printf("failed to insert semester: %v \n", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s LookupServiceImplementation) UpdateSemester(rq request.UpdateSemester) (*[]response.SemesterResponse, error) {
+
+	err := s.repo.UpdateSemester(rq)
+	if err != nil {
+		fmt.Printf("failed to update semester: %v", err)
+		return nil, err
+	}
+
+	result, err := s.repo.GetSemester()
+	if err != nil {
+		fmt.Printf("failed to get semester: %v", err)
 		return nil, err
 	}
 

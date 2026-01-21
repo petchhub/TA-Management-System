@@ -36,7 +36,6 @@ type CreateJobPost struct {
 
 type UpdateJobPost struct {
 	Id           int     `json:"id"`
-	CourseID     *string `json:"courseID"`
 	ProfessorID  *int    `json:"professorID"`
 	Location     *string `json:"location"`
 	TaAllocation *int    `json:"taAllocation"`

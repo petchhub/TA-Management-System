@@ -1,11 +1,12 @@
 package repository
 
 import (
+	"TA-management/internal/modules/lookup/dto/request"
 	"TA-management/internal/modules/lookup/dto/response"
-	"TA-management/internal/modules/ta_duty/dto/request"
 	"TA-management/internal/modules/ta_duty/entity"
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 type LookupRepositoryImplementation struct {
@@ -64,12 +65,41 @@ func (r LookupRepositoryImplementation) GetClassday() (*[]response.LookupRespons
 	return &classDays, nil
 }
 
-func (r LookupRepositoryImplementation) GetSemester() (*[]response.LookupResponse, error) {
+func (r LookupRepositoryImplementation) GetSemester() (*[]response.SemesterResponse, error) {
 
 	query := `SELECT 
 				semester_id, 
-				semester_value 
+				semester_value,
+                start_date,
+                end_date
 			FROM semester
+            WHERE end_date >= CURRENT_DATE
+			ORDER BY start_date ASC`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var semesters []response.SemesterResponse
+	for rows.Next() {
+		var semester response.SemesterResponse
+		err := rows.Scan(&semester.Id, &semester.Semester, &semester.StartDate, &semester.EndDate)
+		if err != nil {
+			return nil, err
+		}
+		semesters = append(semesters, semester)
+	}
+	return &semesters, nil
+}
+
+func (r LookupRepositoryImplementation) GetSemesterDropdown() (*[]response.LookupResponse, error) {
+
+	query := `SELECT 
+				semester_id, 
+				semester_value
+			FROM semester
+            WHERE end_date >= CURRENT_DATE
 			ORDER BY start_date ASC`
 
 	rows, err := r.db.Query(query)
@@ -324,4 +354,61 @@ func (r LookupRepositoryImplementation) GetBankAccount(studentID int) (*response
 	}
 
 	return &result, nil
+}
+
+func (r LookupRepositoryImplementation) AddSemester(rq request.CreateSemester) error {
+
+	query := `INSERT INTO semester (
+				semester_value,
+				start_date,
+				end_date) VALUES($1, $2, $3)
+	`
+	_, err := r.db.Exec(query, fmt.Sprintf("%s/%s", rq.Semester, rq.Year), rq.StartDate, rq.EndDate)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r LookupRepositoryImplementation) UpdateSemester(rq request.UpdateSemester) error {
+
+	query := `UPDATE semester SET `
+	params := []interface{}{}
+	placeholderID := 1
+
+	addFeild := func(columnName string, value interface{}) {
+		query += fmt.Sprintf("%s = $%d, ", columnName, placeholderID)
+		params = append(params, value)
+		placeholderID++
+	}
+
+	if rq.Semester != nil {
+		addFeild("semester_value", rq.Semester)
+	}
+
+	if rq.StartDate != nil {
+		addFeild("start_date", rq.StartDate)
+	}
+
+	if rq.EndDate != nil {
+		addFeild("end_date", rq.EndDate)
+	}
+
+	if len(params) == 0 {
+		return nil // Or return an error "nothing to update"
+	}
+
+	query = strings.TrimSuffix(query, ", ")
+	query += fmt.Sprintf(" WHERE semester_ID = $%d", placeholderID)
+
+	fmt.Println(query)
+	params = append(params, rq.ID)
+
+	_, err := r.db.Exec(query, params...)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

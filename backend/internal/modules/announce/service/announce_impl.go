@@ -2,6 +2,7 @@ package service
 
 import (
 	"TA-management/internal/constants"
+	"TA-management/internal/modules/announce/discord"
 	"TA-management/internal/modules/announce/dto/request"
 	"TA-management/internal/modules/announce/dto/response"
 	"TA-management/internal/modules/announce/repository"
@@ -12,11 +13,14 @@ import (
 )
 
 type AnnouncementServiceImplementation struct {
-	repo repository.AnnouncementRepository
+	repo          repository.AnnouncementRepository
+	discordClient *discord.DiscordHttpClient
 }
 
-func NewAnnouncementService(repo repository.AnnouncementRepository) AnnouncementServiceImplementation {
-	return AnnouncementServiceImplementation{repo: repo}
+func NewAnnouncementService(repo repository.AnnouncementRepository, discordClient *discord.DiscordHttpClient) *AnnouncementServiceImplementation {
+	return &AnnouncementServiceImplementation{
+		repo:          repo,
+		discordClient: discordClient}
 }
 
 func (s AnnouncementServiceImplementation) SendMailToAllCourse(rq request.MailForAllCourse) {
@@ -121,4 +125,36 @@ func (s AnnouncementServiceImplementation) GetEmailHistory() (*[]response.EmailH
 	}
 
 	return result, nil
+}
+
+func (s AnnouncementServiceImplementation) JoinDiscordChannel(courseID int) (string, error) {
+	roleID, err := s.repo.GetDiscordRoleID(courseID)
+	if err != nil {
+		fmt.Printf("failed to get discord roleID: %v\n", err)
+		return "", err
+	}
+
+	return s.discordClient.JoinChannel(roleID)
+}
+
+func (s AnnouncementServiceImplementation) CreateDiscordChannel(rq request.CreateDiscordChannel) error {
+	channelName := fmt.Sprintf("%s (%s) %s", rq.CourseName, rq.Sec, rq.Semester)
+	roleID, channelID, err := s.discordClient.CreateChannel(channelName)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	if roleID == "" || channelID == "" {
+		fmt.Println("don't have data response from discord bot")
+		return fmt.Errorf("don't have data response from discord bot")
+	}
+
+	err = s.repo.CreateNewDiscordChannel(roleID, channelID, channelName, rq.CourseID)
+	if err != nil {
+		fmt.Printf("failed to add new discord channel data to db")
+		return err
+	}
+
+	return nil
 }

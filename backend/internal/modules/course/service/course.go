@@ -15,7 +15,7 @@ type CourseService interface {
 	UpdateCourse(body request.UpdateCourse) (response.GeneralResponse, error)
 	DeleteCourse(courseId int) (response.GeneralResponse, error)
 	CreateJobPost(body request.CreateJobPost) (response.CreateResponse, error)
-	UpdateJobPost(body request.UpdateJobPost) (response.GeneralResponse, error)
+	UpdateJobPost(body request.UpdateJobPost) (*response.RequestDataResponse, error)
 	DeleteJobPost(jobPostId int) (response.GeneralResponse, error)
 	ApplyJobPost(body request.ApplyJobPost) (*response.CreateResponse, error)
 	GetApplicationByStudentId(studentId int) (*response.RequestDataResponse, error)

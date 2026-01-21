@@ -1,8 +1,8 @@
 package controller
 
 import (
+	"TA-management/internal/modules/lookup/dto/request"
 	"TA-management/internal/modules/lookup/service"
-	"TA-management/internal/modules/ta_duty/dto/request"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -26,7 +26,10 @@ func InitializeController(lookupService service.LookupService, r *gin.RouterGrou
 	{
 		r.GET("/course-program", c.getCourseProgram)
 		r.GET("/classday", c.getClassday)
+		r.POST("/add-semester", c.addSemester)
+		r.PATCH("/semester", c.updateSemester)
 		r.GET("/semester", c.getSemester)
+		r.GET("/semester-dropdown", c.getSemesterDropdown)
 		r.GET("/grade", c.getGrade)
 		r.GET("/professors", c.getProfessors)
 		r.GET("/holiday", c.GetHolidays)
@@ -37,6 +40,7 @@ func InitializeController(lookupService service.LookupService, r *gin.RouterGrou
 		r.GET("/transcript", c.GetTranscript)
 		r.GET("/bank-account", c.GetBankAccount)
 		r.GET("/student-card", c.GetStudentCard)
+
 	}
 }
 
@@ -61,6 +65,15 @@ func (controller LookupController) getClassday(ctx *gin.Context) {
 
 func (controller LookupController) getSemester(ctx *gin.Context) {
 	result, err := controller.service.GetSemester()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller LookupController) getSemesterDropdown(ctx *gin.Context) {
+	result, err := controller.service.GetSemesterDropdown()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		return
@@ -249,4 +262,37 @@ func (controller LookupController) GetStudentCard(ctx *gin.Context) {
 	} else {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "NO Transcript data found"})
 	}
+}
+
+func (controller LookupController) addSemester(ctx *gin.Context) {
+	var rq request.CreateSemester
+
+	if err := ctx.ShouldBindJSON(&rq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	err := controller.service.AddSemester(rq)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{"message": "Already added semester!"})
+}
+
+func (controller LookupController) updateSemester(ctx *gin.Context) {
+	var rq request.UpdateSemester
+
+	if err := ctx.ShouldBindJSON(&rq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	result, err := controller.service.UpdateSemester(rq)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
 }

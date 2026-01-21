@@ -205,7 +205,7 @@ func (controller CourseController) updateJobPost(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
 		return
 	}
-	ctx.JSON(http.StatusNoContent, result)
+	ctx.JSON(http.StatusOK, result)
 }
 
 func (controller CourseController) deleteJobPost(ctx *gin.Context) {

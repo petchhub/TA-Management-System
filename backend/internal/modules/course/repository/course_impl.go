@@ -599,9 +599,6 @@ func (r CourseRepositoryImplementation) UpdateJobPost(body request.UpdateJobPost
 		placeholderID++
 	}
 	// 1. Check each field
-	if body.CourseID != nil {
-		addField("course_ID", body.CourseID)
-	}
 	if body.ProfessorID != nil {
 		addField("professor_ID", body.ProfessorID)
 	}
@@ -640,6 +637,79 @@ func (r CourseRepositoryImplementation) DeleteJobPost(jobPostId int) error {
 		return err
 	}
 	return nil
+}
+
+func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response.JobPost, error) {
+	query := `SELECT 
+				j.task,
+				j.id,
+				c.course_code, 
+				c.course_name, 
+				j.ta_allocation, 
+				c.work_hour,
+				c.class_start,
+				c.class_end,
+				j.location,
+				cp.course_program_value_thai,
+				cd.class_day_value_thai, 
+				p.firstname,
+				p.lastname,
+				s.semester_value,
+				st.status_value,
+				g.grade_value,
+				j.course_ID,
+				j.status_ID
+			FROM ta_job_posting AS j
+			LEFT JOIN courses AS c
+				ON j.course_ID = c.course_ID
+			LEFT JOIN class_days AS cd
+				ON c.class_day_ID = cd.class_day_ID 
+			LEFT JOIN course_programs AS cp
+				ON c.course_program_ID = cp.course_program_ID
+			LEFT JOIN professors AS p
+				ON c.professor_ID = p.professor_ID
+			LEFT JOIN semester AS s
+				ON c.semester_ID = s.semester_ID
+			LEFT JOIN status AS st
+				ON j.status_ID = st.status_ID
+			LEFT JOIN grades AS g
+				ON j.grade_ID = g.grade_ID
+			WHERE j.id = $1`
+
+	var course response.JobPost
+	var firstname string
+	var lastname string
+
+	err := r.db.QueryRow(query, jobPostId).Scan(
+		&course.Task,
+		&course.JobPostID,
+		&course.CourseCode,
+		&course.CourseName,
+		&course.TaAllocation,
+		&course.WorkHour,
+		&course.ClassStart,
+		&course.ClassEnd,
+		&course.Location,
+		&course.CourseProgram,
+		&course.Classday,
+		&firstname,
+		&lastname,
+		&course.Semester,
+		&course.Status,
+		&course.Grade,
+		&course.CourseID,
+		&course.StatusID,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("job post not found")
+		}
+		return nil, err
+	}
+
+	course.ProfessorName = firstname + " " + lastname
+	return &course, nil
 }
 
 func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) (int, error) {

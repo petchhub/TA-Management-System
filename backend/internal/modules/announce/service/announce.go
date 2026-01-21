@@ -10,4 +10,6 @@ type AnnouncementService interface {
 	SendMailToCourse(rq request.MailForCourse)
 	SendMailToTA(rq request.MailForTA)
 	GetEmailHistory() (*[]response.EmailHistory, error)
+	JoinDiscordChannel(courseID int) (string, error)
+	CreateDiscordChannel(rq request.CreateDiscordChannel) error
 }
