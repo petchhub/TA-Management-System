@@ -34,7 +34,11 @@ export default function ManagedCourses() {
     const [managedCourses, setManagedCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+    const [viewMode, setViewMode] = useState<'list' | 'calendar'>(() => {
+        const params = new URLSearchParams(window.location.search);
+        const view = params.get('view');
+        return view === 'list' ? 'list' : 'calendar';
+    });
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;

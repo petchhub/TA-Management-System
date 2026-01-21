@@ -19,7 +19,6 @@ export default function Courses() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterProgram, setFilterProgram] = useState("all");
   const [filterDay, setFilterDay] = useState("all");
-  const [filterSemester, setFilterSemester] = useState("all");
   const [applicationModal, setApplicationModal] = useState<{
     isOpen: boolean;
     courseId: number | null;
@@ -100,7 +99,6 @@ export default function Courses() {
     "เสาร์",
     "อาทิตย์",
   ];
-  const semesters = ["ทั้งหมด", "1/2568", "2/2568", "3/2568"];
 
   const filteredCourses = availableCourses.filter((course) => {
     const matchesSearch =
@@ -118,15 +116,11 @@ export default function Courses() {
       course?.program === filterProgram;
     const matchesDay =
       filterDay === "all" || course?.days.includes(filterDay);
-    const matchesSemester =
-      filterSemester === "all" ||
-      course?.semester === filterSemester;
 
     return (
       matchesSearch &&
       matchesProgram &&
-      matchesDay &&
-      matchesSemester
+      matchesDay
     );
   });
 
@@ -158,54 +152,54 @@ export default function Courses() {
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 bg-[var(--color-primary-50)] rounded-lg">
-              <BookOpen className="w-6 h-6 text-[var(--color-primary-600)]" />
+            <div className="p-3 bg-orange-50 rounded-lg">
+              <BookOpen className="w-6 h-6 text-orange-600" />
             </div>
-            <span className="text-gray-600">
+            <span className="text-sm font-medium text-gray-600">
               วิชาที่เปิดรับ
             </span>
           </div>
-          <p className="text-gray-900">{openPositions} วิชา</p>
+          <p className="text-2xl font-bold text-gray-900">{openPositions} <span className="text-sm font-normal text-gray-500">วิชา</span></p>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-3 bg-green-50 rounded-lg">
               <User className="w-6 h-6 text-green-600" />
             </div>
-            <span className="text-gray-600">ตำแหน่งว่าง</span>
+            <span className="text-sm font-medium text-gray-600">ตำแหน่งว่าง</span>
           </div>
-          <p className="text-gray-900">
-            {totalPositions} ตำแหน่ง
+          <p className="text-2xl font-bold text-gray-900">
+            {totalPositions} <span className="text-sm font-normal text-gray-500">ตำแหน่ง</span>
           </p>
         </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-3 bg-purple-50 rounded-lg">
               <Calendar className="w-6 h-6 text-purple-600" />
             </div>
-            <span className="text-gray-600">ภาคการศึกษา</span>
+            <span className="text-sm font-medium text-gray-600">ภาคการศึกษา</span>
           </div>
-          <p className="text-gray-900">2/2568</p>
+          <p className="text-2xl font-bold text-gray-900">2/2568</p>
         </div>
 
-        <div className="bg-gradient-to-br from-[var(--color-primary-500)] to-[var(--color-primary-600)] rounded-xl p-6 shadow-sm text-white">
+        <div className="bg-orange-500 rounded-xl p-6 shadow-md text-white hover:shadow-lg transition-shadow">
           <div className="mb-3">
             <Clock className="w-6 h-6" />
           </div>
-          <p className="text-[var(--color-primary-100)] mb-1">
+          <p className="text-orange-100 text-sm mb-1">
             อัปเดตล่าสุด
           </p>
-          <p className="text-white">วันนี้</p>
+          <p className="text-white font-semibold">วันนี้</p>
         </div>
       </div>
 
       {/* Search and Filter */}
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Search */}
           <div className="lg:col-span-2">
             <div className="relative">
@@ -215,7 +209,7 @@ export default function Courses() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="ค้นหารหัสวิชา, ชื่อวิชา, หรืออาจารย์..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -229,7 +223,7 @@ export default function Courses() {
                 onChange={(e) =>
                   setFilterProgram(e.target.value)
                 }
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent appearance-none bg-white"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none bg-white"
               >
                 <option value="all">ทุกหลักสูตร</option>
                 {programs.slice(1).map((prog) => (
@@ -248,7 +242,7 @@ export default function Courses() {
               <select
                 value={filterDay}
                 onChange={(e) => setFilterDay(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent appearance-none bg-white"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none bg-white"
               >
                 <option value="all">ทุกวัน</option>
                 {days.slice(1).map((day) => (
@@ -258,24 +252,6 @@ export default function Courses() {
                 ))}
               </select>
             </div>
-          </div>
-
-          {/* Semester Filter */}
-          <div>
-            <select
-              value={filterSemester}
-              onChange={(e) =>
-                setFilterSemester(e.target.value)
-              }
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent appearance-none bg-white"
-            >
-              <option value="all">ทุกภาคการศึกษา</option>
-              {semesters.slice(1).map((sem) => (
-                <option key={sem} value={sem}>
-                  {sem}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 

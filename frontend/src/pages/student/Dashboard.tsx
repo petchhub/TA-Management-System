@@ -5,6 +5,9 @@ import {
   MapPin,
   CheckCircle,
   AlertCircle,
+  Briefcase,
+  FileText,
+  Clock10,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getStudentApplications, getAllCourses, Course } from "../../services/courseService";
@@ -97,24 +100,32 @@ export default function Dashboard() {
         const uniqueCourses = Array.from(new Map(approvedCourses.map(c => [c.courseID, c])).values());
         setRegisteredCourses(uniqueCourses);
 
-        // 3. Calculate Upcoming Sessions
-        const sessions = approvedCourses.map(course => {
-          if (!course.classday || !course.classStart) return null;
+        // 3. Calculate Upcoming Sessions (Next 3 occurrences per course)
+        const sessions = approvedCourses.flatMap(course => {
+          if (!course.classday || !course.classStart) return [];
 
-          // Based on init.sql it seems to be single selection or string.
-          // Let's assume single day for simplicity or simple parsing.
-          const nextDate = getNextClassDate(course.classday, course.classStart);
+          // Get the very next class date
+          const firstDate = getNextClassDate(course.classday, course.classStart);
 
-          return {
-            courseCode: course.courseCode,
-            courseName: course.courseName,
-            location: course.location,
-            startTime: course.classStart,
-            endTime: course.classEnd,
-            date: nextDate,
-            dayName: course.classday
-          };
-        }).filter(Boolean) as any[];
+          // Generate 3 occurrences (next 3 weeks) to ensure we can fill the "Top 3" list
+          // even if the student only has 1 course.
+          const occurrences = [];
+          for (let i = 0; i < 3; i++) {
+            const date = new Date(firstDate);
+            date.setDate(date.getDate() + (i * 7)); // Add i weeks
+
+            occurrences.push({
+              courseCode: course.courseCode,
+              courseName: course.courseName,
+              location: course.location,
+              startTime: course.classStart,
+              endTime: course.classEnd,
+              date: date,
+              dayName: course.classday
+            });
+          }
+          return occurrences;
+        });
 
         // Sort by nearest date
         sessions.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -153,35 +164,79 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* Stats Row - Added to make dashboard fuller */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-sm mb-1">รายวิชาที่ดูแล</p>
+            <p className="text-3xl font-bold text-gray-900">{registeredCourses.length}</p>
+          </div>
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+            <Briefcase size={24} />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-sm mb-1">รอการตรวจสอบ</p>
+            <p className="text-3xl font-bold text-gray-900">{activities.filter(a => a.status === 'pending').length}</p>
+          </div>
+          <div className="p-3 bg-yellow-50 text-yellow-600 rounded-lg">
+            <FileText size={24} />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-gray-500 text-sm mb-1">ชั่วโมงทำงาน/สัปดาห์</p>
+            <p className="text-3xl font-bold text-gray-900">
+              {registeredCourses.reduce((acc, curr) => acc + (curr.workHour || 0), 0)}
+            </p>
+          </div>
+          <div className="p-3 bg-orange-50 text-orange-600 rounded-lg">
+            <Clock10 size={24} />
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Upcoming & Registered */}
         <div className="lg:col-span-2 space-y-8">
 
           {/* Upcoming Teaching Sessions */}
-          <div>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">การสอนที่จะถึงนี้</h2>
-              <span className="text-sm text-gray-500"></span>
+              <h2 className="text-xl font-bold text-gray-900">ตารางสอนที่จะมาถึง</h2>
+              <button
+                onClick={() => window.location.href = '/student/work-hours'}
+                className="text-sm text-orange-600 hover:text-orange-700 font-medium hover:underline"
+              >
+                ดูเพิ่มเติม
+              </button>
             </div>
 
             {upcomingSessions.length > 0 ? (
               <div className="space-y-4">
                 {upcomingSessions.map((session, idx) => (
-                  <div key={idx} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm flex items-start gap-4 hover:border-orange-200 transition-colors">
-                    <div className="flex-shrink-0 w-14 h-14 bg-orange-50 rounded-lg flex flex-col items-center justify-center text-orange-600 border border-orange-100">
-                      <span className="text-xs font-bold uppercase">{session.date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                      <span className="text-xl font-bold">{session.date.getDate()}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 truncate">{session.courseCode} {session.courseName}</h4>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-4 h-4 text-gray-400" />
-                          <span>{formatTime(session.startTime)} - {formatTime(session.endTime)}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-4 h-4 text-gray-400" />
-                          <span>{session.location}</span>
+                  <div key={idx} className="pb-4 border-b border-gray-50 last:border-0 last:pb-0">
+                    <div className="flex items-start gap-4">
+                      {/* Reverted to Big Date Box "Front View" */}
+                      <div className="flex-shrink-0 w-14 h-14 bg-orange-50 rounded-lg flex flex-col items-center justify-center text-orange-600 border border-orange-100">
+                        <span className="text-xs font-extrabold uppercase">{session.date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                        <span className="text-xl font-bold">{session.date.getDate()}</span>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 truncate">{session.courseCode} {session.courseName}</h4>
+                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            <span>{formatTime(session.startTime)} - {formatTime(session.endTime)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <span>{session.location}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -189,37 +244,60 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : (
-              <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-100">
+              <div className="text-center py-8">
+                <div className="inline-block p-3 bg-gray-50 rounded-full mb-3">
+                  <Clock className="w-6 h-6 text-gray-400" />
+                </div>
                 <p className="text-gray-500">ไม่มีตารางสอนเร็วๆ นี้</p>
               </div>
             )}
           </div>
 
           {/* Registered Courses */}
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">รายวิชาที่ดูแล</h2>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">รายวิชาที่ดูแล</h2>
+              <button
+                onClick={() => window.location.href = '/student/work-hours?view=list'}
+                className="text-sm text-orange-600 hover:text-orange-700 font-medium hover:underline"
+              >
+                ดูเพิ่มเติม
+              </button>
+            </div>
+
             {registeredCourses.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 {registeredCourses.map(course => (
-                  <div key={course.courseID} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm group hover:shadow-md transition-all">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                  <div key={course.courseID} className="pb-4 border-b border-gray-50 last:border-0 last:pb-0 hover:bg-gray-50 -mx-2 px-2 rounded-lg transition-colors">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-1 p-2 bg-blue-50 rounded-lg text-blue-600 flex-shrink-0">
                         <BookOpen className="w-5 h-5" />
                       </div>
-                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium">กำลังดำเนินการ</span>
-                    </div>
-                    <h3 className="font-bold text-gray-900 mb-1">{course.courseCode}</h3>
-                    <p className="text-sm text-gray-600 line-clamp-1 mb-4">{course.courseName}</p>
 
-                    <div className="flex items-center justify-between text-sm pt-3 border-t border-gray-100">
-                      <span className="text-gray-500">Sec {course.section}</span>
-                      <span className="text-gray-900 font-medium">{course.taAllocation} TAs</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-semibold text-gray-900">{course.courseCode} {course.courseName}</h3>
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium whitespace-nowrap">
+                            กำลังดำเนินการ
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-2 truncate">อาจารย์: {course.professorName}</p>
+
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="bg-gray-100 px-2 py-0.5 rounded">Sec {course.section}</span>
+                          <span>{course.workHour} ชม./สัปดาห์</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-100">
+              <div className="text-center py-8">
+                <div className="inline-block p-3 bg-gray-50 rounded-full mb-3">
+                  <BookOpen className="w-6 h-6 text-gray-400" />
+                </div>
                 <p className="text-gray-500">ยังไม่มีรายวิชาที่ลงทะเบียน</p>
               </div>
             )}

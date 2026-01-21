@@ -35,11 +35,11 @@ export default function App() {
 
           {/* Student Routes - Only accessible to STUDENT role */}
           <Route element={<ProtectedRoute allowedRoles={['STUDENT']} />}>
-            <Route path="/student/*" element={<StudentLayout />} />
             <Route path="/student/dashboard" element={<StudentLayout initialPage="dashboard" />} />
-            <Route path="/student/work-hours" element={<StudentLayout initialPage="work-hours" />} />
+            <Route path="/student/work-hours" element={<StudentLayout initialPage="managed-courses" />} />
             <Route path="/student/courses" element={<StudentLayout initialPage="courses" />} />
             <Route path="/student/profile" element={<StudentLayout initialPage="profile" />} />
+            <Route path="/student/*" element={<StudentLayout />} />
           </Route>
 
           {/* Professor Routes - Only accessible to PROFESSOR role */}

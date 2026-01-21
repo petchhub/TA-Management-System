@@ -50,8 +50,8 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-[var(--color-primary-50)] rounded-lg">
-              <BookOpen className="w-5 h-5 text-[var(--color-primary-600)]" />
+            <div className="p-2 bg-orange-50 rounded-lg">
+              <BookOpen className="w-5 h-5 text-orange-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -75,7 +75,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
             }`}>
             {course.status === 'OPEN' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
           </span>
-          <span className="px-3 py-1 bg-[var(--color-primary-100)] text-[var(--color-primary-700)] rounded-full">
+          <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full">
             {course.semester}
           </span>
         </div>

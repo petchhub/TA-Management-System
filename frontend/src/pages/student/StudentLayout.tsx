@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StudentSidebar } from './StudentSidebar';
 import Dashboard from './Dashboard';
 import ManagedCourses from './ManagedCourses';
@@ -13,6 +13,10 @@ interface StudentLayoutProps {
 
 export function StudentLayout({ initialPage = 'dashboard' }: StudentLayoutProps) {
     const [currentPage, setCurrentPage] = useState<Page>(initialPage);
+
+    useEffect(() => {
+        setCurrentPage(initialPage);
+    }, [initialPage]);
 
     const renderPage = () => {
         switch (currentPage) {
