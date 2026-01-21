@@ -51,6 +51,10 @@ export function TARecruitment() {
   const [selectedRejectId, setSelectedRejectId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  // Approve Modal State
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [selectedApproveId, setSelectedApproveId] = useState<number | null>(null);
+
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,11 +111,17 @@ export function TARecruitment() {
     fetchApplications();
   }, [user]);
 
-  const handleApprove = async (id: number) => {
+  const handleApproveClick = (id: number) => {
+    setSelectedApproveId(id);
+    setApproveModalOpen(true);
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!selectedApproveId) return;
     try {
-      await approveApplication(id);
-      // Refresh list
-      await fetchApplications();
+      await approveApplication(selectedApproveId);
+      setApproveModalOpen(false);
+      await fetchApplications(); // Refresh list
     } catch (err) {
       console.error("Failed to approve application:", err);
       alert("เกิดข้อผิดพลาดในการอนุมัติ");
@@ -382,7 +392,7 @@ export function TARecruitment() {
                         <>
                           <button
                             onClick={() =>
-                              handleApprove(applicant.id)
+                              handleApproveClick(applicant.id)
                             }
                             className="p-1 text-green-600 hover:bg-green-50 rounded"
                             title="อนุมัติ"
@@ -437,6 +447,16 @@ export function TARecruitment() {
               onChange={(e) => setRejectReason(e.target.value)}
             />
 
+            {/* Warning Message */}
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+              <div className="p-1 bg-red-100 rounded-full">
+                <X size={12} className="text-red-600" />
+              </div>
+              <p className="text-sm text-red-800">
+                <strong>คำเตือน:</strong> การปฏิเสธคำขอจะไม่สามารถเรียกคืนได้ กรุณาตรวจสอบให้แน่ใจก่อนกดยืนยัน
+              </p>
+            </div>
+
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setRejectModalOpen(false)}
@@ -455,12 +475,49 @@ export function TARecruitment() {
         </div>
       )}
 
+      {/* Approve Confirmation Modal */}
+      {approveModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-green-100 rounded-full">
+                <Check size={24} className="text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">ยืนยันการอนุมัติ</h3>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              คุณต้องการอนุมัตินักศึกษาคนนี้ใช่หรือไม่?
+              <br />
+              <span className="text-red-600 font-medium mt-2 block">
+                คำเตือน: เมื่ออนุมัติแล้วจะไม่สามารถยกเลิกหรือเปลี่ยนแปลงสถานะได้
+              </span>
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setApproveModalOpen(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleConfirmApprove}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+              >
+                ยืนยันการอนุมัติ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedApplicant && (
         <ApplicantModal
           applicant={selectedApplicant}
           onClose={() => setSelectedApplicant(null)}
           onApprove={() => {
-            handleApprove(selectedApplicant.id);
+            handleApproveClick(selectedApplicant.id);
             setSelectedApplicant(null);
           }}
           onReject={() => {

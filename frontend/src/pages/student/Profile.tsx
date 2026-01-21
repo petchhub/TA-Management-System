@@ -9,10 +9,17 @@ import {
   IdCard,
   CheckCircle2,
   X,
+  Loader2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { getStudentApplications, Application } from "../../services/courseService";
 
 export default function Profile() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<{
     transcript: File | null;
     bankAccount: File | null;
@@ -23,50 +30,37 @@ export default function Profile() {
     studentCard: null,
   });
 
-  const taProfile = {
-    name: "สมศักดิ์ รักการเรียน",
-    studentId: "66012345",
-    email: "somsak.r@university.ac.th",
-    phone: "081-234-5678",
-    department: "คณะวิศวกรรมศาสตร์ร์",
-    major: "วิศวกรรมคอมพิวเตอร์",
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!user?.id) return;
+
+      try {
+        setLoading(true);
+        const apps = await getStudentApplications(parseInt(user.id));
+        setApplications(apps);
+      } catch (err) {
+        console.error("Failed to fetch profile data:", err);
+        setError("Failed to load profile data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [user?.id]);
+
+  // Derived data
+  const assignedCourses = applications.filter(app => app.statusCode === 'APPROVED');
+  const latestAppWithPhone = applications.find(app => app.phoneNumber);
+
+  const studentProfile = {
+    name: user?.name || "Loading...",
+    studentId: user?.id || "",
+    email: user?.email || "",
+    phone: latestAppWithPhone?.phoneNumber || "-",
+    department: "วิศวกรรมคอมพิวเตอร์", // Placeholder as backend doesn't provide this yet
+    major: "วิศวกรรมคอมพิวเตอร์", // Placeholder
   };
-
-  const assignedCourses = [
-    {
-      id: 1,
-      code: "01076112",
-      name: "Introduction to Programming",
-      instructor: "ผศ.ดร. สมชาย ใจดี",
-      semester: "1/2568",
-      hoursPerWeek: 6,
-      students: 120,
-    },
-    {
-      id: 2,
-      code: "01076114",
-      name: "Data Structures",
-      instructor: "ผศ.ดร. วิชัย รักษ์ศิลป์",
-      semester: "1/2568",
-      hoursPerWeek: 4,
-      students: 95,
-    },
-  ];
-
-  const workHistory = [
-    { month: "พฤศจิกายน 2025", hours: 40, status: "completed" },
-    { month: "ตุลาคม 2025", hours: 38, status: "completed" },
-    { month: "กันยายน 2025", hours: 40, status: "completed" },
-    { month: "สิงหาคม 2025", hours: 35, status: "completed" },
-    { month: "กรกฎาคม 2025", hours: 42, status: "completed" },
-    { month: "มิถุนายน 2025", hours: 37, status: "completed" },
-  ];
-
-  const totalHours = workHistory.reduce(
-    (sum, h) => sum + h.hours,
-    0,
-  );
-  const avgHours = Math.round(totalHours / workHistory.length);
 
   const handleFileUpload = (
     type: "transcript" | "bankAccount" | "studentCard",
@@ -114,6 +108,25 @@ export default function Profile() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <p className="text-red-600 text-lg font-medium mb-2">เกิดข้อผิดพลาด</p>
+          <p className="text-gray-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
@@ -130,16 +143,16 @@ export default function Profile() {
         <div className="lg:col-span-2 bg-white rounded-xl p-8 shadow-sm border border-gray-100">
           <div className="flex flex-col items-center text-center mb-8">
             {/* Large Avatar */}
-            <div className="w-32 h-32 bg-orange-500 rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <span className="text-5xl font-bold text-white">
-                {taProfile.name.charAt(0)}
+            <div className="w-32 h-32 bg-orange-50 border-4 border-white ring-1 ring-gray-100 rounded-full flex items-center justify-center mb-4 shadow-sm">
+              <span className="text-5xl font-bold text-orange-600">
+                {studentProfile.name.charAt(0)}
               </span>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-1">
-              {taProfile.name}
+              {studentProfile.name}
             </h2>
             <p className="text-gray-600 mb-2">
-              รหัสนักศึกษา: {taProfile.studentId}
+              รหัสนักศึกษา: {studentProfile.studentId}
             </p>
             <span className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
               ผู้ช่วยสอน (TA)
@@ -160,7 +173,7 @@ export default function Profile() {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">อีเมล</p>
                   <p className="text-gray-900 font-medium">
-                    {taProfile.email}
+                    {studentProfile.email}
                   </p>
                 </div>
               </div>
@@ -172,7 +185,7 @@ export default function Profile() {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">เบอร์โทร</p>
                   <p className="text-gray-900 font-medium">
-                    {taProfile.phone}
+                    {studentProfile.phone}
                   </p>
                 </div>
               </div>
@@ -192,10 +205,10 @@ export default function Profile() {
               <div>
                 <p className="text-sm text-gray-600 mb-1">สาขาวิชา</p>
                 <p className="text-gray-900 font-medium mb-1">
-                  {taProfile.major}
+                  {studentProfile.major}
                 </p>
                 <p className="text-gray-600 text-sm">
-                  {taProfile.department}
+                  {studentProfile.department}
                 </p>
               </div>
             </div>
@@ -203,54 +216,54 @@ export default function Profile() {
         </div>
 
         {/* Quick Stats Card */}
-        <div className="bg-orange-600 rounded-xl p-6 shadow-lg text-white">
-          <h3 className="text-lg font-semibold mb-6">สถิติภาพรวม</h3>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">สถิติภาพรวม</h3>
 
           <div className="space-y-4">
             {/* Active Courses */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  <span className="text-orange-100">รายวิชาที่ดูแล</span>
+                  <BookOpen className="w-5 h-5 text-orange-600" />
+                  <span className="text-gray-600">รายวิชาที่ดูแล</span>
                 </div>
               </div>
-              <p className="text-3xl font-bold">{assignedCourses.length}</p>
-              <p className="text-orange-100 text-sm mt-1">วิชา</p>
+              <p className="text-3xl font-bold text-gray-900">{assignedCourses.length}</p>
+              <p className="text-gray-500 text-sm mt-1">วิชา</p>
             </div>
 
             {/* Total Applications */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  <span className="text-orange-100">การสมัครทั้งหมด</span>
+                  <FileText className="w-5 h-5 text-orange-600" />
+                  <span className="text-gray-600">การสมัครทั้งหมด</span>
                 </div>
               </div>
-              <p className="text-3xl font-bold">{assignedCourses.length + 3}</p>
-              <p className="text-orange-100 text-sm mt-1">ตำแหน่ง</p>
+              <p className="text-3xl font-bold text-gray-900">{applications.length}</p>
+              <p className="text-gray-500 text-sm mt-1">ตำแหน่ง</p>
             </div>
 
             {/* Document Status */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span className="text-orange-100">สถานะเอกสาร</span>
+                  <CheckCircle2 className="w-5 h-5 text-orange-600" />
+                  <span className="text-gray-600">สถานะเอกสาร</span>
                 </div>
               </div>
-              <p className="text-3xl font-bold">
+              <p className="text-3xl font-bold text-gray-900">
                 {Object.values(uploadedFiles).filter((f) => f !== null).length}/3
               </p>
-              <p className="text-orange-100 text-sm mt-1">เอกสาร</p>
+              <p className="text-gray-500 text-sm mt-1">เอกสาร</p>
             </div>
           </div>
 
           {/* Status Badge */}
-          <div className="mt-6 pt-6 border-t border-white/20">
-            <div className="flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span>สถานะ: ปฏิบัติงานอยู่</span>
+          <div className="mt-6 pt-6 border-t border-gray-100">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>สถานะ: {assignedCourses.length > 0 ? "ปฏิบัติงานอยู่" : "ไม่มีงานที่ทำอยู่"}</span>
             </div>
           </div>
         </div>
@@ -338,7 +351,7 @@ export default function Profile() {
 
                     {/* Accepted Formats */}
                     <p className="text-gray-500 text-sm text-center">
-                      รองรับไฟล์: PDF, JPG, PNG
+                      รองรับเฉพาะไฟล์ PDF
                     </p>
                   </div>
                 )}
