@@ -98,6 +98,10 @@ export function CourseExport() {
     fetchCourses();
   }, []);
 
+  useEffect(() => {
+    // Debug logging removed
+  }, [courses]);
+
   const toggleCourse = (courseId: number) => {
     const courseToToggle = courses.find((c) => c.courseID === courseId);
     if (!courseToToggle) return;
@@ -127,6 +131,16 @@ export function CourseExport() {
 
   const filteredCourses = courses.filter((course) => {
     if (curriculumFilter === "all") return true;
+
+    const programStr = (course.courseProgram || "").toLowerCase();
+
+    if (curriculumFilter === "General")
+      return programStr.includes("general") || programStr.includes("ปกติ") || programStr.includes("ทั่วไป");
+    if (curriculumFilter === "Continuing")
+      return programStr.includes("continuing") || programStr.includes("continuous") || programStr.includes("ต่อเนื่อง");
+    if (curriculumFilter === "International")
+      return programStr.includes("international") || programStr.includes("นานาชาติ");
+
     return course.courseProgram === curriculumFilter;
   });
 
@@ -611,6 +625,12 @@ export function CourseExport() {
           ) : (
             filteredCourses.map((course) => {
               const isSelected = selectedCourses.includes(course.courseID);
+              // Handle different program values (Thai/English) with robust matching
+              const programStr = (course.courseProgram || "").toLowerCase();
+              const isGeneral = programStr.includes("general") || programStr.includes("ปกติ") || programStr.includes("ทั่วไป");
+              const isContinuing = programStr.includes("continuing") || programStr.includes("continuous") || programStr.includes("ต่อเนื่อง");
+              // Default to International if not General or Continuing
+
               return (
                 <div
                   key={course.courseID}
@@ -634,19 +654,20 @@ export function CourseExport() {
                             Sec {course.section}
                           </span>
                           <span
-                            className={`text-xs px-2 py-0.5 rounded font-medium ${course.courseProgram === "General"
+                            className={`text-xs px-2 py-0.5 rounded font-medium ${isGeneral
                               ? "bg-blue-50 text-blue-700"
-                              : course.courseProgram === "Continuing"
+                              : isContinuing
                                 ? "bg-purple-50 text-purple-700"
                                 : "bg-green-50 text-green-700"
                               }`}
                           >
-                            {course.courseProgram === "General"
+                            {isGeneral
                               ? "หลักสูตรปกติ"
-                              : course.courseProgram === "Continuing"
+                              : isContinuing
                                 ? "หลักสูตรต่อเนื่อง"
                                 : "หลักสูตรนานาชาติ"}
                           </span>
+
                           <span className="text-xs px-2 py-0.5 bg-orange-50 text-orange-700 rounded border border-orange-100">
                             {course.semester}{course.year ?? ""}
                           </span>
@@ -770,6 +791,11 @@ export function CourseExport() {
                     {selectedCourses.map((courseID) => {
                       const course = courses.find((c) => c.courseID === courseID);
                       if (!course) return null;
+
+                      const isGeneral = course.courseProgram === "General" || course.courseProgram === "หลักสูตรปกติ";
+                      const isContinuing = course.courseProgram === "Continuing" || course.courseProgram === "หลักสูตรต่อเนื่อง";
+                      const isInternational = course.courseProgram === "International" || course.courseProgram === "หลักสูตรนานาชาติ";
+
                       return (
                         <div
                           key={courseID}
@@ -784,16 +810,16 @@ export function CourseExport() {
                                 Sec {course.section}
                               </span>
                               <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${course.courseProgram === "General"
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isGeneral
                                   ? "bg-blue-50 text-blue-700"
-                                  : course.courseProgram === "Continuing"
+                                  : isContinuing
                                     ? "bg-purple-50 text-purple-700"
                                     : "bg-green-50 text-green-700"
                                   }`}
                               >
-                                {course.courseProgram === "General"
+                                {isGeneral
                                   ? "ปกติ"
-                                  : course.courseProgram === "Continuing"
+                                  : isContinuing
                                     ? "ต่อเนื่อง"
                                     : "นานาชาติ"}
                               </span>
