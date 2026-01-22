@@ -71,7 +71,8 @@ func (r LookupRepositoryImplementation) GetSemester() (*[]response.SemesterRespo
 				semester_id, 
 				semester_value,
                 start_date,
-                end_date
+                end_date,
+				is_active
 			FROM semester
             WHERE end_date >= CURRENT_DATE
 			ORDER BY start_date ASC`
@@ -84,7 +85,7 @@ func (r LookupRepositoryImplementation) GetSemester() (*[]response.SemesterRespo
 	var semesters []response.SemesterResponse
 	for rows.Next() {
 		var semester response.SemesterResponse
-		err := rows.Scan(&semester.Id, &semester.Semester, &semester.StartDate, &semester.EndDate)
+		err := rows.Scan(&semester.Id, &semester.Semester, &semester.StartDate, &semester.EndDate, &semester.IsActive)
 		if err != nil {
 			return nil, err
 		}
@@ -324,6 +325,9 @@ func (r LookupRepositoryImplementation) GetStudentCard(studentID int) (*response
 	var result response.PdfFile
 	err := r.db.QueryRow(query, studentID).Scan(&result.FileName, &result.FileBytes)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -337,6 +341,9 @@ func (r LookupRepositoryImplementation) GetTranscript(studentID int) (*response.
 	var result response.PdfFile
 	err := r.db.QueryRow(query, studentID).Scan(&result.FileName, &result.FileBytes)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -350,6 +357,11 @@ func (r LookupRepositoryImplementation) GetBankAccount(studentID int) (*response
 	var result response.PdfFile
 	err := r.db.QueryRow(query, studentID).Scan(&result.FileName, &result.FileBytes)
 	if err != nil {
+
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
@@ -411,4 +423,29 @@ func (r LookupRepositoryImplementation) UpdateSemester(rq request.UpdateSemester
 	}
 
 	return nil
+}
+
+func (r LookupRepositoryImplementation) SetSemesterActive(semesterID int) error {
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	query := `UPDATE semester SET is_active=FALSE`
+	_, err = tx.Exec(query)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to set all semester to default")
+	}
+
+	query = `UPDATE semester SET is_active=TRUE WHERE semester_ID=$1`
+	_, err = tx.Exec(query, semesterID)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to set active semester")
+	}
+
+	return tx.Commit()
+
 }

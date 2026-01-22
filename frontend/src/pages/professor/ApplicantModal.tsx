@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, FileText, CreditCard, IdCard, Check, XIcon, Eye } from 'lucide-react';
-import { getTranscriptUrl, getBankAccountUrl, getStudentCardUrl, getStudentApplications, Application } from '../../services/courseService';
+import { getStudentApplications, Application } from '../../services/courseService';
+import { getStudentTranscriptUrl, getStudentBankAccountUrl, getStudentCardUrl } from '../../services/lookupService';
 
 interface Applicant {
   id: number;
@@ -126,7 +127,7 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
                 </div>
                 {applicant.documents.transcript ? (
                   <button
-                    onClick={() => window.open(getTranscriptUrl(applicant.id), '_blank')}
+                    onClick={() => window.open(getStudentTranscriptUrl(parseInt(applicant.studentId)), '_blank')}
                     className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]"
                   >
                     <Eye size={16} />
@@ -144,7 +145,7 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
                 </div>
                 {applicant.documents.bankAccount ? (
                   <button
-                    onClick={() => window.open(getBankAccountUrl(applicant.id), '_blank')}
+                    onClick={() => window.open(getStudentBankAccountUrl(parseInt(applicant.studentId)), '_blank')}
                     className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]"
                   >
                     <Eye size={16} />
@@ -162,7 +163,7 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
                 </div>
                 {applicant.documents.studentCard ? (
                   <button
-                    onClick={() => window.open(getStudentCardUrl(applicant.id), '_blank')}
+                    onClick={() => window.open(getStudentCardUrl(parseInt(applicant.studentId)), '_blank')}
                     className="flex items-center gap-2 text-sm hover:underline text-[var(--color-primary-600)]"
                   >
                     <Eye size={16} />

@@ -24,7 +24,8 @@ CREATE TABLE semester(
     semester_ID  SERIAL PRIMARY KEY,
     semester_value VARCHAR(10) NOT NULL UNIQUE,
     start_date DATE ,
-    end_date DATE 
+    end_date DATE ,
+    is_active BOOLEAN DEFAULT false
 
   
 );

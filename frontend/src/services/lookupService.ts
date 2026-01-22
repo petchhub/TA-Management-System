@@ -64,6 +64,7 @@ interface SemesterResponse {
     semester: string; // "Term/Year"
     startDate: string;
     endDate: string;
+    isActive: boolean;
 }
 
 export interface Semester {
@@ -72,6 +73,7 @@ export interface Semester {
     term: number;
     startDate: string;
     endDate: string;
+    isActive: boolean;
 }
 
 /**
@@ -100,7 +102,8 @@ export async function getSemesters(): Promise<Semester[]> {
                 year: year,
                 term: term,
                 startDate: s.startDate,
-                endDate: s.endDate
+                endDate: s.endDate,
+                isActive: s.isActive
             };
         });
     } catch (error) {
@@ -308,6 +311,30 @@ export async function updateSemester(data: UpdateSemesterRequest): Promise<void>
         }
     } catch (error) {
         console.error('Error updating semester:', error);
+        throw error;
+    }
+}
+
+/**
+ * Set a semester as active
+ * @param id - The ID of the semester to set active
+ */
+export async function setSemesterActive(id: number): Promise<void> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/semester-active/${id}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Failed to set active semester: ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('Error setting active semester:', error);
         throw error;
     }
 }

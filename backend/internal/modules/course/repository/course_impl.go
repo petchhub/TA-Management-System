@@ -54,7 +54,10 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 				ON j.status_ID = st.status_ID
 			LEFT JOIN grades AS g
 				ON j.grade_ID = g.grade_ID
-			WHERE j.status_ID = $1`
+			LEFT JOIN semester AS s
+				ON c.semester_ID = s.semester_ID
+			WHERE j.status_ID = $1
+			AND s.is_active = TRUE`
 
 	rows, err := r.db.Query(query, constants.OpenStatusID)
 	if err != nil {
@@ -133,7 +136,8 @@ func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.Job
 				ON j.status_ID = st.status_ID
 			LEFT JOIN grades AS g
 				ON j.grade_ID = g.grade_ID
-			WHERE j.deleted_date IS NULL`
+			WHERE j.deleted_date IS NULL
+			AND s.is_active = TRUE`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -218,6 +222,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				WHERE ta.job_post_ID = j.id
 				AND ta.student_ID = $1)
 			AND j.status_id = $2
+			AND s.is_active = TRUE
 			`
 
 	rows, err := r.db.Query(query, studentId, constants.OpenStatusID)
@@ -287,7 +292,8 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				ON c.course_program_ID = cp.course_program_ID
 			LEFT JOIN semester AS s
 				ON c.semester_ID = s.semester_ID
-			WHERE c.deleted_date IS NULL`
+			WHERE c.deleted_date IS NULL
+			AND s.is_active = TRUE`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -348,8 +354,11 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 				ON c.class_day_ID = cd.class_day_ID
 			LEFT JOIN course_programs AS cp
 				ON c.course_program_ID = cp.course_program_ID
+			LEFT JOIN semester AS s
+				ON c.semester_ID = s.semester_ID
 			WHERE c.professor_ID=$1
-			AND c.deleted_date IS NULL`
+			AND c.deleted_date IS NULL
+			AND s.is_active = TRUE`
 
 	rows, err := r.db.Query(query, professorId)
 	if err != nil {

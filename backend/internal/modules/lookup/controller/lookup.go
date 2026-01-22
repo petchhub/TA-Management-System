@@ -26,10 +26,13 @@ func InitializeController(lookupService service.LookupService, r *gin.RouterGrou
 	{
 		r.GET("/course-program", c.getCourseProgram)
 		r.GET("/classday", c.getClassday)
+
 		r.POST("/add-semester", c.addSemester)
 		r.PATCH("/semester", c.updateSemester)
 		r.GET("/semester", c.getSemester)
 		r.GET("/semester-dropdown", c.getSemesterDropdown)
+		r.POST("/semester-active/:semesterID", c.setSemesterActive)
+
 		r.GET("/grade", c.getGrade)
 		r.GET("/professors", c.getProfessors)
 		r.GET("/holiday", c.GetHolidays)
@@ -295,4 +298,21 @@ func (controller LookupController) updateSemester(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller LookupController) setSemesterActive(ctx *gin.Context) {
+	idStr := ctx.Param("semesterID")
+	semesterID, err := strconv.Atoi(idStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
+		return
+	}
+
+	err = controller.service.SetSemesterActive(semesterID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "something went wrong"})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{"message": "success"})
 }

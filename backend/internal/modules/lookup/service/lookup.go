@@ -24,4 +24,5 @@ type LookupService interface {
 	GetStudentCard(studentID int) (*response.PdfFile, error)
 	AddSemester(rq request.CreateSemester) error
 	UpdateSemester(rq request.UpdateSemester) (*[]response.SemesterResponse, error)
+	SetSemesterActive(semesterID int) error
 }

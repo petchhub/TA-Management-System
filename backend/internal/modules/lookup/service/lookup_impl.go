@@ -281,3 +281,12 @@ func (s LookupServiceImplementation) UpdateSemester(rq request.UpdateSemester) (
 
 	return result, nil
 }
+
+func (s LookupServiceImplementation) SetSemesterActive(semesterID int) error {
+
+	err := s.repo.SetSemesterActive(semesterID)
+	if err != nil {
+		fmt.Printf("failed to set semester active: %v", err)
+	}
+	return nil
+}

@@ -30,4 +30,5 @@ type SemesterResponse struct {
 	Semester  string    `json:"semester"`
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
+	IsActive  bool      `json:"isActive"`
 }

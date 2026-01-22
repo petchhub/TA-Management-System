@@ -43,9 +43,11 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 		r.GET("/application/course/:courseId", c.getApplicationBycourseId)
 		r.GET("/application/professor/:professorId", c.getApplicationByProfessorId)
 		r.GET("/application/:applilcationId", c.getApplicationDetail)
-		r.GET("/application/transcript/:applicationId", c.getApplicationtranscriptPdf)
-		r.GET("/application/bankaccount/:applicationId", c.getApplicationbankAccountPdf)
-		r.GET("/application/studentcard/:applicationId", c.getApplicationstudentCardPdf)
+
+		// r.GET("/application/transcript/:applicationId", c.getApplicationtranscriptPdf)
+		// r.GET("/application/bankaccount/:applicationId", c.getApplicationbankAccountPdf)
+		// r.GET("/application/studentcard/:applicationId", c.getApplicationstudentCardPdf)
+
 		r.POST("/application/approve/:applicationId", c.approveApplication)
 		r.POST("/application/reject/:applicationId", c.rejectApplication)
 	}

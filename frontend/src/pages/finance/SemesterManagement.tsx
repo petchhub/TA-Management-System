@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Pencil } from 'lucide-react';
-import { addSemester, updateSemester, getSemesters, Semester } from '../../services/lookupService';
+import { Plus, Trash2, Pencil, CheckCircle } from 'lucide-react';
+import { addSemester, updateSemester, getSemesters, setSemesterActive, Semester } from '../../services/lookupService';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -12,7 +12,11 @@ import {
     AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
 
-export function SemesterManagement() {
+interface SemesterManagementProps {
+    onSemesterChange?: () => void;
+}
+
+export function SemesterManagement({ onSemesterChange }: SemesterManagementProps) {
     const [semesters, setSemesters] = useState<Semester[]>([]);
 
     useEffect(() => {
@@ -52,6 +56,7 @@ export function SemesterManagement() {
 
                 alert("แก้ไขภาคการศึกษาเรียบร้อยแล้ว");
                 await fetchSemesters();
+                if (onSemesterChange) onSemesterChange();
             } else {
                 // Add Mode
                 await addSemester({
@@ -63,6 +68,8 @@ export function SemesterManagement() {
 
                 alert("เพิ่มภาคการศึกษาเรียบร้อยแล้ว");
                 await fetchSemesters();
+                console.log("Calling onSemesterChange"); // Debug log
+                if (onSemesterChange) onSemesterChange();
             }
 
             closeModal();
@@ -93,6 +100,18 @@ export function SemesterManagement() {
     const handleDeleteClick = (id: number) => {
         if (window.confirm("คุณแน่ใจหรือไม่ว่าต้องการลบเทอมนี้?")) {
             setSemesters(semesters.filter(s => s.id !== id));
+            // Assuming there is a delete API call here, we would also call onSemesterChange()
+        }
+    };
+
+    const handleSetActive = async (id: number) => {
+        try {
+            await setSemesterActive(id);
+            alert("ตั้งค่าภาคการศึกษาปัจจุบันเรียบร้อยแล้ว");
+            await fetchSemesters();
+            if (onSemesterChange) onSemesterChange();
+        } catch (error) {
+            alert("เกิดข้อผิดพลาดในการตั้งค่าภาคการศึกษาปัจจุบัน: " + error);
         }
     };
 
@@ -133,7 +152,7 @@ export function SemesterManagement() {
                             <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">ภาคเรียน</th>
                             <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">วันเริ่มภาคเรียน</th>
                             <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">วันสิ้นสุดภาคเรียน</th>
-
+                            <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">สถานะ</th>
                             <th className="px-6 py-4 text-right text-sm font-semibold text-gray-900">จัดการ</th>
                         </tr>
                     </thead>
@@ -147,7 +166,21 @@ export function SemesterManagement() {
                                         <td className="px-6 py-4 text-gray-900">{semester.term}</td>
                                         <td className="px-6 py-4 text-gray-900">{formatDate(semester.startDate)}</td>
                                         <td className="px-6 py-4 text-gray-900">{formatDate(semester.endDate)}</td>
-
+                                        <td className="px-6 py-4 text-center">
+                                            {semester.isActive ? (
+                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <CheckCircle size={14} />
+                                                    ปัจจุบัน
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleSetActive(semester.id)}
+                                                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                                                >
+                                                    ตั้งเป็นปัจจุบัน
+                                                </button>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <button
                                                 onClick={() => openEditModal(semester)}

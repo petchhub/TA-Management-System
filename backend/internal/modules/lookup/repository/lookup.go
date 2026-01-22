@@ -24,4 +24,5 @@ type LookupRepository interface {
 	GetBankAccount(studentID int) (*response.PdfFile, error)
 	AddSemester(rq request.CreateSemester) error
 	UpdateSemester(rq request.UpdateSemester) error
+	SetSemesterActive(semesterID int) error
 }
