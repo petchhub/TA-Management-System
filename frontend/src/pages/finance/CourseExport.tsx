@@ -7,7 +7,9 @@ import {
   X,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Search,
+  ArrowUpDown
 } from "lucide-react";
 import {
   AlertDialog,
@@ -18,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
-import { getAllCoursesForFinance } from "../../services/courseService";
+import { getAllCoursesForFinance, getApplicationsForCourse } from "../../services/courseService";
 
 
 interface Course {
@@ -43,6 +45,24 @@ interface AvailableMonth {
   year: number;
 }
 
+function getThaiMonth(monthName: string): string {
+  const map: { [key: string]: string } = {
+    'january': 'มกราคม', 'jan': 'มกราคม',
+    'february': 'กุมภาพันธ์', 'feb': 'กุมภาพันธ์',
+    'march': 'มีนาคม', 'mar': 'มีนาคม',
+    'april': 'เมษายน', 'apr': 'เมษายน',
+    'may': 'พฤษภาคม',
+    'june': 'มิถุนายน', 'jun': 'มิถุนายน',
+    'july': 'กรกฎาคม', 'jul': 'กรกฎาคม',
+    'august': 'สิงหาคม', 'aug': 'สิงหาคม',
+    'september': 'กันยายน', 'sep': 'กันยายน',
+    'october': 'ตุลาคม', 'oct': 'ตุลาคม',
+    'november': 'พฤศจิกายน', 'nov': 'พฤศจิกายน',
+    'december': 'ธันวาคม', 'dec': 'ธันวาคม'
+  };
+  return map[monthName.toLowerCase().trim()] || monthName;
+}
+
 export function CourseExport() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +78,10 @@ export function CourseExport() {
   const [signatureMonths, setSignatureMonths] = useState<AvailableMonth[]>([]);
   const [selectedSignatureMonth, setSelectedSignatureMonth] = useState<AvailableMonth | null>(null);
   const [loadingSignatureMonths, setLoadingSignatureMonths] = useState(false);
+
+  // New State for Search and Sort
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("code_asc");
 
   // Export Progress State
   const [exportStatus, setExportStatus] = useState<{
@@ -86,7 +110,21 @@ export function CourseExport() {
         setLoading(true);
         setError(null);
         const data = await getAllCoursesForFinance();
-        setCourses(data);
+
+        // Fetch TA counts for each course
+        const coursesWithTaCounts = await Promise.all(data.map(async (course) => {
+          try {
+            const apps = await getApplicationsForCourse(course.courseID);
+            // Count approved (5) and successful (6) applications
+            const approvedCount = apps.filter(a => a.statusID === 5 || a.statusID === 6).length;
+            return { ...course, taCount: approvedCount };
+          } catch (e) {
+            console.error(`Failed to fetch apps for course ${course.courseID}`, e);
+            return { ...course, taCount: 0 };
+          }
+        }));
+
+        setCourses(coursesWithTaCounts);
       } catch (err) {
         console.error("Error fetching courses:", err);
         setError("ไม่สามารถโหลดข้อมูลรายวิชาได้ กรุณาลองใหม่อีกครั้ง");
@@ -130,18 +168,34 @@ export function CourseExport() {
   };
 
   const filteredCourses = courses.filter((course) => {
-    if (curriculumFilter === "all") return true;
+    // Search Filter
+    const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.courseCode.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const programStr = (course.courseProgram || "").toLowerCase();
+    // Curriculum Filter
+    let matchesCurriculum = true;
+    if (curriculumFilter !== "all") {
+      const programStr = (course.courseProgram || "").toLowerCase();
+      if (curriculumFilter === "General")
+        matchesCurriculum = programStr.includes("general") || programStr.includes("ปกติ") || programStr.includes("ทั่วไป");
+      else if (curriculumFilter === "Continuing")
+        matchesCurriculum = programStr.includes("continuing") || programStr.includes("continuous") || programStr.includes("ต่อเนื่อง");
+      else if (curriculumFilter === "International")
+        matchesCurriculum = programStr.includes("international") || programStr.includes("นานาชาติ");
+      else
+        matchesCurriculum = course.courseProgram === curriculumFilter;
+    }
 
-    if (curriculumFilter === "General")
-      return programStr.includes("general") || programStr.includes("ปกติ") || programStr.includes("ทั่วไป");
-    if (curriculumFilter === "Continuing")
-      return programStr.includes("continuing") || programStr.includes("continuous") || programStr.includes("ต่อเนื่อง");
-    if (curriculumFilter === "International")
-      return programStr.includes("international") || programStr.includes("นานาชาติ");
-
-    return course.courseProgram === curriculumFilter;
+    return matchesSearch && matchesCurriculum;
+  }).sort((a, b) => {
+    if (sortOption === "code_asc") {
+      return a.courseCode.localeCompare(b.courseCode);
+    } else if (sortOption === "code_desc") {
+      return b.courseCode.localeCompare(a.courseCode);
+    } else if (sortOption === "name_asc") {
+      return a.courseName.localeCompare(b.courseName);
+    }
+    return 0;
   });
 
   const toggleAll = () => {
@@ -327,11 +381,17 @@ export function CourseExport() {
           throw new Error(`Export failed for course ${courseID}`);
         }
 
+        const course = courses.find(c => c.courseID === courseID);
+        const subjectPart = course ? `${course.courseCode}-${course.courseName}` : courseID;
+        const groupPart = course ? course.section : 'N/A';
+        const rawMonth = selectedMonth ? selectedMonth.monthName : 'Unknown';
+        const monthPart = getThaiMonth(rawMonth);
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Payment_Report_${courseID}_${selectedMonth?.year}_${selectedMonth?.monthID}.xlsx`;
+        link.download = `ตารางเบิกเงิน_วิชา-${subjectPart}_กลุ่ม-${groupPart}_เดือน${monthPart}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -474,11 +534,17 @@ export function CourseExport() {
           throw new Error(`Export failed for course ${courseID}`);
         }
 
+        const course = courses.find(c => c.courseID === courseID);
+        const subjectPart = course ? `${course.courseCode}-${course.courseName}` : courseID;
+        const groupPart = course ? course.section : 'N/A';
+        const rawMonth = selectedSignatureMonth ? selectedSignatureMonth.monthName : 'Unknown';
+        const monthPart = getThaiMonth(rawMonth);
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `Signature_Sheet_${courseID}_${selectedSignatureMonth?.year}_${selectedSignatureMonth?.monthID}.xlsx`;
+        link.download = `ใบเซ็นชื่อTA_วิชา-${subjectPart}_กลุ่ม${groupPart}_เดือน${monthPart}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -532,44 +598,71 @@ export function CourseExport() {
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setCurriculumFilter("all")}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${curriculumFilter === "all"
-            ? "bg-[#E35205] text-white"
-            : "bg-white text-gray-600 hover:bg-gray-100"
-            }`}
-        >
-          ทั้งหมด
-        </button>
-        <button
-          onClick={() => setCurriculumFilter("General")}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${curriculumFilter === "General"
-            ? "bg-[#E35205] text-white"
-            : "bg-white text-gray-600 hover:bg-gray-100"
-            }`}
-        >
-          หลักสูตรปกติ
-        </button>
-        <button
-          onClick={() => setCurriculumFilter("Continuing")}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${curriculumFilter === "Continuing"
-            ? "bg-[#E35205] text-white"
-            : "bg-white text-gray-600 hover:bg-gray-100"
-            }`}
-        >
-          หลักสูตรต่อเนื่อง
-        </button>
-        <button
-          onClick={() => setCurriculumFilter("International")}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${curriculumFilter === "International"
-            ? "bg-[#E35205] text-white"
-            : "bg-white text-gray-600 hover:bg-gray-100"
-            }`}
-        >
-          หลักสูตรนานาชาติ
-        </button>
+      {/* Unified Toolbar */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+        <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+
+          {/* Search - Takes available space */}
+          <div className="w-full lg:flex-1 relative">
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <Search size={20} />
+            </div>
+            <input
+              type="text"
+              placeholder="ค้นหาด้วยรหัสวิชา หรือชื่อวิชา..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-gray-50 focus:bg-white transition-all"
+            />
+          </div>
+
+          {/* Filter & Sort Container */}
+          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+
+            {/* Filter Segmented Control */}
+            <div className="bg-gray-100 p-1 rounded-lg flex overflow-x-auto no-scrollbar w-full sm:w-auto">
+              {[
+                { id: 'all', label: 'ทั้งหมด' },
+                { id: 'General', label: 'ปกติ' },
+                { id: 'Continuing', label: 'ต่อเนื่อง' },
+                { id: 'International', label: 'นานาชาติ' }
+              ].map((filter) => (
+                <button
+                  key={filter.id}
+                  onClick={() => setCurriculumFilter(filter.id)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap flex-1 sm:flex-none ${curriculumFilter === filter.id
+                    ? "bg-white text-orange-600 shadow-sm ring-1 ring-black/5"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
+                    }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative min-w-[180px]">
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none">
+                <ArrowUpDown size={16} />
+              </div>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white appearance-none cursor-pointer text-sm font-medium text-gray-700 hover:border-orange-300 transition-colors"
+              >
+                <option value="code_asc">รหัสวิชา (น้อย-มาก)</option>
+                <option value="code_desc">รหัสวิชา (มาก-น้อย)</option>
+                <option value="name_asc">ชื่อวิชา (A-Z)</option>
+                <option value="name_desc">ชื่อวิชา (Z-A)</option>
+              </select>
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Export Actions */}

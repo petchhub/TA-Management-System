@@ -37,6 +37,7 @@ type JobPost struct {
 	StatusID      int    `json:"statusID"`
 	JobPostID     int    `json:"jobPostID"`
 	CourseID      int    `json:"courseID"`
+	Section       string `json:"sec"`
 }
 
 type Application struct {

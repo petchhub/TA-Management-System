@@ -12,6 +12,8 @@ import (
 	courseservice "TA-management/internal/modules/course/service"
 	lookuprepo "TA-management/internal/modules/lookup/repository"
 	lookupservice "TA-management/internal/modules/lookup/service"
+	studentrepo "TA-management/internal/modules/student/repository"
+	studentservice "TA-management/internal/modules/student/service"
 	tadutyrepo "TA-management/internal/modules/ta_duty/repository"
 	tadutyservice "TA-management/internal/modules/ta_duty/service"
 	router "TA-management/internal/routers"
@@ -55,21 +57,24 @@ func main() {
 	guilID := os.Getenv("GUILD_ID")
 
 	//Initialize Repositories & Services
-	authenRepo := authenrepo.NewAuthenRepository(db)
+	authenRepo := authenrepo.NewAuthenRepository(db.DB)
 	authenSvc := authenservice.NewAuthenService(authenRepo, googleOAuthConfig, jwtSecret)
 
-	courseRepo := courserepo.NewCourseRepository(db)
+	courseRepo := courserepo.NewCourseRepository(db.DB)
 	courseSvc := courseservice.NewCourseService(courseRepo)
 
-	lookupRepo := lookuprepo.NewLookupRepository(db)
+	lookupRepo := lookuprepo.NewLookupRepository(db.DB)
 	lookupSvc := lookupservice.NewLookupService(lookupRepo)
 
-	tadutyRepo := tadutyrepo.NewTaDutyRepository(db)
+	studentRepo := studentrepo.NewStudentRepository(db)
+	studentSvc := studentservice.NewStudentService(studentRepo)
+
+	tadutyRepo := tadutyrepo.NewTaDutyRepository(db.DB)
 	tadutySvc := tadutyservice.NewTaDutyServiceImplementation(tadutyRepo, log)
 
 	discordClient := discord.NewDiscordClient(discordClientUrl, guilID)
 
-	announceRepo := announcerepo.NewAnnouncementRepository(db)
+	announceRepo := announcerepo.NewAnnouncementRepository(db.DB)
 	announceSvc := announceservice.NewAnnouncementService(announceRepo, discordClient)
 
 	//start CRONS JOB
@@ -89,7 +94,7 @@ func main() {
 		}
 	}()
 
-	routes := router.InitRouter(authenSvc, courseSvc, lookupSvc, tadutySvc, announceSvc, googleOAuthConfig, jwtSecret)
+	routes := router.InitRouter(authenSvc, courseSvc, lookupSvc, studentSvc, tadutySvc, announceSvc, googleOAuthConfig, jwtSecret)
 
 	port := 8084
 	server := &http.Server{

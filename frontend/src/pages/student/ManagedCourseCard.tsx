@@ -4,11 +4,15 @@ import { formatTime } from "../../utils/formatUtils";
 
 interface ManagedCourseCardProps {
     course: Course;
+    onClick?: () => void;
 }
 
-export default function ManagedCourseCard({ course }: ManagedCourseCardProps) {
+export default function ManagedCourseCard({ course, onClick }: ManagedCourseCardProps) {
     return (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div
+            onClick={onClick}
+            className={`bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow ${onClick ? 'cursor-pointer' : ''}`}
+        >
             <div className="flex items-start justify-between mb-4">
                 <div>
                     <div className="flex items-center gap-2 mb-2">

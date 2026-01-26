@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Search,
     BookOpen,
     Plus,
     Loader2,
     Pencil,
-    Trash2
+    Trash2,
+    ArrowUpDown
 } from "lucide-react";
 import {
     AlertDialog,
@@ -22,12 +24,16 @@ import { getProfessors, getCourseProgram, getClassDays, getSemesters, LookupItem
 import { formatTime } from '../../utils/formatUtils';
 
 export function CourseManagement() {
+    const navigate = useNavigate();
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<Course | null>(null);
     const [deleteConfirmCourse, setDeleteConfirmCourse] = useState<Course | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [showNoSemesterWarning, setShowNoSemesterWarning] = useState(false);
+    const [sortOption, setSortOption] = useState("newest");
+    const [curriculumFilter, setCurriculumFilter] = useState("all");
 
     // Lookup Data
     const [professors, setProfessors] = useState<LookupItem[]>([]);
@@ -69,7 +75,7 @@ export function CourseManagement() {
                 getClassDays(),
                 getSemestersDropdown()
             ]);
-            console.log(coursesData); 7
+            console.log(coursesData);
             setCourses(coursesData);
             setProfessors(profs);
             setPrograms(progs);
@@ -205,10 +211,48 @@ export function CourseManagement() {
         }
     };
 
-    const filteredCourses = courses.filter(course =>
-        course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.courseCode.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleAddCourse = () => {
+        if (semesters.length === 0) {
+            setShowNoSemesterWarning(true);
+        } else {
+            setIsModalOpen(true);
+        }
+    };
+
+    const filteredCourses = courses.filter(course => {
+        // Search Filter
+        const matchesSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            course.courseCode.toLowerCase().includes(searchTerm.toLowerCase());
+
+        // Curriculum Filter
+        let matchesCurriculum = true;
+        if (curriculumFilter !== "all") {
+            const programStr = (course.courseProgram || "").toLowerCase();
+            if (curriculumFilter === "General")
+                matchesCurriculum = programStr.includes("general") || programStr.includes("ปกติ") || programStr.includes("ทั่วไป");
+            else if (curriculumFilter === "Continuing")
+                matchesCurriculum = programStr.includes("continuing") || programStr.includes("continuous") || programStr.includes("ต่อเนื่อง");
+            else if (curriculumFilter === "International")
+                matchesCurriculum = programStr.includes("international") || programStr.includes("นานาชาติ");
+            else
+                matchesCurriculum = course.courseProgram === curriculumFilter;
+        }
+
+        return matchesSearch && matchesCurriculum;
+    }).sort((a, b) => {
+        if (sortOption === "newest") {
+            return b.courseID - a.courseID;
+        } else if (sortOption === "oldest") {
+            return a.courseID - b.courseID;
+        } else if (sortOption === "code_asc") {
+            return a.courseCode.localeCompare(b.courseCode);
+        } else if (sortOption === "code_desc") {
+            return b.courseCode.localeCompare(a.courseCode);
+        } else if (sortOption === "name_asc") {
+            return a.courseName.localeCompare(b.courseName);
+        }
+        return 0;
+    });
 
     return (
         <div>
@@ -220,7 +264,7 @@ export function CourseManagement() {
                     </p>
                 </div>
                 <button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={handleAddCourse}
                     className="bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 hover:text-white"
                 >
                     <Plus size={20} />
@@ -228,17 +272,72 @@ export function CourseManagement() {
                 </button>
             </div>
 
-            {/* Search Bar */}
-            <div className="bg-white rounded-lg shadow p-4 mb-6">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                        type="text"
-                        placeholder="ค้นหาด้วยรหัสวิชา หรือชื่อวิชา..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    />
+            {/* Unified Toolbar */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
+                <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
+
+                    {/* Search - Takes available space */}
+                    <div className="w-full lg:flex-1 relative">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                            <Search size={20} />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="ค้นหาด้วยรหัสวิชา หรือชื่อวิชา..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-gray-50 focus:bg-white transition-all"
+                        />
+                    </div>
+
+                    {/* Filter & Sort Container */}
+                    <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+
+                        {/* Filter Segmented Control */}
+                        <div className="bg-gray-100 p-1 rounded-lg flex overflow-x-auto no-scrollbar w-full sm:w-auto">
+                            {[
+                                { id: 'all', label: 'ทั้งหมด' },
+                                { id: 'General', label: 'ปกติ' },
+                                { id: 'Continuing', label: 'ต่อเนื่อง' },
+                                { id: 'International', label: 'นานาชาติ' }
+                            ].map((filter) => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setCurriculumFilter(filter.id)}
+                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all whitespace-nowrap flex-1 sm:flex-none ${curriculumFilter === filter.id
+                                        ? "bg-white text-orange-600 shadow-sm ring-1 ring-black/5"
+                                        : "text-gray-500 hover:text-gray-900 hover:bg-gray-200/50"
+                                        }`}
+                                >
+                                    {filter.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Sort Dropdown */}
+                        <div className="relative min-w-[180px]">
+                            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none">
+                                <ArrowUpDown size={16} />
+                            </div>
+                            <select
+                                value={sortOption}
+                                onChange={(e) => setSortOption(e.target.value)}
+                                className="w-full pl-9 pr-8 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white appearance-none cursor-pointer text-sm font-medium text-gray-700 hover:border-orange-300 transition-colors"
+                            >
+                                <option value="newest">ใหม่สุด - เก่าสุด</option>
+                                <option value="oldest">เก่าสุด - ใหม่สุด</option>
+                                <option value="code_asc">รหัสวิชา (น้อย-มาก)</option>
+                                <option value="code_desc">รหัสวิชา (มาก-น้อย)</option>
+                                <option value="name_asc">ชื่อวิชา (A-Z)</option>
+                                <option value="name_desc">ชื่อวิชา (Z-A)</option>
+                            </select>
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -249,46 +348,66 @@ export function CourseManagement() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">
-                    {filteredCourses.map((course) => (
-                        <div key={course.courseID} className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className="font-bold text-xl text-orange-600">{course.courseCode}</span>
-                                        <span className="text-gray-400 text-xl">|</span>
-                                        <span className="text-gray-900 font-semibold text-xl">{course.courseName}</span>
+                    {filteredCourses.map((course) => {
+                        const programStr = (course.courseProgram || "").toLowerCase();
+                        const isGeneral = programStr.includes("general") || programStr.includes("ปกติ") || programStr.includes("ทั่วไป");
+                        const isContinuing = programStr.includes("continuing") || programStr.includes("continuous") || programStr.includes("ต่อเนื่อง");
+
+
+                        return (
+                            <div key={course.courseID} className="bg-white rounded-lg shadow p-6 border-l-4 border-l-transparent hover:border-l-orange-500 transition-all">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                            <span className="font-bold text-xl text-orange-600">{course.courseCode}</span>
+                                            <span className="text-gray-400 text-xl hidden sm:inline">|</span>
+                                            <span className="text-gray-900 font-semibold text-xl mr-2">{course.courseName}</span>
+
+                                            <span
+                                                className={`text-sm px-2 py-0.5 rounded font-medium ${isGeneral
+                                                    ? "bg-blue-50 text-blue-700"
+                                                    : isContinuing
+                                                        ? "bg-purple-50 text-purple-700"
+                                                        : "bg-green-50 text-green-700"
+                                                    }`}
+                                            >
+                                                {isGeneral
+                                                    ? "หลักสูตรปกติ"
+                                                    : isContinuing
+                                                        ? "หลักสูตรต่อเนื่อง"
+                                                        : "หลักสูตรนานาชาติ"}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm text-gray-600 space-y-1">
+                                            <p>กลุ่มเรียน: {course.section || "N/A"}</p>
+                                            <p>อาจารย์ผู้สอน: {course.professorName}</p>
+                                            <p>วันเรียน: {course.classday} | เวลา: {formatTime(course.classStart)} - {formatTime(course.classEnd)}</p>
+                                        </div>
                                     </div>
-                                    <div className="text-sm text-gray-600 space-y-1">
-                                        <p>กลุ่มเรียน: {course.section || "N/A"}</p>
-                                        <p>อาจารย์ผู้สอน: {course.professorName}</p>
-                                        <p>วันเรียน: {course.classday} | เวลา: {formatTime(course.classStart)} - {formatTime(course.classEnd)}</p>
+                                    <div className="text-right flex flex-col items-end gap-2">
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleEdit(course)}
+                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="แก้ไข"
+                                            >
+                                                <Pencil size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(course)}
+                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="ลบ"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+
+                                        <p className="text-xs text-gray-500 mt-1">{course.semester}</p>
                                     </div>
-                                </div>
-                                <div className="text-right flex flex-col items-end gap-2">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleEdit(course)}
-                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                            title="แก้ไข"
-                                        >
-                                            <Pencil size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(course)}
-                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="ลบ"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
-                                    <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                        {course.courseProgram}
-                                    </span>
-                                    <p className="text-xs text-gray-500">{course.semester}</p>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     {filteredCourses.length === 0 && (
                         <div className="text-center py-12 text-gray-500 bg-white rounded-lg shadow">
                             <BookOpen className="mx-auto mb-3 opacity-50" size={48} />
@@ -485,6 +604,32 @@ export function CourseManagement() {
                             className="bg-red-600 hover:bg-red-700"
                         >
                             ลบรายวิชา
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* No Semester Warning Dialog */}
+            <AlertDialog open={showNoSemesterWarning} onOpenChange={setShowNoSemesterWarning}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>ไม่พบภาคการศึกษา</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            กรุณาสร้างภาคการศึกษาก่อนทำการเพิ่มรายวิชา
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setShowNoSemesterWarning(false)}>
+                            ยกเลิก
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                setShowNoSemesterWarning(false);
+                                navigate('/finance/semester');
+                            }}
+                            className="bg-orange-600 hover:bg-orange-700"
+                        >
+                            ไปที่จัดการภาคการศึกษา
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

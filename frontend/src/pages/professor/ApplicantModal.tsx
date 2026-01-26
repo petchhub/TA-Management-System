@@ -214,12 +214,6 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
               <p className="text-gray-500 text-sm bg-gray-50 p-3 rounded-lg">ไม่มีประวัติการสมัครวิชาอื่น</p>
             )}
           </div>
-
-          {/* Experience */}
-          <div>
-            <h3 className="text-gray-900 mb-2">ประสบการณ์</h3>
-            <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{applicant.experience}</p>
-          </div>
         </div>
         {/* Actions */}
         {

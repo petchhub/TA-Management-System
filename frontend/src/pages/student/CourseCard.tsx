@@ -47,7 +47,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
     <div className={`bg-white rounded-xl p-6 shadow-sm border transition-all hover:shadow-md flex flex-col h-full ${course.status === 'OPEN' ? 'border-gray-100' : 'border-gray-200 opacity-60'
       }`}>
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-orange-50 rounded-lg">
@@ -55,7 +55,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-gray-900 font-semibold">{course.code}</h3>
+                <h3 className="text-lg font-bold text-gray-900">{course.name}</h3>
                 <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                   กลุ่ม {course.sec}
                 </span>
@@ -65,8 +65,8 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
               </div>
             </div>
           </div>
-          <h2 className="text-gray-900 mb-2">{course.name}</h2>
-          <p className="text-gray-600 mb-3">{course.description}</p>
+          <h2 className="text-gray-900 font-medium">{course.code} {course.name}</h2>
+          <p className="text-gray-600 mb-1">- {course.description}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <span className={`px-3 py-1 rounded-full ${course.status === 'OPEN'
@@ -87,13 +87,18 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
           <User className="w-4 h-4 text-gray-400" />
           <span>อาจารย์: {course.instructor}</span>
         </div>
-        <div className="flex items-center gap-3 text-gray-700">
+        <div className="flex items-center gap-3 text-gray-700 ">
           <MapPin className="w-4 h-4 text-gray-400" />
           <span>สถานที่: {course.location}</span>
         </div>
-        <div className="flex items-center gap-3 text-gray-700">
+        <div className="flex items-center gap-3 text-gray-900">
           <Calendar className="w-4 h-4 text-gray-400" />
-          <span>วันเรียน: {course.days} ({formatTime(course.startTime)} - {formatTime(course.endTime)})</span>
+          <span className="font-medium">
+            วันเรียน: {course.days}
+            <span className="ml-2 text-orange-700 bg-orange-100 px-2 py-0.5 rounded-md font-semibold text-sm">
+              {formatTime(course.startTime)} - {formatTime(course.endTime)}
+            </span>
+          </span>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="flex items-center gap-2 text-gray-700">
@@ -111,7 +116,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
       <div className="mb-4">
         <p className="text-gray-600 mb-2">คุณสมบัติ:</p>
         <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">
-          {course.requirements}
+          ต้องผ่านรายวิชา {course.name} และได้เกรดของรายวิชานี้ไม่ต่ำกว่า {course.requirements}
         </p>
       </div>
 

@@ -38,7 +38,8 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 				s.semester_value,
 				st.status_value,
 				g.grade_value,
-				j.course_ID
+				j.course_ID,
+				c.sec
 			FROM ta_job_posting AS j
 			LEFT JOIN courses AS c
 				ON j.course_ID = c.course_ID
@@ -89,6 +90,7 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 			&course.Status,
 			&course.Grade,
 			&course.CourseID,
+			&course.Section,
 		)
 		if err != nil {
 			return nil, err
@@ -120,7 +122,8 @@ func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.Job
 				st.status_value,
 				g.grade_value,
 				j.course_ID,
-				j.status_ID
+				j.status_ID,
+				c.sec
 			FROM ta_job_posting AS j
 			LEFT JOIN courses AS c
 				ON j.course_ID = c.course_ID
@@ -170,6 +173,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.Job
 			&course.Grade,
 			&course.CourseID,
 			&course.StatusID,
+			&course.Section,
 		)
 		if err != nil {
 			return nil, err
@@ -200,7 +204,8 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				s.semester_value,
 				st.status_value,
 				g.grade_value,
-				j.course_ID
+				j.course_ID,
+				c.sec
 			FROM ta_job_posting AS j
 			LEFT JOIN courses AS c
 				ON j.course_ID = c.course_ID
@@ -255,6 +260,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 			&course.Status,
 			&course.Grade,
 			&course.CourseID,
+			&course.Section,
 		)
 		if err != nil {
 			return nil, err
@@ -667,7 +673,8 @@ func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response
 				st.status_value,
 				g.grade_value,
 				j.course_ID,
-				j.status_ID
+				j.status_ID,
+				c.sec
 			FROM ta_job_posting AS j
 			LEFT JOIN courses AS c
 				ON j.course_ID = c.course_ID
@@ -708,6 +715,7 @@ func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response
 		&course.Grade,
 		&course.CourseID,
 		&course.StatusID,
+		&course.Section,
 	)
 
 	if err != nil {

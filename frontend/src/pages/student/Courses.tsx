@@ -11,6 +11,7 @@ import CourseCard from "./CourseCard";
 import ApplicationModal from "./ApplicationModal";
 import { getOpenPositions, Course } from "../../services/positionService";
 import { getAllCoursesByStudentId, Course as ServiceCourse } from "../../services/courseService";
+import { getSemesters, Semester } from "../../services/lookupService";
 import { useAuth } from "../../context/AuthContext";
 import console from "console";
 
@@ -28,6 +29,7 @@ export default function Courses() {
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeSemester, setActiveSemester] = useState<Semester | null>(null);
 
   // Fetch positions from backend on mount
   useEffect(() => {
@@ -50,13 +52,13 @@ export default function Courses() {
             name: c.courseName,
             department: 'คณะวิศวกรรมศาสตร์', // Default
             program: c.courseProgram, // Default or infer
-            sec: '', // Default
+            sec: c.sec || c.section || '',
             days: c.classday,
             instructor: c.professorName,
             semester: c.semester,
             positions: c.taAllocation,
             hoursPerWeek: c.workHour,
-            requirements: c.task,
+            requirements: c.grade,
             description: c.task,
             location: c.location,
             deadline: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0], // Default 30 days
@@ -81,6 +83,23 @@ export default function Courses() {
 
     fetchPositions();
   }, [user]);
+
+  // Fetch active semester
+  useEffect(() => {
+    const fetchActiveSemester = async () => {
+      try {
+        const semesters = await getSemesters();
+        const active = semesters.find(s => s.isActive);
+        if (active) {
+          setActiveSemester(active);
+        }
+      } catch (err) {
+        console.error("Failed to fetch semesters:", err);
+      }
+    };
+
+    fetchActiveSemester();
+  }, []);
 
 
   const programs = [
@@ -183,7 +202,9 @@ export default function Courses() {
             </div>
             <span className="text-sm font-medium text-gray-600">ภาคการศึกษา</span>
           </div>
-          <p className="text-2xl font-bold text-gray-900">2/2568</p>
+          <p className="text-2xl font-bold text-gray-900">
+            {activeSemester ? `${activeSemester.term}/${activeSemester.year}` : '-'}
+          </p>
         </div>
 
         <div className="bg-orange-500 rounded-xl p-6 shadow-md text-white hover:shadow-lg transition-shadow">

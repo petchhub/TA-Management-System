@@ -22,6 +22,7 @@ export interface Course {
     status: string;
     jobPostID: number;
     section: string;
+    sec?: string;
     semesterStart?: string;
     semesterEnd?: string;
 }

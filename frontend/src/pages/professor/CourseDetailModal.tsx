@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, TrendingUp, MapPin, Award, FileText, Users, Edit2, Save, XCircle, BookOpen } from 'lucide-react';
+import { X, TrendingUp, MapPin, Award, FileText, Users, Edit2, Save, XCircle, BookOpen, MessageSquare } from 'lucide-react';
 import { getGrades, LookupItem } from '../../services/lookupService';
 import { updateJobPost } from '../../services/courseService';
 import { formatTime as formatTimeFn } from '@/utils/formatUtils';
@@ -56,6 +56,7 @@ export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailMod
         gradeID: course.recruitment.gradeID || 1,
         task: course.recruitment.task || '',
     });
+    const [discordGroupCreated, setDiscordGroupCreated] = useState(false);
 
     const statusTranslation: { [key: string]: string } = {
         'OPEN': 'เปิดรับสมัคร',
@@ -121,6 +122,16 @@ export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailMod
         }
     };
 
+    const handleCreateDiscord = () => {
+        // Mock API call
+        setIsSaving(true);
+        setTimeout(() => {
+            setIsSaving(false);
+            setDiscordGroupCreated(true);
+            setToast({ message: 'สร้างกลุ่ม Discord เรียบร้อยแล้ว!', type: 'success' });
+        }, 800);
+    };
+
     const handleInputChange = (field: keyof typeof editFormData, value: any) => {
         setEditFormData(prev => ({ ...prev, [field]: value }));
     };
@@ -178,6 +189,41 @@ export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailMod
                                 </p>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Communication Channel Mockup */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-5">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-gray-900 font-semibold flex items-center gap-2">
+                                <MessageSquare size={18} className="text-[#5865F2]" />
+                                ช่องทางสื่อสาร (Discord)
+                            </h3>
+                            {discordGroupCreated ? (
+                                <button
+                                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg cursor-default text-sm font-medium"
+                                    disabled
+                                >
+                                    <MessageSquare size={16} />
+                                    สร้างกลุ่มแล้ว
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleCreateDiscord}
+                                    disabled={isSaving}
+                                    className="flex items-center gap-2 px-4 py-2 bg-[#5865F2] text-white rounded-lg hover:bg-[#4752C4] transition-colors text-sm font-medium disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    <MessageSquare size={16} />
+                                    {isSaving ? 'กำลังสร้าง...' : 'สร้างกลุ่ม Discord'}
+                                </button>
+                            )}
+                        </div>
+                        {discordGroupCreated && (
+                            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <p className="text-sm text-gray-600">
+                                    ลิงก์เข้าร่วมกลุ่ม: <span className="text-[#5865F2] font-medium cursor-pointer hover:underline">https://discord.gg/mock-invite-link</span>
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Recruitment Status */}

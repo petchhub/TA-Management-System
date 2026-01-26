@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/routing/ProtectedRoute';
 import UnauthorizedPage from './pages/auth/UnauthorizedPage';
+import { Toaster } from "./components/ui/sonner";
 
 // Public pages
 import PublicHomePage from './pages/public/HomePage';
@@ -65,6 +66,7 @@ export default function App() {
           {/* Catch-all route - Redirect unknown routes to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Toaster />
       </AuthProvider>
     </Router>
   );

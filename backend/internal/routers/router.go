@@ -6,6 +6,8 @@ import (
 	courseservice "TA-management/internal/modules/course/service"
 	lookupcontroller "TA-management/internal/modules/lookup/controller"
 	lookupservice "TA-management/internal/modules/lookup/service"
+	studentcontroller "TA-management/internal/modules/student/controller"
+	studentservice "TA-management/internal/modules/student/service"
 	tadutycontroller "TA-management/internal/modules/ta_duty/controller"
 	tadutyservice "TA-management/internal/modules/ta_duty/service"
 
@@ -118,6 +120,7 @@ func InitRouter(
 	authSvc authenservice.AuthenService,
 	courseSvc courseservice.CourseService,
 	lookupSvc lookupservice.LookupService,
+	studentSvc studentservice.StudentService,
 	tadutySvc tadutyservice.TaDutyService,
 	announceSvc announceservice.AnnouncementService,
 	oauthCfg *oauth2.Config,
@@ -146,6 +149,9 @@ func InitRouter(
 
 		lookupRouter := authenticatedRouter.Group("/lookup")
 		lookupcontroller.InitializeController(lookupSvc, lookupRouter)
+
+		studentRouter := authenticatedRouter.Group("/student")
+		studentcontroller.InitializeController(studentSvc, studentRouter)
 
 		tadutyRouter := authenticatedRouter.Group("/ta_duty")
 		tadutycontroller.InitializeController(tadutySvc, tadutyRouter)

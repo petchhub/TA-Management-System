@@ -9,20 +9,25 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllCoursesForFinance, getEmailHistory, Course, EmailHistory } from "../../services/courseService";
+import { getAllCoursesForFinance, getEmailHistory, Course, EmailHistory, getApplicationsForCourse } from "../../services/courseService";
+import { getSemesters } from "../../services/lookupService";
 import { CourseExport } from "./CourseExport";
 import { EmailAnnouncement } from "./EmailAnnouncement";
 
+interface CourseWithStats extends Course {
+  actualTaCount?: number;
+}
+
 export function Dashboard() {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<CourseWithStats[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Stats
   const [totalCourses, setTotalCourses] = useState(0);
   const [totalTAs, setTotalTAs] = useState(0);
-  const [totalHours, setTotalHours] = useState(0);
+  const [currentSemester, setCurrentSemester] = useState<string>("ไม่ระบุ");
 
   useEffect(() => {
     fetchData();
@@ -31,20 +36,37 @@ export function Dashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [coursesData, emailData] = await Promise.all([
+      const [coursesData, emailData, semestersData] = await Promise.all([
         getAllCoursesForFinance(),
-        getEmailHistory()
+        getEmailHistory(),
+        getSemesters()
       ]);
 
-      setCourses(coursesData);
+      const coursesWithStats = await Promise.all(coursesData.map(async (course) => {
+        try {
+          const apps = await getApplicationsForCourse(course.courseID);
+          const approvedCount = apps.filter(a => a.statusID === 5 || a.statusID === 6).length;
+          return { ...course, actualTaCount: approvedCount };
+        } catch (error) {
+          console.error(`Error fetching apps for course ${course.courseID}`, error);
+          return { ...course, actualTaCount: 0 };
+        }
+      }));
+
+      setCourses(coursesWithStats);
       setEmailLogs(emailData || []);
 
       // Calculate stats
       setTotalCourses(coursesData.length);
-      const taCount = coursesData.reduce((sum, c) => sum + (c.taAllocation || 0), 0);
+      const taCount = coursesWithStats.reduce((sum, c) => sum + (c.actualTaCount || 0), 0);
       setTotalTAs(taCount);
-      const hoursCount = coursesData.reduce((sum, c) => sum + ((c.taAllocation || 0) * (c.workHour || 0)), 0);
-      setTotalHours(hoursCount);
+
+      const activeSem = semestersData.find(s => s.isActive);
+      if (activeSem) {
+        setCurrentSemester(`${activeSem.term}/${activeSem.year}`);
+      } else {
+        setCurrentSemester("ไม่ระบุ");
+      }
 
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -67,9 +89,9 @@ export function Dashboard() {
       color: "bg-orange-600",
     },
     {
-      title: "ชั่วโมงการทำงานทั้งหมด",
-      value: loading ? "..." : totalHours.toLocaleString(),
-      icon: Clock,
+      title: "ภาคการศึกษาปัจจุบัน",
+      value: loading ? "..." : currentSemester,
+      icon: Calendar,
       color: "bg-orange-400",
     },
   ];
@@ -229,7 +251,7 @@ export function Dashboard() {
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <div className="flex items-center gap-1">
                       <Users size={12} />
-                      <span>{course.taAllocation || 0} คน</span>
+                      <span>{course.actualTaCount || 0} คน</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock size={12} />

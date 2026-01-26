@@ -4,6 +4,7 @@ import { formatTime } from "../../utils/formatUtils";
 import { useAuth } from "../../context/AuthContext";
 import { getStudentApplications, getAllCourses, Course } from "../../services/courseService";
 import ManagedCourseCard from "./ManagedCourseCard";
+import { StudentCourseDetailModal } from "./StudentCourseDetailModal";
 
 interface Holiday {
     id: number;
@@ -44,6 +45,7 @@ export default function ManagedCourses() {
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
     const [holidays, setHolidays] = useState<Holiday[]>([]);
+    const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
     // Memoize course colors to ensure they stay consistent for same courseID
     const getCourseColor = (courseId: number | string): CourseColor => {
@@ -317,7 +319,11 @@ export default function ManagedCourses() {
             ) : viewMode === 'list' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {managedCourses.map((course) => (
-                        <ManagedCourseCard key={course.courseID} course={course} />
+                        <ManagedCourseCard
+                            key={course.courseID}
+                            course={course}
+                            onClick={() => setSelectedCourse(course)}
+                        />
                     ))}
                 </div>
             ) : (
@@ -348,6 +354,14 @@ export default function ManagedCourses() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Course Detail Modal */}
+            {selectedCourse && (
+                <StudentCourseDetailModal
+                    course={selectedCourse}
+                    onClose={() => setSelectedCourse(null)}
+                />
             )}
         </div>
     );

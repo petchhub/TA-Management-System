@@ -237,7 +237,7 @@ export function CourseManagement() {
             </div>
             <div>
               <p className="text-gray-600 text-sm">
-                ชั่วโมงทำงานรวม
+                ชั่วโมงทำงานรวม/สัปดาห์
               </p>
               <p className="text-gray-900 text-2xl font-semibold">
                 {courses.reduce(
