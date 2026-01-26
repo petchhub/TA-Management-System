@@ -231,3 +231,18 @@ frontend/src/
 3. **Implement Logout**: Add proper logout endpoint and cookie cleanup
 4. **Add Error Recovery**: Better error messages and recovery flows
 5. **Role Hierarchy**: Implement role inheritance (Admin > Finance > Professor > Student)
+
+## Recent Updates (Finance & Student Implementation)
+
+### Finance Role Implementation
+- **Dashboard**: Full dashboard with stats aggregation (`/finance/dashboard`).
+- **Course Management**: View and export functionality limited to Finance scope.
+- **Export Features**:
+  - Disbursement List (`/finance/export`) with Thai month localization.
+  - Signature Sheets (`/finance/export`) with tailored filenames.
+- **Data Access**: Secure endpoints for fetching all courses for financial review.
+
+### Student Role Enhancements
+- **Managed Courses**: View accepted TA positions (`/student/work-hours`).
+- **Application Flow**: Apply for courses, view status.
+- **Course Details**: Enhanced modal with real-time TA count and Discord integration mockup.

@@ -38,9 +38,9 @@ This document describes the role-based routing system implemented in the TA Mana
 ### Student Routes (Role: STUDENT)
 ```
 /student/dashboard          - Student dashboard
-/student/work-hours         - View work hours
-/student/applications       - View TA applications
-/student/profile           - User profile
+/student/work-hours         - Managed Courses / Work Hours
+/student/courses            - Course Applications
+/student/profile            - User profile
 ```
 
 ### Professor Routes (Role: PROFESSOR)
@@ -53,11 +53,12 @@ This document describes the role-based routing system implemented in the TA Mana
 
 ### Finance Routes (Role: FINANCE)
 ```
-/finance/dashboard         - Finance dashboard
-/finance/course-export     - Export course data
-/finance/email-announcement - Send announcements
-/finance/holiday-calendar   - Manage holidays
-/finance/work-hours        - Manage work hours
+/finance/dashboard          - Finance dashboard
+/finance/semester           - Semester Management
+/finance/courses            - Course Management & Work Hours
+/finance/export             - Export Data (Disbursement/Signature)
+/finance/announcement       - Email Announcements
+/finance/holidays           - Holiday Calendar management
 ```
 
 ## Backend API Routes
