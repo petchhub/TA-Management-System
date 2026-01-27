@@ -38,7 +38,26 @@ export function TAWorkHours() {
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
+  // Helper function to check if we can navigate to previous month
+  const canGoPrevMonth = (): boolean => {
+    if (!selectedCourse?.semesterStart) return true;
+    const semesterStart = new Date(selectedCourse.semesterStart);
+    const prevMonth = new Date(currentMonth);
+    prevMonth.setMonth(currentMonth.getMonth() - 1);
+    return prevMonth >= new Date(semesterStart.getFullYear(), semesterStart.getMonth(), 1);
+  };
+
+  // Helper function to check if we can navigate to next month
+  const canGoNextMonth = (): boolean => {
+    if (!selectedCourse?.semesterEnd) return true;
+    const semesterEnd = new Date(selectedCourse.semesterEnd);
+    const nextMonth = new Date(currentMonth);
+    nextMonth.setMonth(currentMonth.getMonth() + 1);
+    return nextMonth <= new Date(semesterEnd.getFullYear(), semesterEnd.getMonth(), 1);
+  };
+
   const handlePrevMonth = () => {
+    if (!canGoPrevMonth()) return;
     setCurrentMonth(prev => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() - 1);
@@ -47,6 +66,7 @@ export function TAWorkHours() {
   };
 
   const handleNextMonth = () => {
+    if (!canGoNextMonth()) return;
     setCurrentMonth(prev => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() + 1);
@@ -272,13 +292,21 @@ export function TAWorkHours() {
 
         {/* Month Selector */}
         <div className="flex items-center gap-4 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
-          <button onClick={handlePrevMonth} className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors">
+          <button
+            onClick={handlePrevMonth}
+            disabled={!canGoPrevMonth()}
+            className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-600"
+          >
             <ChevronLeft size={20} />
           </button>
           <span className="font-bold text-gray-800 min-w-[150px] text-center">
             {currentMonth.toLocaleDateString("th-TH", { month: 'long', year: 'numeric' })}
           </span>
-          <button onClick={handleNextMonth} className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors">
+          <button
+            onClick={handleNextMonth}
+            disabled={!canGoNextMonth()}
+            className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-600"
+          >
             <ChevronLeft size={20} className="rotate-180" />
           </button>
         </div>
