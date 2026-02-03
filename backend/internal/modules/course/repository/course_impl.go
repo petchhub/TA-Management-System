@@ -33,8 +33,7 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 				j.location,
 				cp.course_program_value_thai,
 				cd.class_day_value_thai, 
-				p.firstname,
-				p.lastname,
+				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
 				s.semester_value,
 				st.status_value,
 				g.grade_value,
@@ -70,8 +69,7 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 	var courses []response.JobPost
 	for rows.Next() {
 		var course response.JobPost
-		var firstname string
-		var lastname string
+		var fullname string
 		err := rows.Scan(
 			&course.Task,
 			&course.JobPostID,
@@ -84,8 +82,7 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 			&course.Location,
 			&course.CourseProgram,
 			&course.Classday,
-			&firstname,
-			&lastname,
+			&fullname,
 			&course.Semester,
 			&course.Status,
 			&course.Grade,
@@ -95,7 +92,7 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 		if err != nil {
 			return nil, err
 		}
-		course.ProfessorName = firstname + " " + lastname
+		course.ProfessorName = fullname
 		courses = append(courses, course)
 	}
 
@@ -116,8 +113,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.Job
 				j.location,
 				cp.course_program_value_thai,
 				cd.class_day_value_thai, 
-				p.firstname,
-				p.lastname,
+				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
 				s.semester_value,
 				st.status_value,
 				g.grade_value,
@@ -152,8 +148,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.Job
 	var courses []response.JobPost
 	for rows.Next() {
 		var course response.JobPost
-		var firstname string
-		var lastname string
+		var fullname string
 		err := rows.Scan(
 			&course.Task,
 			&course.JobPostID,
@@ -166,8 +161,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.Job
 			&course.Location,
 			&course.CourseProgram,
 			&course.Classday,
-			&firstname,
-			&lastname,
+			&fullname,
 			&course.Semester,
 			&course.Status,
 			&course.Grade,
@@ -178,7 +172,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.Job
 		if err != nil {
 			return nil, err
 		}
-		course.ProfessorName = firstname + " " + lastname
+		course.ProfessorName = fullname
 		courses = append(courses, course)
 	}
 
@@ -199,8 +193,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				j.location,
 				cp.course_program_value_thai,
 				cd.class_day_value_thai,
-				p.firstname,
-				p.lastname,
+				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
 				s.semester_value,
 				st.status_value,
 				g.grade_value,
@@ -240,8 +233,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 	var courses []response.JobPost
 	for rows.Next() {
 		var course response.JobPost
-		var firstname string
-		var lastname string
+		var fullname string
 		err := rows.Scan(
 			&course.Task,
 			&course.JobPostID,
@@ -254,8 +246,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 			&course.Location,
 			&course.CourseProgram,
 			&course.Classday,
-			&firstname,
-			&lastname,
+			&fullname,
 			&course.Semester,
 			&course.Status,
 			&course.Grade,
@@ -265,7 +256,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 		if err != nil {
 			return nil, err
 		}
-		course.ProfessorName = firstname + " " + lastname
+		course.ProfessorName = fullname
 		courses = append(courses, course)
 	}
 
@@ -284,8 +275,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				c.class_end,
 				c.semester,
 				c.sec,
-				p.firstname,
-				p.lastname,
+				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
 				c.work_hour,
 				s.start_date,
 				s.end_date
@@ -310,8 +300,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 	var courses []response.Course
 	for rows.Next() {
 		var course response.Course
-		var firstname string
-		var lastname string
+		var fullname string
 		err := rows.Scan(
 			&course.CourseID,
 			&course.CourseCode,
@@ -322,8 +311,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 			&course.ClassEnd,
 			&course.Semester,
 			&course.Section,
-			&firstname,
-			&lastname,
+			&fullname,
 			&course.WorkHour,
 			&course.SemesterStart,
 			&course.SemesterEnd,
@@ -331,7 +319,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 		if err != nil {
 			return nil, err
 		}
-		course.ProfessorName = firstname + " " + lastname
+		course.ProfessorName = fullname
 		courses = append(courses, course)
 	}
 
@@ -350,8 +338,7 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 				c.class_end,
 				c.semester,
 				c.sec,
-				p.firstname,
-				p.lastname,
+				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
 				c.work_hour 
 			FROM courses AS c
 			join professors AS p 
@@ -376,8 +363,7 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 	var courses []response.Course
 	for rows.Next() {
 		var course response.Course
-		var firstname string
-		var lastname string
+		var fullname string
 		err := rows.Scan(
 			&course.CourseID,
 			&course.CourseCode,
@@ -388,13 +374,12 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 			&course.ClassEnd,
 			&course.Semester,
 			&course.Section,
-			&firstname,
-			&lastname,
+			&fullname,
 			&course.WorkHour)
 		if err != nil {
 			return nil, err
 		}
-		course.ProfessorName = firstname + " " + lastname
+		course.ProfessorName = fullname
 		courses = append(courses, course)
 	}
 
@@ -667,8 +652,7 @@ func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response
 				j.location,
 				cp.course_program_value_thai,
 				cd.class_day_value_thai, 
-				p.firstname,
-				p.lastname,
+				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
 				s.semester_value,
 				st.status_value,
 				g.grade_value,
@@ -693,8 +677,7 @@ func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response
 			WHERE j.id = $1`
 
 	var course response.JobPost
-	var firstname string
-	var lastname string
+	var fullname string
 
 	err := r.db.QueryRow(query, jobPostId).Scan(
 		&course.Task,
@@ -708,8 +691,7 @@ func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response
 		&course.Location,
 		&course.CourseProgram,
 		&course.Classday,
-		&firstname,
-		&lastname,
+		&fullname,
 		&course.Semester,
 		&course.Status,
 		&course.Grade,
@@ -725,7 +707,7 @@ func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response
 		return nil, err
 	}
 
-	course.ProfessorName = firstname + " " + lastname
+	course.ProfessorName = fullname
 	return &course, nil
 }
 
@@ -942,16 +924,30 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 
 func (r CourseRepositoryImplementation) GetApplicationByCourseId(courseId int) ([]response.Application, error) {
 	query := `SELECT 
+					ta.id,
 					ta.student_ID, 
 					ta.status_ID, 
 					tp.course_ID, 
 					ta.created_date,
-					st.status_value
+					st.status_value,
+					s.firstname_thai,
+					s.lastname_thai,
+					CASE WHEN ts.transcript_ID IS NOT NULL THEN true ELSE false END as has_transcript,
+					CASE WHEN ba.bank_account_ID IS NOT NULL THEN true ELSE false END as has_bank_account,
+					CASE WHEN sc.student_card_ID IS NOT NULL THEN true ELSE false END as has_student_card
 				FROM ta_application AS ta 
 				LEFT JOIN ta_job_posting AS tp
 					ON ta.job_post_ID = tp.id
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
+				LEFT JOIN students AS s
+					ON ta.student_ID = s.student_ID
+				LEFT JOIN transcript_storage ts
+					ON ta.student_ID = ts.student_ID
+				LEFT JOIN student_card_storage sc
+					ON ta.student_ID = sc.student_ID
+				LEFT JOIN bank_account_storage ba
+					ON ta.student_ID = ba.student_ID
 				WHERE course_ID = $1`
 
 	rows, err := r.db.Query(query, courseId)
@@ -963,17 +959,26 @@ func (r CourseRepositoryImplementation) GetApplicationByCourseId(courseId int) (
 	var applications []response.Application
 	for rows.Next() {
 		var application response.Application
+		var firstname string
+		var lastname string
 
 		err := rows.Scan(
+			&application.ApplicationId,
 			&application.StudentID,
 			&application.StatusID,
 			&application.CourseID,
 			&application.CreatedDate,
 			&application.StatusCode,
+			&firstname,
+			&lastname,
+			&application.HasTranscript,
+			&application.HasBankAccount,
+			&application.HasStudentCard,
 		)
 		if err != nil {
 			return nil, err
 		}
+		application.StudentName = firstname + " " + lastname
 		applications = append(applications, application)
 	}
 

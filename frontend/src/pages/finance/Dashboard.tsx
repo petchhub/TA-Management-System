@@ -33,6 +33,18 @@ export function Dashboard() {
     fetchData();
   }, []);
 
+  const getThaiStatus = (status: string): string => {
+    const statusMap: { [key: string]: string } = {
+      'successful': 'สำเร็จ',
+      'success': 'สำเร็จ',
+      'sent': 'ส่งแล้ว',
+      'failed': 'ล้มเหลว',
+      'error': 'เกิดข้อผิดพลาด',
+      'pending': 'กำลังส่ง'
+    };
+    return statusMap[status.toLowerCase()] || status;
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -203,7 +215,7 @@ export function Dashboard() {
                           : "bg-red-100 text-red-700"
                           }`}
                       >
-                        {log.status}
+                        {getThaiStatus(log.status)}
                       </span>
                       <p className="text-xs text-gray-400">
                         {new Date(log.createDate).toLocaleDateString('th-TH')}
@@ -245,7 +257,7 @@ export function Dashboard() {
                       </h4>
                     </div>
                     <p className="text-xs text-gray-500 line-clamp-1">
-                      อาจารย์: {course.professorName || "-"}
+                      อาจารย์ผู้สอน: {course.professorName || "-"}
                     </p>
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500">

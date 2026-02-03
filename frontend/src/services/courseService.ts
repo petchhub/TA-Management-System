@@ -25,6 +25,8 @@ export interface Course {
     sec?: string;
     semesterStart?: string;
     semesterEnd?: string;
+    year?: number;
+    taCount?: number;
 }
 
 export interface CourseResponse {
@@ -52,6 +54,9 @@ export interface Application {
     classStart?: string;
     classEnd?: string;
     jobPostID?: number;
+    hasTranscript?: boolean;
+    hasBankAccount?: boolean;
+    hasStudentCard?: boolean;
 }
 
 export interface ApplicationResponse {

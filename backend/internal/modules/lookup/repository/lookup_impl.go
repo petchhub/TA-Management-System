@@ -147,7 +147,7 @@ func (r LookupRepositoryImplementation) GetGrade() (*[]response.LookupResponse, 
 func (r LookupRepositoryImplementation) GetProfessors() (*[]response.LookupResponse, error) {
 	query := `SELECT 
 				professor_ID, 
-				CONCAT(firstname, ' ', lastname) as fullname 
+				CONCAT(prefix, ' ', firstname_thai, ' ', lastname_thai) as fullname 
 			FROM professors`
 
 	rows, err := r.db.Query(query)
@@ -259,7 +259,7 @@ func (r LookupRepositoryImplementation) GetTA(searchVal string) (*[]response.TaD
 				WITH searchable_students AS(
 					SELECT
 						s.student_ID,
-						s.firstname || ' ' || s.lastname AS name
+						s.firstname_thai || ' ' || s.lastname_thai AS name
 					FROM ta_courses tc
 					LEFT JOIN students s ON s.student_id = tc.student_id
 				)

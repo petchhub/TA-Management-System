@@ -9,7 +9,11 @@ import {
   CheckCircle2,
   AlertCircle,
   Search,
-  ArrowUpDown
+  ArrowUpDown,
+  Eye,
+  FileText,
+  CreditCard,
+  Contact
 } from "lucide-react";
 import {
   AlertDialog,
@@ -20,24 +24,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
-import { getAllCoursesForFinance, getApplicationsForCourse } from "../../services/courseService";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import {
+  getAllCoursesForFinance,
+  getApplicationsForCourse,
+  Course,
+  Application
+} from "../../services/courseService";
+import {
+  getStudentTranscriptUrl,
+  getStudentBankAccountUrl,
+  getStudentCardUrl
+} from "../../services/lookupService";
 
-
-interface Course {
-  courseID: number;
-  courseCode: string;
-  courseName: string;
-  courseProgram: string;
-  workHour: number;
-  classStart: string;
-  classEnd: string;
-  classday: string;
-  professorName: string;
-  semester: string;
-  year?: string;
-  section: string;
-  taCount?: number; // Not available from backend yet
-}
 
 interface AvailableMonth {
   monthID: number;
@@ -78,6 +82,14 @@ export function CourseExport() {
   const [signatureMonths, setSignatureMonths] = useState<AvailableMonth[]>([]);
   const [selectedSignatureMonth, setSelectedSignatureMonth] = useState<AvailableMonth | null>(null);
   const [loadingSignatureMonths, setLoadingSignatureMonths] = useState(false);
+
+  // TA View Modal State
+  const [showTAModal, setShowTAModal] = useState(false);
+  const [selectedCourseForTA, setSelectedCourseForTA] = useState<Course | null>(null);
+  const [taApplications, setTaApplications] = useState<Application[]>([]);
+  const [loadingTAs, setLoadingTAs] = useState(false);
+
+
 
   // New State for Search and Sort
   const [searchTerm, setSearchTerm] = useState("");
@@ -570,6 +582,47 @@ export function CourseExport() {
     }));
   };
 
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const urlObj = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = urlObj;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(urlObj);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Download error:", error);
+    }
+  };
+
+  const handleViewTAs = async (course: Course, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent toggling selection
+    setSelectedCourseForTA(course);
+    setShowTAModal(true);
+    setLoadingTAs(true);
+    setTaApplications([]);
+
+    try {
+      const apps = await getApplicationsForCourse(course.courseID);
+      // Filter for approved/successful TAs if desired. 
+      // For now, let's show all that returned by getApplicationsForCourse (which seems to be based on courseID)
+      // Actually, usually we only care about approved TAs for finance.
+      const approvedTAs = apps.filter(a => a.statusID === 5 || a.statusID === 6);
+      setTaApplications(approvedTAs);
+    } catch (err) {
+      console.error("Failed to fetch TAs", err);
+    } finally {
+      setLoadingTAs(false);
+    }
+  };
+
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -773,7 +826,7 @@ export function CourseExport() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-8 text-sm">
+                    <div className="flex gap-8 text-sm items-center">
                       <div className="text-center">
                         <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
                           จำนวน TA
@@ -781,6 +834,15 @@ export function CourseExport() {
                         <p className="font-semibold bg-gray-100 px-3 py-1 rounded text-gray-700">
                           {course.taCount ?? "0"} คน
                         </p>
+                      </div>
+                      <div>
+                        <button
+                          onClick={(e) => handleViewTAs(course, e)}
+                          className="flex items-center gap-1 text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-3 py-1.5 rounded-md transition-colors"
+                        >
+                          <Eye size={16} />
+                          <span className="text-xs font-medium">ดูข้อมูล TA</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -800,355 +862,352 @@ export function CourseExport() {
         </p>
       </div>
 
-      {/* Export Confirmation Modal */}
-      {showExportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold">ยืนยันการส่งออกรายงาน</h3>
-              <button
-                onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto flex-1">
-              {/* Hourly Rate Input */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
+      {/* Export Setup Dialog */}
+      <AlertDialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ตั้งค่าการส่งออกข้อมูล</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-4 pt-4">
                 <div>
-                  <label
-                    htmlFor="modalHourlyRate"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    รายวิชาที่เลือก ({selectedCourses.length})
+                  </label>
+                  <div className="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded text-sm text-gray-600">
+                    {selectedCourses.map((id) => {
+                      const c = courses.find((course) => course.courseID === id);
+                      return (
+                        <div key={id} className="flex justify-between items-center py-1">
+                          <span>
+                            {c ? `${c.courseCode} (${c.section}) - ${c.courseName}` : id}
+                          </span>
+                          <button
+                            onClick={() => removeCourseFromModal(id)}
+                            className="text-gray-400 hover:text-red-500 p-1"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    เลือกเดือนที่ต้องการเบิกจ่าย
+                  </label>
+                  <div className="relative">
+                    {loadingMonths ? (
+                      <div className="w-full h-10 bg-gray-100 rounded animate-pulse"></div>
+                    ) : (
+                      <select
+                        value={selectedMonth?.monthID || ''}
+                        onChange={(e) => {
+                          const id = parseInt(e.target.value);
+                          const month = availableMonths.find(m => m.monthID === id);
+                          setSelectedMonth(month || null);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      >
+                        {availableMonths.map((m) => (
+                          <option key={`${m.year}-${m.monthID}`} value={m.monthID}>
+                            {getThaiMonth(m.monthName)} {m.year + 543}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {availableMonths.length === 0 && !loadingMonths && (
+                      <p className="text-xs text-red-500 mt-1">
+                        ไม่พบข้อมูลประวัติการทำงานในวิชาที่เลือก
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     อัตราค่าตอบแทน (บาท/ชั่วโมง)
                   </label>
                   <input
-                    id="modalHourlyRate"
                     type="number"
-                    min="0"
-                    step="10"
                     value={modalHourlyRate}
                     onChange={(e) => setModalHourlyRate(Number(e.target.value))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#E35205] focus:border-[#E35205]"
-                    placeholder="กรอกอัตราค่าตอบแทน"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    min="0"
                   />
                 </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <button
+              onClick={closeModal}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              ยกเลิก
+            </button>
+            <AlertDialogAction
+              onClick={confirmExport}
+              className="bg-[#E35205] hover:bg-[#c24604]"
+              disabled={selectedCourses.length === 0 || !selectedMonth}
+            >
+              ยืนยันการส่งออก
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Signature Sheet Setup Dialog */}
+      <AlertDialog open={showSignatureModal} onOpenChange={setShowSignatureModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ตั้งค่าการส่งออกใบลงชื่อ</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-4 pt-4">
                 <div>
-                  <label
-                    htmlFor="monthSelect"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    ระบุเดือน
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    รายวิชาที่เลือก ({selectedCourses.length})
                   </label>
-                  {loadingMonths ? (
-                    <div className="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
-                      กำลังโหลด...
-                    </div>
-                  ) : (
-                    <select
-                      id="monthSelect"
-                      value={selectedMonth ? JSON.stringify(selectedMonth) : ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val) setSelectedMonth(JSON.parse(val));
-                        else setSelectedMonth(null);
-                      }}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#E35205] focus:border-[#E35205]"
-                    >
-                      <option value="">-- เลือกเดือน --</option>
-                      {availableMonths.map((m) => (
-                        <option key={`${m.year}-${m.monthID}`} value={JSON.stringify(m)}>
-                          {m.monthName} {m.year}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  <div className="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded text-sm text-gray-600">
+                    {selectedCourses.map((id) => {
+                      const c = courses.find((course) => course.courseID === id);
+                      return (
+                        <div key={id} className="flex justify-between items-center py-1">
+                          <span>
+                            {c ? `${c.courseCode} (${c.section}) - ${c.courseName}` : id}
+                          </span>
+                          <button
+                            onClick={() => removeCourseFromModal(id)}
+                            className="text-gray-400 hover:text-red-500 p-1"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    เลือกเดือนที่ต้องการส่งออก
+                  </label>
+                  <div className="relative">
+                    {loadingSignatureMonths ? (
+                      <div className="w-full h-10 bg-gray-100 rounded animate-pulse"></div>
+                    ) : (
+                      <select
+                        value={selectedSignatureMonth?.monthID || ''}
+                        onChange={(e) => {
+                          const id = parseInt(e.target.value);
+                          const month = signatureMonths.find(m => m.monthID === id);
+                          setSelectedSignatureMonth(month || null);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      >
+                        {signatureMonths.map((m) => (
+                          <option key={`${m.year}-${m.monthID}`} value={m.monthID}>
+                            {getThaiMonth(m.monthName)} {m.year + 543}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {signatureMonths.length === 0 && !loadingSignatureMonths && (
+                      <p className="text-xs text-red-500 mt-1">
+                        ไม่พบข้อมูลประวัติการทำงานในวิชาที่เลือก
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <button
+              onClick={closeSignatureModal}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              ยกเลิก
+            </button>
+            <AlertDialogAction
+              onClick={confirmSignatureExport}
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={selectedCourses.length === 0 || !selectedSignatureMonth}
+            >
+              ยืนยันการส่งออก
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-              {/* Selected Courses List */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
-                  รายวิชาที่เลือก ({selectedCourses.length})
-                </h4>
-                {selectedCourses.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">
-                    ไม่มีรายวิชาที่เลือก
-                  </p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {selectedCourses.map((courseID) => {
-                      const course = courses.find((c) => c.courseID === courseID);
-                      if (!course) return null;
-
-                      const isGeneral = course.courseProgram === "General" || course.courseProgram === "หลักสูตรปกติ";
-                      const isContinuing = course.courseProgram === "Continuing" || course.courseProgram === "หลักสูตรต่อเนื่อง";
-                      const isInternational = course.courseProgram === "International" || course.courseProgram === "หลักสูตรนานาชาติ";
-
-                      return (
-                        <div
-                          key={courseID}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-medium text-sm text-gray-900">
-                                {course.courseCode}
-                              </p>
-                              <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-700">
-                                Sec {course.section}
-                              </span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isGeneral
-                                  ? "bg-blue-50 text-blue-700"
-                                  : isContinuing
-                                    ? "bg-purple-50 text-purple-700"
-                                    : "bg-green-50 text-green-700"
-                                  }`}
-                              >
-                                {isGeneral
-                                  ? "ปกติ"
-                                  : isContinuing
-                                    ? "ต่อเนื่อง"
-                                    : "นานาชาติ"}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-600 line-clamp-1">
-                              {course.courseName}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => removeCourseFromModal(courseID)}
-                            className="ml-4 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                            title="ลบรายวิชานี้"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
-              <button
-                onClick={closeModal}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={confirmExport}
-                disabled={selectedCourses.length === 0 || modalHourlyRate <= 0 || !selectedMonth}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                ส่งออก ({selectedCourses.length} รายวิชา)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Signature Sheet Export Modal */}
-      {showSignatureModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold">ยืนยันการส่งออกใบลงชื่อ</h3>
-              <button
-                onClick={closeSignatureModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto flex-1">
-              {/* Month Selector */}
-              <div className="mb-6">
-                <label
-                  htmlFor="signatureMonthSelect"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  ระบุเดือน
-                </label>
-                {loadingSignatureMonths ? (
-                  <div className="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
-                    กำลังโหลด...
-                  </div>
-                ) : (
-                  <select
-                    id="signatureMonthSelect"
-                    value={selectedSignatureMonth ? JSON.stringify(selectedSignatureMonth) : ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val) setSelectedSignatureMonth(JSON.parse(val));
-                      else setSelectedSignatureMonth(null);
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-[#E35205] focus:border-[#E35205]"
-                  >
-                    <option value="">-- เลือกเดือน --</option>
-                    {signatureMonths.map((m) => (
-                      <option key={`${m.year}-${m.monthID}`} value={JSON.stringify(m)}>
-                        {m.monthName} {m.year}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* Selected Courses List */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
-                  รายวิชาที่เลือก ({selectedCourses.length})
-                </h4>
-                {selectedCourses.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">
-                    ไม่มีรายวิชาที่เลือก
-                  </p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {selectedCourses.map((courseID) => {
-                      const course = courses.find((c) => c.courseID === courseID);
-                      if (!course) return null;
-                      return (
-                        <div
-                          key={courseID}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-medium text-sm text-gray-900">
-                                {course.courseCode}
-                              </p>
-                              <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 rounded text-gray-700">
-                                Sec {course.section}
-                              </span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${course.courseProgram === "General"
-                                  ? "bg-blue-50 text-blue-700"
-                                  : course.courseProgram === "Continuing"
-                                    ? "bg-purple-50 text-purple-700"
-                                    : "bg-green-50 text-green-700"
-                                  }`}
-                              >
-                                {course.courseProgram === "General"
-                                  ? "ปกติ"
-                                  : course.courseProgram === "Continuing"
-                                    ? "ต่อเนื่อง"
-                                    : "นานาชาติ"}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-600 line-clamp-1">
-                              {course.courseName}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => removeCourseFromModal(courseID)}
-                            className="ml-4 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                            title="ลบรายวิชานี้"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
-              <button
-                onClick={closeSignatureModal}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={confirmSignatureExport}
-                disabled={selectedCourses.length === 0 || !selectedSignatureMonth}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                ส่งออก ({selectedCourses.length} รายวิชา)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Progress / Status Popup */}
-      <AlertDialog
-        open={exportStatus.isOpen}
-        onOpenChange={(open) => {
-          if (exportStatus.status !== 'processing') {
-            setExportStatus(prev => ({ ...prev, isOpen: open }));
-          }
-        }}
-      >
-        <AlertDialogContent className="sm:max-w-md">
+      {/* Progress Dialog */}
+      <AlertDialog open={exportStatus.isOpen} onOpenChange={(open) => {
+        if (!open && exportStatus.status !== 'processing') {
+          setExportStatus(prev => ({ ...prev, isOpen: false }));
+        }
+      }}>
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              {exportStatus.status === 'processing' && (
-                <Loader2 className="animate-spin text-orange-500" size={24} />
-              )}
-              {exportStatus.status === 'success' && (
-                <CheckCircle2 className="text-green-500" size={24} />
-              )}
-              {exportStatus.status === 'complete_with_failures' && (
-                <AlertCircle className="text-red-500" size={24} />
-              )}
+              {exportStatus.status === 'processing' && <Loader2 className="animate-spin text-orange-500" />}
+              {exportStatus.status === 'success' && <CheckCircle2 className="text-green-500" />}
+              {exportStatus.status === 'complete_with_failures' && <AlertCircle className="text-red-500" />}
               {exportStatus.title}
             </AlertDialogTitle>
-            <AlertDialogDescription className="pt-4">
+            <AlertDialogDescription>
               <div className="space-y-4">
-                <p className="text-gray-600">{exportStatus.message}</p>
-
+                <p>{exportStatus.message}</p>
                 {exportStatus.status === 'processing' && (
-                  <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
                     <div
-                      className="bg-orange-500 h-full transition-all duration-300 ease-out"
+                      className="bg-orange-600 h-2.5 rounded-full transition-all duration-300"
                       style={{ width: `${(exportStatus.current / exportStatus.total) * 100}%` }}
-                    />
-                  </div>
-                )}
-
-                {(exportStatus.status === 'success' || (exportStatus.status === 'complete_with_failures' && exportStatus.total > 0)) && (
-                  <div className="grid grid-cols-2 gap-4 py-2">
-                    <div className="bg-green-50 p-3 rounded-lg border border-green-100 text-center">
-                      <p className="text-xs text-green-600 uppercase font-bold tracking-wider mb-1">สำเร็จ</p>
-                      <p className="text-2xl font-bold text-green-700">{exportStatus.successCount}</p>
-                    </div>
-                    <div className={`p-3 rounded-lg border text-center ${exportStatus.failCount > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
-                      <p className={`text-xs uppercase font-bold tracking-wider mb-1 ${exportStatus.failCount > 0 ? 'text-red-600' : 'text-gray-400'}`}>ไม่สำเร็จ</p>
-                      <p className={`text-2xl font-bold ${exportStatus.failCount > 0 ? 'text-red-700' : 'text-gray-400'}`}>{exportStatus.failCount}</p>
-                    </div>
+                    ></div>
                   </div>
                 )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            {exportStatus.status !== 'processing' && (
-              <AlertDialogAction
-                onClick={() => setExportStatus(prev => ({ ...prev, isOpen: false }))}
-                className="bg-orange-600 hover:bg-orange-700 text-white"
-              >
-                ตกลง
-              </AlertDialogAction>
-            )}
+            <AlertDialogAction
+              onClick={() => setExportStatus(prev => ({ ...prev, isOpen: false }))}
+              disabled={exportStatus.status === 'processing'}
+              className="bg-gray-900"
+            >
+              ปิด
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* TA Details Modal */}
+      <Dialog open={showTAModal} onOpenChange={setShowTAModal}>
+        <DialogContent className="min-w-[900px] w-fit max-w-[95vw] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              รายชื่อผู้ช่วยสอน (TA) - {selectedCourseForTA?.courseCode} {selectedCourseForTA?.courseName}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="mt-4">
+            {loadingTAs ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="animate-spin text-orange-500" size={32} />
+              </div>
+            ) : taApplications.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-auto text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="px-6 py-4 font-medium text-gray-700 whitespace-nowrap w-[15%]">รหัสนักศึกษา</th>
+                      <th className="px-6 py-4 font-medium text-gray-700 whitespace-nowrap w-[25%]">ชื่อ-นามสกุล</th>
+                      <th className="px-6 py-4 font-medium text-gray-700 text-center w-[60%]">เอกสารแนบ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {taApplications.map((app) => (
+                      <tr key={app.applicationId} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-gray-900 font-mono whitespace-nowrap">{app.studentID}</td>
+                        <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{app.studentName}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-start gap-3">
+                            {/* Transcript */}
+                            <div className={`flex items-center rounded-md border shadow-sm transition-all ${app.hasTranscript ? "border-blue-200 bg-blue-50" : "border-gray-200 bg-gray-50 opacity-60"}`}>
+                              <a
+                                href={app.hasTranscript ? getStudentTranscriptUrl(app.studentID) : "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-l-md ${app.hasTranscript
+                                  ? "text-blue-700 hover:bg-blue-100"
+                                  : "text-gray-400 cursor-not-allowed pointer-events-none"
+                                  }`}
+                                title="View Transcript"
+                              >
+                                <FileText size={14} />
+                                <span className="hidden sm:inline">ผลการเรียน</span>
+                              </a>
+                              {app.hasTranscript && (
+                                <button
+                                  onClick={() => handleDownload(getStudentTranscriptUrl(app.studentID), `Transcript_${app.studentID}.pdf`)}
+                                  className="px-2 py-1.5 border-l border-blue-200 text-blue-700 hover:bg-blue-100 rounded-r-md transition-colors"
+                                  title="Download Transcript"
+                                >
+                                  <Download size={14} />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Bank Account */}
+                            <div className={`flex items-center rounded-md border shadow-sm transition-all ${app.hasBankAccount ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50 opacity-60"}`}>
+                              <a
+                                href={app.hasBankAccount ? getStudentBankAccountUrl(app.studentID) : "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-l-md ${app.hasBankAccount
+                                  ? "text-green-700 hover:bg-green-100"
+                                  : "text-gray-400 cursor-not-allowed pointer-events-none"
+                                  }`}
+                                title="View Bank Account"
+                              >
+                                <CreditCard size={14} />
+                                <span className="hidden sm:inline">สมุดบัญชี</span>
+                              </a>
+                              {app.hasBankAccount && (
+                                <button
+                                  onClick={() => handleDownload(getStudentBankAccountUrl(app.studentID), `BankAccount_${app.studentID}.pdf`)}
+                                  className="px-2 py-1.5 border-l border-green-200 text-green-700 hover:bg-green-100 rounded-r-md transition-colors"
+                                  title="Download Bank Account"
+                                >
+                                  <Download size={14} />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Student Card */}
+                            <div className={`flex items-center rounded-md border shadow-sm transition-all ${app.hasStudentCard ? "border-purple-200 bg-purple-50" : "border-gray-200 bg-gray-50 opacity-60"}`}>
+                              <a
+                                href={app.hasStudentCard ? getStudentCardUrl(app.studentID) : "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-l-md ${app.hasStudentCard
+                                  ? "text-purple-700 hover:bg-purple-100"
+                                  : "text-gray-400 cursor-not-allowed pointer-events-none"
+                                  }`}
+                                title="View Student Card"
+                              >
+                                <Contact size={14} />
+                                <span className="hidden sm:inline">บัตรนักศึกษา</span>
+                              </a>
+                              {app.hasStudentCard && (
+                                <button
+                                  onClick={() => handleDownload(getStudentCardUrl(app.studentID), `StudentCard_${app.studentID}.pdf`)}
+                                  className="px-2 py-1.5 border-l border-purple-200 text-purple-700 hover:bg-purple-100 rounded-r-md transition-colors"
+                                  title="Download Student Card"
+                                >
+                                  <Download size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg">
+                <p>ไม่พบข้อมูลผู้ช่วยสอนในรายวิชานี้</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
     </div>
   );
 }
+
+export default CourseExport;

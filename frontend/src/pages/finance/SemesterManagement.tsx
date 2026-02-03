@@ -52,6 +52,23 @@ export function SemesterManagement({ onSemesterChange }: SemesterManagementProps
     const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
     const handleSaveSemester = async () => {
+        // Validate if the semester has already ended (Only for Add Mode)
+        if (!editingId && newEndDate) {
+            const [y, m, d] = newEndDate.split('-').map(Number);
+            const endDateLocal = new Date(y, m - 1, d);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (endDateLocal < today) {
+                setPopupState({
+                    isOpen: true,
+                    status: 'error',
+                    message: "คุณได้เพิ่มภาคการศึกษาที่สิ้นสุดแล้ว"
+                });
+                return;
+            }
+        }
+
         try {
             if (editingId) {
                 // Edit Mode
@@ -419,29 +436,6 @@ export function SemesterManagement({ onSemesterChange }: SemesterManagementProps
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
-            {/* Delete Confirmation Dialog
-            <AlertDialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>ยืนยันการลบภาคการศึกษา</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            คุณแน่ใจหรือไม่ที่จะลบภาคการศึกษานี้? การดำเนินการนี้ไม่สามารถย้อนกลับได้
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteConfirmId(null)}>
-                            ยกเลิก
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDeleteConfirm}
-                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                        >
-                            ลบภาคการศึกษา
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog> */}
         </div>
     );
 }
