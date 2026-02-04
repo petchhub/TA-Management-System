@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import { X, TrendingUp, MapPin, Award, FileText, Users, Edit2, Save, XCircle, BookOpen, MessageSquare } from 'lucide-react';
+import { X, TrendingUp, MapPin, Award, FileText, Users, Edit2, Save, XCircle, BookOpen, MessageSquare, Plus } from 'lucide-react';
 import { getGrades, LookupItem } from '../../services/lookupService';
-import { updateJobPost } from '../../services/courseService';
+import { updateJobPost, createDiscordChannel, getDiscordJoinLink, createJobPost } from '../../services/courseService';
 import { formatTime as formatTimeFn } from '@/utils/formatUtils';
 import { Toast, ToastType } from '../../components/Toast';
+import { CreateTAAnnouncementModal } from './CreateTAAnnouncementModal';
+import { useAuth } from '../../context/AuthContext';
 
 interface Course {
     id: string;
+    courseID?: number; // Backend course ID for Discord API
     code: string;
     name: string;
     semester: string;
@@ -46,6 +49,7 @@ interface CourseDetailModalProps {
 }
 
 export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailModalProps) {
+    const { user } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [gradeOptions, setGradeOptions] = useState<LookupItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -57,6 +61,8 @@ export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailMod
         task: course.recruitment.task || '',
     });
     const [discordGroupCreated, setDiscordGroupCreated] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const statusTranslation: { [key: string]: string } = {
         'OPEN': 'เปิดรับสมัคร',
@@ -75,8 +81,24 @@ export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailMod
                 console.error('Failed to fetch grades:', error);
             }
         };
+
+        const checkDiscordStatus = async () => {
+            if (course.courseID) {
+                try {
+                    const link = await getDiscordJoinLink(course.courseID);
+                    if (link) {
+                        setDiscordGroupCreated(true);
+                    }
+                } catch (error) {
+                    // It's expected to fail if channel hasn't been created yet
+                    console.log('Discord channel not yet created for this course');
+                }
+            }
+        };
+
         fetchGrades();
-    }, []);
+        checkDiscordStatus();
+    }, [course.courseID]);
 
     const handleEdit = () => {
         setEditFormData({
@@ -122,18 +144,86 @@ export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailMod
         }
     };
 
-    const handleCreateDiscord = () => {
-        // Mock API call
+    const handleCreateDiscord = async () => {
+        if (!course.courseID) {
+            setToast({
+                message: 'ไม่พบข้อมูลรายวิชา กรุณาลองใหม่อีกครั้ง',
+                type: 'error'
+            });
+            return;
+        }
+
         setIsSaving(true);
-        setTimeout(() => {
+
+        try {
+            // Call actual Discord API
+            await createDiscordChannel({
+                courseID: course.courseID,
+                courseCode: course.code,
+                courseName: course.name,
+                semester: course.semester,
+                sec: course.section,
+            });
+
             setIsSaving(false);
             setDiscordGroupCreated(true);
             setToast({ message: 'สร้างกลุ่ม Discord เรียบร้อยแล้ว!', type: 'success' });
-        }, 800);
+
+            // Fetch the freshly created link and redirect
+            try {
+                const link = await getDiscordJoinLink(course.courseID);
+                if (link) {
+                    window.open(link, '_blank');
+                }
+            } catch (linkError) {
+                console.error('Failed to fetch link after creation:', linkError);
+            }
+        } catch (error) {
+            console.error('Failed to create Discord channel:', error);
+            setIsSaving(false);
+            setToast({
+                message: 'ไม่สามารถสร้างกลุ่ม Discord ได้ กรุณาลองอีกครั้ง',
+                type: 'error'
+            });
+        }
     };
 
     const handleInputChange = (field: keyof typeof editFormData, value: any) => {
         setEditFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleCreateAnnouncement = async (data: any) => {
+        try {
+            setIsSubmitting(true);
+
+            // Add professor ID from auth context if available
+            const professorID = user?.id ? parseInt(user.id) : 1;
+
+            await createJobPost({
+                courseID: data.courseID,
+                professorID: professorID,
+                location: data.location || "Building",
+                taAllocation: data.taAllocation,
+                gradeID: data.gradeID,
+                task: data.task
+            });
+
+            setToast({ message: 'ประกาศรับสมัคร TA สำเร็จ!', type: 'success' });
+            setShowCreateModal(false);
+
+            // Delay the update callback to show the toast first
+            setTimeout(() => {
+                if (onUpdate) onUpdate();
+            }, 1500);
+        } catch (error) {
+            console.error('Failed to create announcement:', error);
+            setToast({
+                message: `เกิดข้อผิดพลาดในการสร้างประกาศ: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                type: 'error'
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -220,7 +310,15 @@ export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailMod
                         {discordGroupCreated && (
                             <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <p className="text-sm text-gray-600">
-                                    ลิงก์เข้าร่วมกลุ่ม: <span className="text-[#5865F2] font-medium cursor-pointer hover:underline">https://discord.gg/mock-invite-link</span>
+                                    ลิงก์เข้าร่วมกลุ่ม:
+                                    <a
+                                        href="https://discord.gg/2pzUQYrPTs"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="ml-1 text-[#5865F2] font-medium cursor-pointer hover:underline"
+                                    >
+                                        https://discord.gg/2pzUQYrPTs
+                                    </a>
                                 </p>
                             </div>
                         )}
@@ -393,14 +491,37 @@ export function CourseDetailModal({ course, onClose, onUpdate }: CourseDetailMod
 
                     {/* No Job Post Message */}
                     {!course.recruitment.announced && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                            <p className="text-yellow-800 text-sm">
-                                ยังไม่มีการประกาศรับสมัคร TA สำหรับรายวิชานี้
-                            </p>
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <div>
+                                    <h3 className="text-yellow-900 font-semibold mb-1">
+                                        ยังไม่มีการประกาศรับสมัคร TA
+                                    </h3>
+                                    <p className="text-yellow-800 text-sm">
+                                        รายวิชานี้ยังไม่มีการเปิดรับสมัครผู้ช่วยสอน
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                                >
+                                    <Plus size={16} />
+                                    ประกาศรับสมัคร TA
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Create TA Announcement Modal */}
+            {showCreateModal && (
+                <CreateTAAnnouncementModal
+                    onClose={() => setShowCreateModal(false)}
+                    onSubmit={handleCreateAnnouncement}
+                    isSubmitting={isSubmitting}
+                />
+            )}
 
             {/* Toast Notification */}
             {toast && (

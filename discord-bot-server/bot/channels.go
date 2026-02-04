@@ -46,8 +46,15 @@ func SetUpCourse(s *discordgo.Session, guildID string, courseName string) (strin
 
 	//4. Create Channel inside  Category
 	channel, _ := s.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
-		Name:     "announcement",
+		Name:     "Chat-" + courseName,
 		Type:     discordgo.ChannelTypeGuildText,
+		ParentID: category.ID,
+	})
+
+	// 5. Create Voice Channel inside Category
+	s.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
+		Name:     "Voice-" + courseName,
+		Type:     discordgo.ChannelTypeGuildVoice,
 		ParentID: category.ID,
 	})
 

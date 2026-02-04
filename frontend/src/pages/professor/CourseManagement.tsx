@@ -5,14 +5,16 @@ import {
   Clock,
   ChevronRight,
   AlertCircle,
+  MessageCircle,
 } from "lucide-react";
 import { CourseDetailModal } from "./CourseDetailModal";
-import { getAllCourses, getAllJobPostsAllStatus, getApplicationsForCourse } from "../../services/courseService";
+import { getAllCourses, getAllJobPostsAllStatus, getApplicationsForCourse, createDiscordChannel, getDiscordJoinLink } from "../../services/courseService";
 
 import { formatTime as formatTimeFn } from "@/utils/formatUtils";
 
 interface Course {
   id: string;
+  courseID: number; // Backend course ID for API calls
   code: string;
   name: string;
   semester: string;
@@ -51,6 +53,9 @@ export function CourseManagement() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [discordCreating, setDiscordCreating] = useState<string | null>(null);
+  const [discordCreatedCourses, setDiscordCreatedCourses] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Fetch courses from backend
   const fetchCourses = async () => {
@@ -92,6 +97,7 @@ export function CourseManagement() {
 
         return {
           id: (index + 1).toString(),
+          courseID: course.courseID, // Include backend course ID
           code: course.courseCode,
           name: course.courseName,
           semester: course.semester || "1/2568",
@@ -118,6 +124,24 @@ export function CourseManagement() {
       });
 
       setCourses(transformedCourses);
+
+      // Check Discord status for all courses to persist the "Created" state
+      const discordChecks = transformedCourses.map(async (course) => {
+        try {
+          const link = await getDiscordJoinLink(course.courseID);
+          if (link) {
+            return course.id;
+          }
+        } catch (e) {
+          return null;
+        }
+        return null;
+      });
+
+      const results = await Promise.all(discordChecks);
+      const createdIds = results.filter((id): id is string => id !== null);
+      setDiscordCreatedCourses(new Set(createdIds));
+
       setError(null);
     } catch (err) {
       console.error('Failed to fetch courses:', err);
@@ -126,6 +150,53 @@ export function CourseManagement() {
       setCourses([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateDiscord = async (course: Course, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening the modal when clicking the button
+
+    setDiscordCreating(course.id);
+
+    try {
+      // Call actual Discord API
+      await createDiscordChannel({
+        courseID: course.courseID,
+        courseCode: course.code,
+        courseName: course.name,
+        semester: course.semester,
+        sec: course.section,
+      });
+
+      setDiscordCreating(null);
+      setDiscordCreatedCourses(prev => new Set(prev).add(course.id));
+      setToast({
+        message: `สร้างกลุ่ม Discord สำหรับวิชา ${course.code} เรียบร้อยแล้ว!`,
+        type: 'success'
+      });
+
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => setToast(null), 3000);
+
+      // Redirect to auth link
+      try {
+        const link = await getDiscordJoinLink(course.courseID);
+        if (link) {
+          window.open(link, '_blank');
+        }
+      } catch (linkError) {
+        console.error('Failed to open auth link:', linkError);
+      }
+    } catch (error) {
+      console.error('Failed to create Discord channel:', error);
+      setDiscordCreating(null);
+      setToast({
+        message: `ไม่สามารถสร้างกลุ่ม Discord ได้ กรุณาลองอีกครั้ง`,
+        type: 'error'
+      });
+
+      // Auto-hide error toast after 5 seconds
+      setTimeout(() => setToast(null), 5000);
     }
   };
 
@@ -263,7 +334,7 @@ export function CourseManagement() {
           {courses.map((course) => (
             <div
               key={course.id}
-              className="p-6 hover:bg-gray-50 transition-colors cursor-pointer"
+              className="p-6 hover:bg-gray-50 transition-colors cursor-pointer relative"
               onClick={() => setSelectedCourse(course)}
             >
               <div className="flex items-start justify-between">
@@ -279,6 +350,12 @@ export function CourseManagement() {
                       <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">
                         {course.program}
                       </span>
+                      {!course.recruitment.announced && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-full font-medium">
+                          <AlertCircle size={12} />
+                          ยังไม่ประกาศรับ TA
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
@@ -335,15 +412,59 @@ export function CourseManagement() {
                   )}
                 </div>
 
-                <ChevronRight
-                  className="text-gray-400 flex-shrink-0 ml-4"
-                  size={20}
-                />
+                <div className="flex flex-col items-end gap-2">
+                  <ChevronRight
+                    className="text-gray-400 flex-shrink-0"
+                    size={20}
+                  />
+
+                  {/* Create Discord Group Button */}
+                  {discordCreatedCourses.has(course.id) ? (
+                    <a
+                      href="https://discord.gg/2pzUQYrPTs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-sm transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MessageCircle size={16} className="text-green-600" />
+                      <span className="text-green-700 font-medium">ไปที่กลุ่ม Discord</span>
+                    </a>
+                  ) : (
+                    <button
+                      onClick={(e) => handleCreateDiscord(course, e)}
+                      disabled={discordCreating === course.id}
+                      className="flex items-center gap-2 px-3 py-2 bg-[#5865F2] hover:bg-[#4752C4] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                    >
+                      <MessageCircle size={16} />
+                      {discordCreating === course.id ? 'กำลังสร้าง...' : 'สร้างกลุ่ม Discord'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-from-top">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${toast.type === 'success'
+            ? 'bg-green-50 border border-green-200 text-green-800'
+            : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
+            <MessageCircle size={20} />
+            <span className="font-medium">{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-2 text-gray-400 hover:text-gray-600"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Course Detail Modal */}
       {selectedCourse && (

@@ -43,6 +43,7 @@ export interface Application {
     createdDate: string;
     // Optional fields that might be missing or need future backend support
     studentName?: string;
+    studentNameTH?: string;
     phoneNumber?: string;
     grade?: string;
     purpose?: string;
@@ -824,6 +825,90 @@ export async function getEmailHistory(): Promise<EmailHistory[]> {
         return await response.json();
     } catch (error) {
         console.error('Error fetching email history:', error);
+        throw error;
+    }
+}
+
+/**
+ * Discord Channel Creation Request
+ */
+export interface CreateDiscordChannelRequest {
+    courseID: number;
+    courseCode: string;
+    courseName: string;
+    semester: string;
+    sec: string;
+}
+
+/**
+ * Discord Channel Creation Request
+ */
+export interface CreateDiscordChannelRequest {
+    courseID: number;
+    courseCode: string;
+    courseName: string;
+    semester: string;
+    sec: string;
+}
+
+/**
+ * Create a Discord channel for a course
+ * @param data - Discord channel creation data
+ * @returns Promise with the creation result
+ */
+export async function createDiscordChannel(data: CreateDiscordChannelRequest): Promise<any> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/announce/discord/create-channel`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Failed to create Discord channel: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error creating Discord channel:', error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch the Discord join link for a course
+ * @param courseID - The ID of the course
+ * @returns Promise with the join link URL
+ */
+export async function getDiscordJoinLink(courseID: number): Promise<string> {
+    try {
+        const url = `${API_BASE_URL}/announce/discord/join-channel/${courseID}`;
+
+        // We use redirect: 'manual' to check if the link exists (returns 3xx or 2xx)
+        // without actually following the redirect to Discord (which might fail CORS or return HTML)
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            redirect: 'manual',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        // 0 = opaqueredirect (Network success but redirect not followed)
+        // 307/302 = Redirect
+        // 200 = Success (if not redirecting)
+        if (response.type === 'opaqueredirect' || response.status === 307 || response.status === 302 || response.ok) {
+            return url;
+        }
+
+        throw new Error(`Failed to fetch Discord join link: ${response.status} ${response.statusText}`);
+    } catch (error) {
+        console.error('Error fetching Discord join link:', error);
         throw error;
     }
 }

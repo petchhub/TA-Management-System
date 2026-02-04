@@ -4,7 +4,8 @@ import {
   ChevronLeft,
   CheckCircle,
   User,
-  Clock
+  Clock,
+  Download
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getProfessorCourses, getApplicationsForCourse, Course, Application } from "../../services/courseService";
@@ -23,6 +24,7 @@ export function TAWorkHours() {
   const [viewMode, setViewMode] = useState<"courses" | "duties">("courses");
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [courseTAs, setCourseTAs] = useState<Map<number, Application[]>>(new Map()); // Map courseID to TAs
   const [taDutiesList, setTaDutiesList] = useState<TADutyData[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -37,6 +39,9 @@ export function TAWorkHours() {
 
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
 
   // Helper function to check if we can navigate to previous month
   const canGoPrevMonth = (): boolean => {
@@ -57,7 +62,10 @@ export function TAWorkHours() {
   };
 
   const handlePrevMonth = () => {
-    if (!canGoPrevMonth()) return;
+    if (!canGoPrevMonth()) {
+      setToast({ message: "ช่วงเวลาที่เลือกอยู่นอกช่วงภาคการศึกษา", type: 'error' });
+      return;
+    }
     setCurrentMonth(prev => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() - 1);
@@ -66,7 +74,10 @@ export function TAWorkHours() {
   };
 
   const handleNextMonth = () => {
-    if (!canGoNextMonth()) return;
+    if (!canGoNextMonth()) {
+      setToast({ message: "ช่วงเวลาที่เลือกอยู่นอกช่วงภาคการศึกษา", type: 'error' });
+      return;
+    }
     setCurrentMonth(prev => {
       const newDate = new Date(prev);
       newDate.setMonth(prev.getMonth() + 1);
@@ -82,6 +93,22 @@ export function TAWorkHours() {
       try {
         const result = await getProfessorCourses(parseInt(user.id));
         setCourses(result);
+
+        // Fetch TAs for each course
+        const taMap = new Map<number, Application[]>();
+        await Promise.all(
+          result.map(async (course) => {
+            try {
+              const applications = await getApplicationsForCourse(course.courseID);
+              const approvedTAs = applications.filter(app => app.statusCode === "APPROVED");
+              taMap.set(course.courseID, approvedTAs);
+            } catch (error) {
+              console.error(`Failed to fetch TAs for course ${course.courseID}:`, error);
+              taMap.set(course.courseID, []);
+            }
+          })
+        );
+        setCourseTAs(taMap);
       } catch (error) {
         console.error("Failed to fetch courses:", error);
       } finally {
@@ -137,6 +164,27 @@ export function TAWorkHours() {
   const handleCourseSelect = (course: Course) => {
     setSelectedCourse(course);
     setViewMode("duties");
+
+    // Set current month to either now (if within semester) or semester start
+    const now = new Date();
+    if (course.semesterStart && course.semesterEnd) {
+      const start = new Date(course.semesterStart);
+      const end = new Date(course.semesterEnd);
+
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const semesterStartMonth = new Date(start.getFullYear(), start.getMonth(), 1);
+      const semesterEndMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+
+      if (currentMonthStart < semesterStartMonth) {
+        setCurrentMonth(semesterStartMonth);
+      } else if (currentMonthStart > semesterEndMonth) {
+        setCurrentMonth(semesterEndMonth);
+      } else {
+        setCurrentMonth(currentMonthStart);
+      }
+    } else {
+      setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+    }
   };
 
   const handleBackToCourses = () => {
@@ -184,6 +232,44 @@ export function TAWorkHours() {
     } catch (error) {
       console.error('Failed to mark duty as done:', error);
       setToast({ message: 'ไม่สามารถบันทึกการเช็คชื่อได้ กรุณาลองใหม่อีกครั้ง', type: 'error' });
+    }
+  };
+
+  const handleExportAttendance = async () => {
+    if (!selectedCourse) return;
+
+    setIsExporting(true);
+    try {
+      const response = await fetch("http://localhost:8084/TA-management/ta_duty/export-signature-sheet", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseID: selectedCourse.courseID,
+          month: currentMonth.getMonth() + 1,
+          year: currentMonth.getFullYear(),
+        }),
+      });
+
+      if (!response.ok) throw new Error("Export failed");
+
+      const monthName = currentMonth.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ใบเซ็นชื่อTA_${selectedCourse.courseCode}_${monthName}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setToast({ message: 'ส่งออกใบเซ็นชื่อสำเร็จ!', type: 'success' });
+    } catch (error) {
+      console.error('Export failed:', error);
+      setToast({ message: 'เกิดข้อผิดพลาดในการส่งออก', type: 'error' });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -238,6 +324,31 @@ export function TAWorkHours() {
                     </p>
                   </div>
 
+                  {/* TA Information */}
+                  {courseTAs.get(course.courseID) && courseTAs.get(course.courseID)!.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <p className="text-sm font-medium text-gray-500 mb-2 flex items-center gap-1">
+                        <User size={14} />
+                        TA ประจำวิชา:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {courseTAs.get(course.courseID)!.map((ta) => (
+                          <div
+                            key={ta.studentID}
+                            className="px-2 py-1 bg-orange-50 text-orange-700 rounded text-sm"
+                          >
+                            <span className="font-medium">
+                              {ta.studentNameTH || ta.studentName || 'N/A'}
+                            </span>
+                            <span className="text-orange-600 ml-1">
+                              ({ta.studentID})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center text-sm text-gray-500 gap-4">
                     {/* Additional info can go here if needed, removed redundant day */}
                   </div>
@@ -278,7 +389,7 @@ export function TAWorkHours() {
         กลับไปหน้ารายวิชา
       </button>
 
-      <div className="mb-8 flex justify-between items-end">
+      <div className="mb-8 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-bold text-gray-900">
@@ -290,24 +401,34 @@ export function TAWorkHours() {
           </p>
         </div>
 
-        {/* Month Selector */}
-        <div className="flex items-center gap-4 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center gap-4">
+          {/* Month Selector */}
+          <div className="flex items-center gap-4 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+            <button
+              onClick={handlePrevMonth}
+              className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <span className="font-bold text-gray-800 min-w-[150px] text-center">
+              {currentMonth.toLocaleDateString("th-TH", { month: 'long', year: 'numeric' })}
+            </span>
+            <button
+              onClick={handleNextMonth}
+              className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors"
+            >
+              <ChevronLeft size={20} className="rotate-180" />
+            </button>
+          </div>
+
+          {/* Export Button */}
           <button
-            onClick={handlePrevMonth}
-            disabled={!canGoPrevMonth()}
-            className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-600"
+            onClick={handleExportAttendance}
+            disabled={isExporting || taDutiesList.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="font-bold text-gray-800 min-w-[150px] text-center">
-            {currentMonth.toLocaleDateString("th-TH", { month: 'long', year: 'numeric' })}
-          </span>
-          <button
-            onClick={handleNextMonth}
-            disabled={!canGoNextMonth()}
-            className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-600"
-          >
-            <ChevronLeft size={20} className="rotate-180" />
+            <Download size={20} />
+            {isExporting ? 'กำลังส่งออก...' : 'ส่งออกใบเซ็นชื่อ'}
           </button>
         </div>
       </div>
@@ -330,12 +451,16 @@ export function TAWorkHours() {
                   วันที่
                 </th>
                 {taDutiesList.map((data) => (
-                  <th key={data.ta.studentID} className="px-6 py-4 text-center min-w-[120px] border-r border-orange-400 last:border-r-0">
+                  <th key={data.ta.studentID} className="px-6 py-4 text-center min-w-[150px] border-r border-orange-400 last:border-r-0">
                     <div className="flex flex-col items-center gap-1">
-                      <div className="flex items-center gap-2">
-                        {/* Only Student ID as requested */}
-                        <span className="text-sm font-bold">{data.ta.studentID}</span>
-                      </div>
+                      {/* TA Name (Thai preferred, fallback to English) */}
+                      <span className="text-sm font-bold">
+                        {data.ta.studentNameTH || data.ta.studentName || 'N/A'}
+                      </span>
+                      {/* Student ID */}
+                      <span className="text-sm font-normal opacity-90">
+                        {data.ta.studentID}
+                      </span>
                     </div>
                   </th>
                 ))}

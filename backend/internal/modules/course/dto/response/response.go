@@ -49,6 +49,7 @@ type Application struct {
 	StatusCode     string    `json:"statusCode"`
 	Grade          string    `json:"grade"`
 	StudentName    string    `json:"studentName"`
+	StudentNameTH  string    `json:"studentNameTH"`
 	PhoneNumber    string    `json:"phoneNumber"`
 	Classday       string    `json:"classDay"`
 	ProfessorName  string    `json:"professorName"`

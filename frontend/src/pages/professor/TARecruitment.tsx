@@ -7,10 +7,13 @@ import {
   FileText,
   CreditCard,
   IdCard,
+  Plus,
 } from "lucide-react";
 import { ApplicantModal } from "./ApplicantModal";
+import { CreateTAAnnouncementModal } from "./CreateTAAnnouncementModal";
 import { useAuth } from "../../context/AuthContext";
-import { getProfessorApplications, approveApplication, rejectApplication } from "../../services/courseService";
+import { getProfessorApplications, approveApplication, rejectApplication, createJobPost } from "../../services/courseService";
+import { Toast, ToastType } from "../../components/Toast";
 
 const REJECT_TEMPLATES = [
   "จำนวนผู้ช่วยสอนครบตามจำนวนที่ต้องการแล้ว",
@@ -55,6 +58,11 @@ export function TARecruitment() {
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [selectedApproveId, setSelectedApproveId] = useState<number | null>(null);
 
+  // Recruit TA Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +86,7 @@ export function TARecruitment() {
       // Map backend Application to frontend Applicant
       const mappedApplicants: Applicant[] = apps.map((app: any) => ({
         id: app.applicationId, // Should ideally use Application ID or fallback
-        name: app.studentName || `Student ID: ${app.studentID}`, // Fallback since API lacks name
+        name: app.studentNameTH || app.studentName || `Student ID: ${app.studentID}`, // Prioritize Thai name
         studentId: app.studentID?.toString() || "-",
         gpa: parseFloat(app.grade) || 0.00, // Fallback as backend doesn't send this yet
         // Fallback for email as we don't have it
@@ -150,6 +158,39 @@ export function TARecruitment() {
     setRejectReason(template);
   };
 
+  const handleCreateAnnouncement = async (data: any) => {
+    try {
+      setIsSubmitting(true);
+
+      const professorID = user?.id ? parseInt(user.id) : 1;
+
+      await createJobPost({
+        courseID: data.courseID,
+        professorID: professorID,
+        location: data.location || "Building",
+        taAllocation: data.taAllocation,
+        gradeID: data.gradeID,
+        task: data.task
+      });
+
+      setToast({ message: 'ประกาศรับสมัคร TA สำเร็จ!', type: 'success' });
+      setShowCreateModal(false);
+
+      // Refresh applications list
+      setTimeout(() => {
+        fetchApplications();
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to create announcement:', error);
+      setToast({
+        message: `เกิดข้อผิดพลาดในการสร้างประกาศ: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: 'error'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredApplicants = applicants.filter((app) => {
     const matchesSearch =
       app.name
@@ -181,11 +222,20 @@ export function TARecruitment() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">การรับสมัคร TA</h1>
-        <p className="text-gray-600">
-          จัดการและอนุมัติผู้สมัครผู้ช่วยสอน
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">การรับสมัคร TA</h1>
+          <p className="text-gray-600">
+            จัดการและอนุมัติผู้สมัครผู้ช่วยสอน
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium"
+        >
+          <Plus size={20} />
+          ประกาศรับสมัคร TA
+        </button>
       </div>
 
       {/* Stats */}
@@ -526,6 +576,24 @@ export function TARecruitment() {
             setSelectedApplicant(null);
             handleRejectClick(id);
           }}
+        />
+      )}
+
+      {/* Create TA Announcement Modal */}
+      {showCreateModal && (
+        <CreateTAAnnouncementModal
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateAnnouncement}
+          isSubmitting={isSubmitting}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>

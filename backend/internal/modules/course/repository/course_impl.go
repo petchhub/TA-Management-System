@@ -339,7 +339,9 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 				c.semester,
 				c.sec,
 				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
-				c.work_hour 
+				c.work_hour,
+				s.start_date,
+				s.end_date
 			FROM courses AS c
 			join professors AS p 
 				on c.professor_ID = p.professor_ID
@@ -375,7 +377,9 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 			&course.Semester,
 			&course.Section,
 			&fullname,
-			&course.WorkHour)
+			&course.WorkHour,
+			&course.SemesterStart,
+			&course.SemesterEnd)
 		if err != nil {
 			return nil, err
 		}
@@ -1205,6 +1209,8 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 					ta.grade,
 					stu.firstname,
 					stu.lastname,
+					stu.firstname_thai,
+					stu.lastname_thai,
 					stu.phone_number,
 					CASE WHEN ts.transcript_ID IS NOT NULL THEN true ELSE false END as has_transcript,
 					CASE WHEN ba.bank_account_ID IS NOT NULL THEN true ELSE false END as has_bank_account,
@@ -1237,6 +1243,8 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 		var application response.Application
 		var firstname string
 		var lastname string
+		var firstnameTH sql.NullString
+		var lastnameTH sql.NullString
 
 		err := rows.Scan(
 			&application.ApplicationId,
@@ -1249,6 +1257,8 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 			&application.Grade,
 			&firstname,
 			&lastname,
+			&firstnameTH,
+			&lastnameTH,
 			&application.PhoneNumber,
 			&application.HasTranscript,
 			&application.HasBankAccount,
@@ -1259,6 +1269,7 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 		}
 
 		application.StudentName = firstname + " " + lastname
+		application.StudentNameTH = firstnameTH.String + " " + lastnameTH.String
 		applications = append(applications, application)
 	}
 

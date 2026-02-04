@@ -60,11 +60,10 @@ func main() {
 		roleID := c.Param("role_id")
 
 		// Construct the Discord Auth URL
-		// We pass the role_id in the 'state' parameter
 		authURL := fmt.Sprintf("https://discord.com/api/oauth2/authorize?client_id=%s&redirect_uri=%s&response_type=code&scope=identify+guilds.join&state=%s",
 			os.Getenv("CLIENT_ID"), os.Getenv("REDIRECT_URL"), roleID)
 
-		c.JSON(200, gin.H{"authUrl": authURL})
+		c.Redirect(http.StatusTemporaryRedirect, authURL)
 	})
 
 	r.GET("/auth/callback", func(c *gin.Context) {
@@ -105,7 +104,47 @@ func main() {
 			return
 		}
 
-		c.String(200, "Success! You now have access to the course in Discord.")
+		htmlContent := `
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ดำเนินการสำเร็จ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
+        <div class="mb-6 flex justify-center">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+        </div>
+        
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">ดำเนินการสำเร็จ!</h1>
+        <p class="text-gray-600 mb-8">
+            คุณได้รับบทบาทประจำวิชาเรียบร้อยแล้ว<br/>
+            คุณสามารถเข้าถึงห้องเรียนใน Discord ได้ทันที
+        </p>
+        
+        <div class="space-y-3">
+			<a href="discord://discord.gg/2pzUQYrPTs" class="block w-full py-2.5 px-4 bg-[#5865F2] hover:bg-[#4752C4] text-white font-medium rounded-lg transition-colors duration-200">
+                เปิด Discord App
+            </a>
+            <button onclick="window.close()" class="block w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200">
+                ปิดหน้านี้
+            </button>
+        </div>
+    </div>
+</body>
+</html>
+`
+		c.Data(200, "text/html; charset=utf-8", []byte(htmlContent))
 	})
 	// r.POST("/internal/assign-role", func(ctx *gin.Context) {
 

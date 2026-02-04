@@ -37,7 +37,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         ]);
 
         // Recent apps logic
-        const sorted = apps.sort((a, b) => b.applicationId - a.applicationId).slice(0, 3);
+        const sorted = apps.sort((a, b) => b.applicationId - a.applicationId).slice(0, 5);
         setRecentApplications(sorted);
 
         // Stats logic
@@ -217,7 +217,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <tbody>
               {recentApplications.map((app) => (
                 <tr key={app.applicationId} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-gray-900">{app.studentName || 'N/A'}</td>
+                  <td className="px-6 py-4 text-gray-900">{app.studentNameTH || app.studentName || 'N/A'}</td>
                   <td className="px-6 py-4 text-gray-600">{app.studentID}</td>
                   <td className="px-6 py-4 text-gray-900">{app.grade || '-'}</td>
                   <td className="px-6 py-4">
