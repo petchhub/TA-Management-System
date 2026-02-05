@@ -26,6 +26,7 @@ interface ApplicationModalProps {
   courseId: number | null;
   course?: Course;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 interface ExistingFiles {
@@ -34,7 +35,7 @@ interface ExistingFiles {
   studentCard: string | null;
 }
 
-export default function ApplicationModal({ isOpen, courseId, course, onClose }: ApplicationModalProps) {
+export default function ApplicationModal({ isOpen, courseId, course, onClose, onSuccess }: ApplicationModalProps) {
   const [step, setStep] = useState<'form' | 'confirm' | 'success' | 'error'>('form');
   const [formData, setFormData] = useState({
     experience: '',
@@ -201,6 +202,9 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose }: 
       });
 
       setStep('success');
+      if (onSuccess) {
+        onSuccess();
+      }
       setTimeout(() => {
         resetAndClose();
       }, 3000);

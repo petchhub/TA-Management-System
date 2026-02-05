@@ -29,6 +29,7 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 		r.GET("/professor/:professorId", c.getProfessorCourse)
 		r.PATCH("/:courseId", c.updateCourse)
 		r.DELETE("/:courseId", c.deleteCourse)
+		r.POST("/:courseId/discord", c.updateCourseDiscord)
 
 		r.POST("/jobpost", c.createJobPost)
 		r.GET("/jobpost", c.findAllJobPost)
@@ -448,4 +449,25 @@ func (controller CourseController) rejectApplication(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusCreated, result)
+}
+
+func (controller CourseController) updateCourseDiscord(ctx *gin.Context) {
+	courseId, ok := utils.ValidateParam(ctx, "courseId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validation Param Failed"})
+		return
+	}
+
+	var rq request.UpdateCourseDiscord
+	if err := ctx.ShouldBindJSON(&rq); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request data"})
+		return
+	}
+
+	result, err := controller.service.UpdateCourseDiscord(courseId, rq.RoleID, rq.ChannelID, rq.ChannelName)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
 }

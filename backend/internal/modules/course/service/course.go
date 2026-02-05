@@ -28,4 +28,5 @@ type CourseService interface {
 	GetProfessorCourse(ProfessorId int) (*response.RequestDataResponse, error)
 	GetApplicationByProfessorId(professorId int) (*response.RequestDataResponse, error)
 	RejectApplication(rq request.RejectApplication) (*response.GeneralResponse, error)
+	UpdateCourseDiscord(courseId int, roleId string, channelId string, channelName string) (*response.GeneralResponse, error)
 }

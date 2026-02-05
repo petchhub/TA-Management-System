@@ -269,3 +269,14 @@ func (s CourseServiceImplementation) RejectApplication(rq request.RejectApplicat
 		Message: "Rejected application Successful",
 	}, nil
 }
+
+func (s CourseServiceImplementation) UpdateCourseDiscord(courseId int, roleId string, channelId string, channelName string) (*response.GeneralResponse, error) {
+	err := s.repo.UpdateCourseDiscord(courseId, roleId, channelId, channelName)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return &response.GeneralResponse{
+		Message: "Update Discord Successful",
+	}, nil
+}

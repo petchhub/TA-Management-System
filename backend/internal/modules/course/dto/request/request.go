@@ -79,3 +79,9 @@ type ApplyJobPost struct {
 	FirstnameThai    *string `form:"firstname_thai"`
 	LastnameThai     *string `form:"lastname_thai"`
 }
+
+type UpdateCourseDiscord struct {
+	RoleID      string `json:"role_id"`
+	ChannelID   string `json:"channel_id"`
+	ChannelName string `json:"channel_name"`
+}

@@ -27,6 +27,8 @@ export interface Course {
     semesterEnd?: string;
     year?: number;
     taCount?: number;
+    discordLink?: string;
+    discordRoleID?: string;
 }
 
 export interface CourseResponse {
@@ -841,38 +843,54 @@ export interface CreateDiscordChannelRequest {
 }
 
 /**
- * Discord Channel Creation Request
- */
-export interface CreateDiscordChannelRequest {
-    courseID: number;
-    courseCode: string;
-    courseName: string;
-    semester: string;
-    sec: string;
-}
-
-/**
  * Create a Discord channel for a course
+ * This function:
+ * 1. Calls the Discord bot server to create a channel and role
+ * 2. Updates the main backend with the Discord info
  * @param data - Discord channel creation data
  * @returns Promise with the creation result
  */
 export async function createDiscordChannel(data: CreateDiscordChannelRequest): Promise<any> {
     try {
-        const response = await fetch(`${API_BASE_URL}/announce/discord/create-channel`, {
+        // Step 1: Call Discord bot server to create channel
+        const channelName = `${data.courseCode}-${data.sec}`;
+        const discordBotResponse = await fetch('http://localhost:8081/create-channel', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: channelName,
+                guildID: process.env.DISCORD_GUILD_ID || '1330931009062187049', // Default guild ID
+            }),
+        });
+
+        if (!discordBotResponse.ok) {
+            throw new Error(`Failed to create Discord channel: ${discordBotResponse.statusText}`);
+        }
+
+        const discordResult = await discordBotResponse.json();
+        const { roleID, channelID } = discordResult;
+
+        // Step 2: Update main backend with Discord info
+        const backendResponse = await fetch(`${API_BASE_URL}/course/${data.courseID}/discord`, {
             method: 'POST',
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(data),
+            body: JSON.stringify({
+                role_id: roleID,
+                channel_id: channelID,
+                channel_name: channelName,
+            }),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Failed to create Discord channel: ${response.statusText}`);
+        if (!backendResponse.ok) {
+            throw new Error(`Failed to update backend with Discord info: ${backendResponse.statusText}`);
         }
 
-        return await response.json();
+        return { roleID, channelID, channelName };
     } catch (error) {
         console.error('Error creating Discord channel:', error);
         throw error;
@@ -881,34 +899,24 @@ export async function createDiscordChannel(data: CreateDiscordChannelRequest): P
 
 /**
  * Fetch the Discord join link for a course
+ * This checks if a course has a Discord role ID and returns the join link
  * @param courseID - The ID of the course
- * @returns Promise with the join link URL
+ * @returns Promise with the join link URL or null if not set up
  */
-export async function getDiscordJoinLink(courseID: number): Promise<string> {
+export async function getDiscordJoinLink(courseID: number): Promise<string | null> {
     try {
-        const url = `${API_BASE_URL}/announce/discord/join-channel/${courseID}`;
+        // Fetch course details to get the Discord role ID
+        const courses = await getAllCourses();
+        const course = courses.find(c => c.courseID === courseID);
 
-        // We use redirect: 'manual' to check if the link exists (returns 3xx or 2xx)
-        // without actually following the redirect to Discord (which might fail CORS or return HTML)
-        const response = await fetch(url, {
-            method: 'GET',
-            credentials: 'include',
-            redirect: 'manual',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        // 0 = opaqueredirect (Network success but redirect not followed)
-        // 307/302 = Redirect
-        // 200 = Success (if not redirecting)
-        if (response.type === 'opaqueredirect' || response.status === 307 || response.status === 302 || response.ok) {
-            return url;
+        if (!course || !course.discordRoleID) {
+            return null;
         }
 
-        throw new Error(`Failed to fetch Discord join link: ${response.status} ${response.statusText}`);
+        // Return the Discord bot server join link with the role ID
+        return `http://localhost:8081/join-course/${course.discordRoleID}`;
     } catch (error) {
         console.error('Error fetching Discord join link:', error);
-        throw error;
+        return null;
     }
 }

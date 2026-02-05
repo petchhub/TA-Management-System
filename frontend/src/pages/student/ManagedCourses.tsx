@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, LayoutList, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutList, Calendar as CalendarIcon, MessageSquare } from "lucide-react";
 import { formatTime } from "../../utils/formatUtils";
 import { useAuth } from "../../context/AuthContext";
 import { getStudentApplications, getAllCourses, Course } from "../../services/courseService";
@@ -46,6 +46,7 @@ export default function ManagedCourses() {
     });
     const [holidays, setHolidays] = useState<Holiday[]>([]);
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'info' | 'error' } | null>(null);
 
     // Memoize course colors to ensure they stay consistent for same courseID
     const getCourseColor = (courseId: number | string): CourseColor => {
@@ -57,6 +58,11 @@ export default function ManagedCourses() {
         }
         const index = Math.abs(hash) % COURSE_COLORS.length;
         return COURSE_COLORS[index];
+    };
+
+    const handleDiscordError = (message: string) => {
+        setToast({ message, type: 'info' });
+        setTimeout(() => setToast(null), 5000);
     };
 
     const fetchHolidays = async () => {
@@ -323,6 +329,7 @@ export default function ManagedCourses() {
                             key={course.courseID}
                             course={course}
                             onClick={() => setSelectedCourse(course)}
+                            onDiscordError={handleDiscordError}
                         />
                     ))}
                 </div>
@@ -362,6 +369,27 @@ export default function ManagedCourses() {
                     course={selectedCourse}
                     onClose={() => setSelectedCourse(null)}
                 />
+            )}
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className="fixed top-4 right-4 z-50 animate-slide-in-from-top">
+                    <div className={`flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-md ${toast.type === 'info'
+                        ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                        : 'bg-red-50 border border-red-200 text-red-800'
+                        }`}>
+                        <MessageSquare size={20} className="flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="font-medium text-sm">{toast.message}</p>
+                        </div>
+                        <button
+                            onClick={() => setToast(null)}
+                            className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

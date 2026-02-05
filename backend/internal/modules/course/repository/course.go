@@ -28,4 +28,6 @@ type CourseRepository interface {
 	GetApplicationByProfessorId(professorId int) ([]response.Application, error)
 	ApproveApplication(ApplicationId int) error
 	RejectApplication(rq request.RejectApplication) error
+	UpdateCourseDiscord(courseId int, roleId string, channelId string, channelName string) error
+	GetDiscordRoleByCourseId(courseId int) (string, error)
 }

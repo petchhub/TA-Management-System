@@ -10,6 +10,7 @@ interface StudentCourseDetailModalProps {
 
 export function StudentCourseDetailModal({ course, onClose }: StudentCourseDetailModalProps) {
     const [actualTaCount, setActualTaCount] = useState<number | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'info' | 'error' } | null>(null);
 
     useEffect(() => {
         const fetchTaCount = async () => {
@@ -144,7 +145,17 @@ export function StudentCourseDetailModal({ course, onClose }: StudentCourseDetai
                                 ช่องทางสื่อสาร (Discord)
                             </h3>
                             <button
-                                onClick={() => window.open('https://discord.gg/mock-invite-link', '_blank')}
+                                onClick={() => {
+                                    if (course.discordRoleID) {
+                                        window.open(`http://localhost:8081/join-course/${course.discordRoleID}`, '_blank');
+                                    } else {
+                                        setToast({
+                                            message: 'ยังไม่มีลิงก์ Discord สำหรับวิชานี้ กรุณาติดต่ออาจารย์ผู้สอนเพื่อขอให้สร้างกลุ่ม',
+                                            type: 'info'
+                                        });
+                                        setTimeout(() => setToast(null), 5000);
+                                    }
+                                }}
                                 className="flex items-center gap-2 px-4 py-2 bg-[#5865F2] text-white rounded-lg hover:bg-[#4752C4] transition-colors text-sm font-medium"
                             >
                                 <MessageSquare size={16} />
@@ -152,7 +163,7 @@ export function StudentCourseDetailModal({ course, onClose }: StudentCourseDetai
                             </button>
                         </div>
                         <p className="text-sm text-gray-500 mt-2">
-                            เข้าร่วมกลุ่ม Discord เพื่อรับข่าวสารและส่งงานกับอาจารย์ผู้สอน
+                            เข้าร่วมกลุ่ม Discord เพื่อรับข่าวสารและติดต่อกับอาจารย์ผู้สอน
                         </p>
                     </div>
                 </div>
@@ -165,6 +176,27 @@ export function StudentCourseDetailModal({ course, onClose }: StudentCourseDetai
                         ปิด
                     </button>
                 </div>
+
+                {/* Toast Notification */}
+                {toast && (
+                    <div className="fixed top-4 right-4 z-50 animate-slide-in-from-top">
+                        <div className={`flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-md ${toast.type === 'info'
+                                ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                                : 'bg-red-50 border border-red-200 text-red-800'
+                            }`}>
+                            <MessageSquare size={20} className="flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="font-medium text-sm">{toast.message}</p>
+                            </div>
+                            <button
+                                onClick={() => setToast(null)}
+                                className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

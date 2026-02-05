@@ -17,6 +17,7 @@ type Course struct {
 	Section       string `json:"section"`
 	SemesterStart string `json:"semesterStart"`
 	SemesterEnd   string `json:"semesterEnd"`
+	DiscordRoleID string `json:"discordRoleID"`
 }
 
 type JobPost struct {

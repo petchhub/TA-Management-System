@@ -278,8 +278,11 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
 				c.work_hour,
 				s.start_date,
-				s.end_date
+				s.end_date,
+				dc.role_id
 			FROM courses AS c
+			LEFT JOIN discord_channels AS dc
+				ON c.course_ID = dc.course_ID
 			LEFT JOIN professors AS p
 				ON c.professor_ID = p.professor_ID
 			LEFT JOIN class_days AS cd
@@ -301,6 +304,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 	for rows.Next() {
 		var course response.Course
 		var fullname string
+		var roleID sql.NullString
 		err := rows.Scan(
 			&course.CourseID,
 			&course.CourseCode,
@@ -315,9 +319,13 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 			&course.WorkHour,
 			&course.SemesterStart,
 			&course.SemesterEnd,
+			&roleID,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if roleID.Valid {
+			course.DiscordRoleID = roleID.String
 		}
 		course.ProfessorName = fullname
 		courses = append(courses, course)
@@ -341,8 +349,11 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 				CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) as fullname,
 				c.work_hour,
 				s.start_date,
-				s.end_date
+				s.end_date,
+				dc.role_id
 			FROM courses AS c
+			LEFT JOIN discord_channels AS dc
+				ON c.course_ID = dc.course_ID
 			join professors AS p 
 				on c.professor_ID = p.professor_ID
 			LEFT JOIN class_days AS cd
@@ -366,6 +377,7 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 	for rows.Next() {
 		var course response.Course
 		var fullname string
+		var roleID sql.NullString
 		err := rows.Scan(
 			&course.CourseID,
 			&course.CourseCode,
@@ -379,9 +391,13 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 			&fullname,
 			&course.WorkHour,
 			&course.SemesterStart,
-			&course.SemesterEnd)
+			&course.SemesterEnd,
+			&roleID)
 		if err != nil {
 			return nil, err
+		}
+		if roleID.Valid {
+			course.DiscordRoleID = roleID.String
 		}
 		course.ProfessorName = fullname
 		courses = append(courses, course)
@@ -544,6 +560,32 @@ func (r CourseRepositoryImplementation) UpdateCourse(body request.UpdateCourse) 
 	}
 
 	return tx.Commit()
+}
+
+func (r CourseRepositoryImplementation) GetDiscordRoleByCourseId(courseId int) (string, error) {
+	query := `SELECT role_id FROM discord_channels WHERE course_ID = $1`
+	var roleId string
+	err := r.db.QueryRow(query, courseId).Scan(&roleId)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return roleId, nil
+}
+
+func (r CourseRepositoryImplementation) UpdateCourseDiscord(courseId int, roleId string, channelId string, channelName string) error {
+	queryDelete := `DELETE FROM discord_channels WHERE course_ID = $1`
+	_, err := r.db.Exec(queryDelete, courseId)
+	if err != nil {
+		return err
+	}
+
+	queryInsert := `INSERT INTO discord_channels(course_ID, role_id, channel_id, channel_name)
+				VALUES($1, $2, $3, $4)`
+	_, err = r.db.Exec(queryInsert, courseId, roleId, channelId, channelName)
+	return err
 }
 
 func (r CourseRepositoryImplementation) DeleteCourse(id int) error {

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getStudentApplications, getAllCourses, Course } from "../../services/courseService";
+import { getSemesters } from "../../services/lookupService";
 import { getNextClassDate } from "../../utils/dateUtils";
 import { formatTime } from "../../utils/formatUtils";
 
@@ -34,10 +35,13 @@ export default function Dashboard() {
       try {
         setLoading(true);
         const studentId = parseInt(user.id);
-        const [apps, allCourses] = await Promise.all([
+        const [apps, allCourses, semesters] = await Promise.all([
           getStudentApplications(studentId),
-          getAllCourses()
+          getAllCourses(),
+          getSemesters()
         ]);
+
+        const activeSemester = semesters.find(s => s.isActive);
 
         // 1. Map Applications to Activities (Backend now provides all needed fields)
         const mappedActivities = apps.map((app, index) => {
@@ -105,14 +109,45 @@ export default function Dashboard() {
           if (!course.classday || !course.classStart) return [];
 
           // Get the very next class date
-          const firstDate = getNextClassDate(course.classday, course.classStart);
+          let firstDate = getNextClassDate(course.classday, course.classStart);
 
-          // Generate 3 occurrences (next 3 weeks) to ensure we can fill the "Top 3" list
-          // even if the student only has 1 course.
+          // Filter by active semester dates
+          if (activeSemester) {
+            const semStart = new Date(activeSemester.startDate);
+            // Reset time for start date comparison
+            semStart.setHours(0, 0, 0, 0);
+
+            const semEnd = new Date(activeSemester.endDate);
+            // Set time to end of day for end date comparison
+            semEnd.setHours(23, 59, 59, 999);
+
+            // If next class is before semester start, advance to first class in semester
+            while (firstDate < semStart) {
+              firstDate.setDate(firstDate.getDate() + 7);
+            }
+
+            // If start date is already past semester end, no classes
+            if (firstDate > semEnd) {
+              return [];
+            }
+          }
+
+          // Generate occurrences
           const occurrences = [];
-          for (let i = 0; i < 3; i++) {
+          // Try to generate enough sessions to fill the list, then we slice later
+          // 4 occurrences usually covers a month
+          for (let i = 0; i < 4; i++) {
             const date = new Date(firstDate);
             date.setDate(date.getDate() + (i * 7)); // Add i weeks
+
+            // Check if this specific occurrence is within semester bounds
+            if (activeSemester) {
+              const semEnd = new Date(activeSemester.endDate);
+              semEnd.setHours(23, 59, 59, 999);
+              if (date > semEnd) {
+                break; // Stop generating if we go past semester end
+              }
+            }
 
             occurrences.push({
               courseCode: course.courseCode,
@@ -282,7 +317,7 @@ export default function Dashboard() {
                           </span>
                         </div>
 
-                        <p className="text-sm text-gray-600 mb-2 truncate">อาจารย์: {course.professorName}</p>
+                        <p className="text-sm text-gray-600 mb-2 truncate">ผู้สอน: {course.professorName}</p>
 
                         <div className="flex items-center gap-4 text-xs text-gray-500">
                           <span className="bg-gray-100 px-2 py-0.5 rounded">Sec {course.section}</span>

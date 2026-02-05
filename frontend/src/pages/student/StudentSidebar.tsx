@@ -1,5 +1,6 @@
 import { LayoutDashboard, Clock, BookOpen, User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 type Page = 'dashboard' | 'managed-courses' | 'courses' | 'profile';
 
@@ -10,16 +11,21 @@ interface StudentSidebarProps {
 
 export function StudentSidebar({ currentPage, onNavigate }: StudentSidebarProps) {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
 
     const username = user?.name || 'Student';
     const role = user?.role === 'STUDENT' ? 'นักศึกษา' : user?.role || 'Student';
 
     const menuItems = [
-        { id: 'dashboard' as Page, label: 'หน้าหลัก', icon: LayoutDashboard },
-        { id: 'managed-courses' as Page, label: 'ตารางปฏิบัติงาน', icon: Clock },
-        { id: 'courses' as Page, label: 'ค้นหาตำแหน่ง', icon: BookOpen },
-        { id: 'profile' as Page, label: 'โปรไฟล์', icon: User },
+        { id: 'dashboard' as Page, label: 'หน้าหลัก', icon: LayoutDashboard, path: '/student/dashboard' },
+        { id: 'managed-courses' as Page, label: 'ตารางปฏิบัติงาน', icon: Clock, path: '/student/work-hours' },
+        { id: 'courses' as Page, label: 'ค้นหาตำแหน่ง', icon: BookOpen, path: '/student/courses' },
+        { id: 'profile' as Page, label: 'โปรไฟล์', icon: User, path: '/student/profile' },
     ];
+
+    const handleNavigation = (item: typeof menuItems[0]) => {
+        navigate(item.path);
+    };
 
     return (
         <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -36,7 +42,7 @@ export function StudentSidebar({ currentPage, onNavigate }: StudentSidebarProps)
                         return (
                             <li key={item.id}>
                                 <button
-                                    onClick={() => onNavigate(item.id)}
+                                    onClick={() => handleNavigation(item)}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
                                         ? 'text-orange-600 bg-orange-50'
                                         : 'text-gray-700 hover:bg-gray-50'

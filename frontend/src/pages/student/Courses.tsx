@@ -31,6 +31,8 @@ export default function Courses() {
   const [error, setError] = useState<string | null>(null);
   const [activeSemester, setActiveSemester] = useState<Semester | null>(null);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
   // Fetch positions from backend on mount
   useEffect(() => {
     async function fetchPositions() {
@@ -82,7 +84,7 @@ export default function Courses() {
     }
 
     fetchPositions();
-  }, [user]);
+  }, [user, refreshKey]);
 
   // Fetch active semester
   useEffect(() => {
@@ -337,6 +339,7 @@ export default function Courses() {
           (c) => c.id === applicationModal.courseId,
         )}
         onClose={handleCloseModal}
+        onSuccess={() => setRefreshKey(prev => prev + 1)}
       />
     </div>
   );
