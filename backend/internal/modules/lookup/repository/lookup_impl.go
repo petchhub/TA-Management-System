@@ -74,7 +74,7 @@ func (r LookupRepositoryImplementation) GetSemester() (*[]response.SemesterRespo
                 end_date,
 				is_active
 			FROM semester
-            WHERE end_date >= CURRENT_DATE
+            WHERE end_date >= CURRENT_DATE OR is_active = TRUE
 			ORDER BY start_date ASC`
 
 	rows, err := r.db.Query(query)

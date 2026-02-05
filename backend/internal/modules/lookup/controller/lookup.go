@@ -20,30 +20,32 @@ func NewLookupController(lookupService service.LookupService) *LookupController 
 	}
 }
 
-func InitializeController(lookupService service.LookupService, r *gin.RouterGroup) {
+func InitializePublicController(lookupService service.LookupService, r *gin.RouterGroup) {
 	c := NewLookupController(lookupService)
-	// r.Use()
 	{
 		r.GET("/course-program", c.getCourseProgram)
 		r.GET("/classday", c.getClassday)
-
-		r.POST("/add-semester", c.addSemester)
-		r.PATCH("/semester", c.updateSemester)
 		r.GET("/semester", c.getSemester)
 		r.GET("/semester-dropdown", c.getSemesterDropdown)
-		r.POST("/semester-active/:semesterID", c.setSemesterActive)
-
 		r.GET("/grade", c.getGrade)
 		r.GET("/professors", c.getProfessors)
 		r.GET("/holiday", c.GetHolidays)
+		r.GET("/available-months", c.GetAvailableMonths)
+	}
+}
+
+func InitializeProtectedController(lookupService service.LookupService, r *gin.RouterGroup) {
+	c := NewLookupController(lookupService)
+	{
+		r.POST("/add-semester", c.addSemester)
+		r.PATCH("/semester", c.updateSemester)
+		r.POST("/semester-active/:semesterID", c.setSemesterActive)
 		r.POST("/holiday", c.AddSpecialHoliday)
 		r.DELETE("/holiday/:id", c.DeleteHoliday)
 		r.GET("/ta", c.getTA)
-		r.GET("/available-months", c.GetAvailableMonths)
 		r.GET("/transcript", c.GetTranscript)
 		r.GET("/bank-account", c.GetBankAccount)
 		r.GET("/student-card", c.GetStudentCard)
-
 	}
 }
 

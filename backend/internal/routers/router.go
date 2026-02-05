@@ -138,8 +138,12 @@ func InitRouter(
 
 	publicRouter := baseRouter.Group("/public")
 	{
-		coursecontroller.InitializeController(courseSvc, publicRouter)
+		courseRouter := publicRouter.Group("/course")
+		coursecontroller.InitializePublicController(courseSvc, courseRouter)
 	}
+
+	lookupPublicRouter := baseRouter.Group("/lookup")
+	lookupcontroller.InitializePublicController(lookupSvc, lookupPublicRouter)
 
 	authenticatedRouter := baseRouter.Group("")
 	authenticatedRouter.Use(middleware.AuthMiddleware(jwtSecret))
@@ -148,7 +152,7 @@ func InitRouter(
 		coursecontroller.InitializeController(courseSvc, courseRouter)
 
 		lookupRouter := authenticatedRouter.Group("/lookup")
-		lookupcontroller.InitializeController(lookupSvc, lookupRouter)
+		lookupcontroller.InitializeProtectedController(lookupSvc, lookupRouter)
 
 		studentRouter := authenticatedRouter.Group("/student")
 		studentcontroller.InitializeController(studentSvc, studentRouter)

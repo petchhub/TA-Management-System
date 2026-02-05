@@ -29,18 +29,27 @@ interface CourseCardProps {
 
 export default function CourseCard({ course, onApply }: CourseCardProps) {
   const isDeadlineSoon = () => {
+    if (!course.deadline) return false;
     const deadline = new Date(course.deadline);
+    if (isNaN(deadline.getTime())) return false; // Invalid date check
     const now = new Date();
     const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return daysUntil <= 3 && daysUntil > 0;
   };
 
   const formatDeadline = () => {
-    return new Date(course.deadline).toLocaleDateString('th-TH', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    if (!course.deadline) return '-';
+    try {
+      const date = new Date(course.deadline);
+      if (isNaN(date.getTime())) return '-';
+      return date.toLocaleDateString('th-TH', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+    } catch {
+      return '-';
+    }
   };
 
   return (

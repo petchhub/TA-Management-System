@@ -54,8 +54,6 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 				ON j.status_ID = st.status_ID
 			LEFT JOIN grades AS g
 				ON j.grade_ID = g.grade_ID
-			LEFT JOIN semester AS s
-				ON c.semester_ID = s.semester_ID
 			WHERE j.status_ID = $1
 			AND s.is_active = TRUE`
 

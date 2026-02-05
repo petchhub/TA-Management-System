@@ -9,14 +9,15 @@ import {
 } from "lucide-react";
 import CourseCard from "./CourseCard";
 import ApplicationModal from "./ApplicationModal";
-import { getOpenPositions, Course } from "../../services/positionService";
+import { useNavigate } from "react-router-dom";
+import { getOpenPositions, getPublicOpenPositions, Course } from "../../services/positionService";
 import { getAllCoursesByStudentId, Course as ServiceCourse } from "../../services/courseService";
 import { getSemesters, Semester } from "../../services/lookupService";
 import { useAuth } from "../../context/AuthContext";
-import console from "console";
 
 export default function Courses() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterProgram, setFilterProgram] = useState("all");
   const [filterDay, setFilterDay] = useState("all");
@@ -68,8 +69,11 @@ export default function Courses() {
             endTime: c.classEnd,
             status: c.status
           }));
+        } else if (!user) {
+          // For guests (unauthenticated), use the public endpoint
+          positions = await getPublicOpenPositions();
         } else {
-          // For guests or non-students, use the general open positions endpoint
+          // For other authenticated roles (e.g. professor viewing student page?) or fallback
           positions = await getOpenPositions();
         }
 
@@ -154,6 +158,10 @@ export default function Courses() {
   );
 
   const handleApply = (courseId: number) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     setApplicationModal({ isOpen: true, courseId });
   };
 

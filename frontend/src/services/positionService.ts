@@ -65,13 +65,13 @@ export interface ApplicationData {
     lastname_thai?: string;
     bankAccount?: File | null;
     studentCard?: File | null;
-    attacheNewPDF:boolean;
+    attacheNewPDF: boolean;
 }
 
 /**
  * Map backend position response to frontend Course interface
  */
-function mapPositionToCourse(position: PositionResponse, index: number): Course {
+function mapPositionToCourse(position: PositionResponse): Course {
     // Calculate deadline (30 days from now as default since backend doesn't provide)
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + 30);
@@ -102,13 +102,13 @@ function mapPositionToCourse(position: PositionResponse, index: number): Course 
 
     return {
         id: position.jobPostID,
-        code: position.courseID,
-        name: position.courseName,
+        code: String(position.courseID || ''),
+        name: String(position.courseName || ''),
         department: 'คณะวิศวกรรมศาสตร์', // Default since backend doesn't provide
         program: programStr,
         sec: position.sec || '',
         days: position.classday || "",
-        instructor: position.professorName,
+        instructor: String(position.professorName || ''),
         semester: position.semester || "",
         positions: position.taAllocation,
         hoursPerWeek: position.workHour,
@@ -141,20 +141,66 @@ export async function getOpenPositions(): Promise<Course[]> {
             throw new Error(`Failed to fetch positions: ${response.statusText}`);
         }
 
-        const positions = await response.json();
-        console.log('API Response data:', positions);
-        console.log(Array.isArray(positions));
-        // Ensure positions is an array
-        // const positions: PositionResponse[] = Array.isArray(data)
-        //     ? data
-        //     : []
-        console.log('courseId:', positions);
-        // Map backend response to frontend Course interface
-        const courses = positions.data.map((position: PositionResponse, index: number) => mapPositionToCourse(position, index));
+        const data = await response.json();
+        console.log('API Response data:', data);
+
+        // Handle both { data: [...] } and direct array response
+        const jobPosts = Array.isArray(data) ? data : (data.data || []);
+
+        if (!Array.isArray(jobPosts)) {
+            console.error('Expected array of positions but got:', jobPosts);
+            return [];
+        }
+
+        // Filter valid items and map
+        const courses = jobPosts
+            .filter((p: any) => p && typeof p === 'object') // Basic validation
+            .map((position: PositionResponse) => mapPositionToCourse(position));
+
         console.log('Mapped courses:', courses);
         return courses;
     } catch (error) {
         console.error('Error fetching positions:', error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch all open TA positions from the public API (for unauthenticated users)
+ * @returns Promise with list of positions
+ */
+export async function getPublicOpenPositions(): Promise<Course[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/public/course/jobpost`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch public positions: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Public API Response data:', data);
+
+        // Handle both { data: [...] } and direct array response
+        const jobPosts = Array.isArray(data) ? data : (data.data || []);
+
+        if (!Array.isArray(jobPosts)) {
+            console.error('Expected array of public positions but got:', jobPosts);
+            return [];
+        }
+
+        // Filter valid items and map
+        const courses = jobPosts
+            .filter((p: any) => p && typeof p === 'object')
+            .map((position: PositionResponse) => mapPositionToCourse(position));
+
+        return courses;
+    } catch (error) {
+        console.error('Error fetching public positions:', error);
         throw error;
     }
 }
@@ -174,12 +220,12 @@ export async function applyToPosition(
         const formData = new FormData();
         formData.append('studentID', applicationData.studentID.toString());
         formData.append('statusID', applicationData.statusID.toString());
-        
+
         // Only append transcript if a new one is provided
         if (applicationData.transcript) {
             formData.append('Transcript', applicationData.transcript);
         }
-        
+
         formData.append('grade', applicationData.gpa);
         formData.append('purpose', applicationData.motivation);
         formData.append('experience', applicationData.experience);
