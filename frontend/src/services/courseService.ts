@@ -861,12 +861,13 @@ export async function createDiscordChannel(data: CreateDiscordChannelRequest): P
             },
             body: JSON.stringify({
                 name: channelName,
-                guildID: process.env.DISCORD_GUILD_ID || '1330931009062187049', // Default guild ID
             }),
         });
 
         if (!discordBotResponse.ok) {
-            throw new Error(`Failed to create Discord channel: ${discordBotResponse.statusText}`);
+            const errorData = await discordBotResponse.json().catch(() => ({}));
+            const errorMessage = errorData.error || discordBotResponse.statusText;
+            throw new Error(`Failed to create Discord channel: ${errorMessage}`);
         }
 
         const discordResult = await discordBotResponse.json();

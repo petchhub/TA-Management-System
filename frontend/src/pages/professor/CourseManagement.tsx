@@ -190,8 +190,15 @@ export function CourseManagement() {
     } catch (error) {
       console.error('Failed to create Discord channel:', error);
       setDiscordCreating(null);
+
+      // Extract error message if available
+      let errorMessage = 'ไม่สามารถสร้างกลุ่ม Discord ได้ กรุณาลองอีกครั้ง';
+      if (error instanceof Error) {
+        errorMessage = `ไม่สามารถสร้างกลุ่ม Discord ได้: ${error.message}`;
+      }
+
       setToast({
-        message: `ไม่สามารถสร้างกลุ่ม Discord ได้ กรุณาลองอีกครั้ง`,
+        message: errorMessage,
         type: 'error'
       });
 

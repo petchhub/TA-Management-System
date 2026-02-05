@@ -35,6 +35,20 @@ func main() {
 
 	r := gin.Default()
 
+	// Add CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
 	r.POST("/create-channel", func(ctx *gin.Context) {
 
 		var json struct {
@@ -45,10 +59,18 @@ func main() {
 			ctx.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-		fmt.Print("guildID", json.GuildID)
 
-		role, channel, err := bot.SetUpCourse(dg, json.GuildID, json.Name)
+		// Use GuildID from request if provided, otherwise fallback to .env
+		guildID := json.GuildID
+		if guildID == "" {
+			guildID = os.Getenv("GUILD_ID")
+		}
+
+		fmt.Printf("Creating channel for GuildID: %s, Name: %s\n", guildID, json.Name)
+
+		role, channel, err := bot.SetUpCourse(dg, guildID, json.Name)
 		if err != nil {
+			log.Printf("Error creating channel for course %s: %v", json.Name, err)
 			ctx.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
