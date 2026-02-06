@@ -853,7 +853,7 @@ export interface CreateDiscordChannelRequest {
 export async function createDiscordChannel(data: CreateDiscordChannelRequest): Promise<any> {
     try {
         // Step 1: Call Discord bot server to create channel
-        const channelName = `${data.courseCode}-${data.sec}`;
+        const channelName = `${data.courseName} (Sec ${data.sec})`;
         const discordBotResponse = await fetch('http://localhost:8081/create-channel', {
             method: 'POST',
             headers: {

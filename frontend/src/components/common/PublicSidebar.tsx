@@ -21,8 +21,8 @@ export function PublicSidebar({ currentPage = 'courses' }: PublicSidebarProps) {
     const activePage = getCurrentPage();
 
     const menuItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/login' },
-        { id: 'managed-courses', label: 'ลงเวลาทำงาน', icon: Clock, path: '/login' },
+        { id: 'dashboard', label: 'หน้าหลัก', icon: LayoutDashboard, path: '/login' },
+        { id: 'managed-courses', label: 'ตารางปฎิบัติงาน', icon: Clock, path: '/login' },
         { id: 'courses', label: 'ค้นหาตำแหน่ง', icon: BookOpen, path: '/' },
         { id: 'profile', label: 'โปรไฟล์', icon: User, path: '/login' },
     ];
@@ -62,13 +62,6 @@ export function PublicSidebar({ currentPage = 'courses' }: PublicSidebarProps) {
             </nav>
 
             <div className="p-4 border-t border-gray-200">
-                <button
-                    onClick={() => navigate('/login')}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                    <Settings size={20} />
-                    <span>ตั้งค่า</span>
-                </button>
                 <button
                     onClick={() => navigate('/login')}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors mt-2"

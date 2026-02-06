@@ -9,7 +9,8 @@ const API_BASE_URL = 'http://localhost:8084/TA-management';
  */
 export interface PositionResponse {
     jobPostID: number;
-    courseID: string;
+    courseID: number;
+    courseCode: string;
     courseName: string;
     taAllocation: number;
     workHour: number;
@@ -23,7 +24,7 @@ export interface PositionResponse {
     semester: string;
     status: string;
     sec: string;
-    program: string;
+    courseProgram: string;
 }
 
 /**
@@ -77,13 +78,11 @@ function mapPositionToCourse(position: PositionResponse): Course {
     deadline.setDate(deadline.getDate() + 30);
     const deadlineStr = deadline.toISOString().split('T')[0];
 
-    // Use program from backend directly (now it's Thai)
-    const programStr = position.program || '';
+    // Use courseProgram from backend directly (now it's Thai)
+    const programStr = position.courseProgram || '';
 
     // Format requirements text
-    const requirementsStr = position.program?.includes('International') || position.program === 'นานาชาติ'
-        ? `Must have passed ${position.courseName} with a grade not lower than ${position.grade}`
-        : `ต้องเคยผ่านรายวิชา ${position.courseName} โดยได้เกรดไม่ต่ำกว่า ${position.grade}`;
+    const requirementsStr = position.grade || '';
 
     // Format time (Handle 0000-01-01T13:00:00Z -> 13:00)
     const formatTime = (timeStr: string) => {
@@ -102,7 +101,7 @@ function mapPositionToCourse(position: PositionResponse): Course {
 
     return {
         id: position.jobPostID,
-        code: String(position.courseID || ''),
+        code: position.courseCode || '',
         name: String(position.courseName || ''),
         department: 'คณะวิศวกรรมศาสตร์', // Default since backend doesn't provide
         program: programStr,

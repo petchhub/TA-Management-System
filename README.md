@@ -6,105 +6,109 @@ A comprehensive web application for managing Teaching Assistant (TA) workflows, 
 
 ## 🌟 Key Features
 
+### 🌍 Public Access (Guest Users)
+- **Position Search**: Browse open TA positions without logging in.
+- **Course Details**: View detailed information about upcoming course requirements and schedules.
+- **Easy Entry**: One-click navigation to login for students ready to apply.
+
 ### 🎓 Student Module
-- **TA Recruitment**: Browse open TA positions for courses and submit applications.
-- **Application Tracking**: View the status of your applications (Pending, Approved, etc.).
-- **Work Management**: Log work hours and view responsibilities for accepted positions.
-- **Course Details**: dedicated view for courses you support, including team info and schedule.
+- **TA Recruitment**: Search and filter open TA positions by program and schedule.
+- **Application Tracking**: Manage and track application status (Pending, Approved, Rejected).
+- **Discord Integration**: Join course-specific Discord channels automatically upon approval.
+- **Work Hours**: Log and track work hours via a personalized calendar or list view.
+- **Profile Management**: Maintain academic records and contact information.
 
 ### 👨‍🏫 Professor Module
-- **Course Management**: Set up course details, schedules, and TA requirements.
-- **Recruitment**: Open TA positions, review applicants, and select candidates.
-- **Team Oversight**: Monitor approved TAs, check work hours, and manage the team.
+- **Course Definition**: Set up course details, requirements, and TA quotas.
+- **Recruitment Management**: Review student applications and approve/reject candidates.
+- **Team Oversight**: Monitor approved TAs and verify their logged work hours.
+- **Communication**: Automated Discord channel creation for course teams.
 
 ### 💰 Finance Module
-- **Dashboard**: High-level overview of TA hiring status and budget utilization across all courses.
-- **Disbursement List**: Export formatted payment reports (XLSX) with localized Thai month names for payroll processing.
-- **Signature Sheets**: Generate attendance verification sheets for auditing.
-- **Semester Management**: Configure active semesters/terms for the system.
+- **Dashboard**: High-level overview of TA hiring status and budget utilization.
+- **Payroll Processing**: Export formatted XLS reports with localized Thai support.
+- **Verification**: Generate attendance and signature sheets for auditing.
+- **System Config**: Manage active semesters and academic terms.
 
 ### 🛡️ Admin & Security
-- **Role-Based Access Control (RBAC)**: Strict access separation for Students, Professors, Finance, and Admins.
-- **Authentication**: Secure login via Google OAuth2 with JWT session management.
+- **RBAC**: Strict role-based access control for all system modules.
+- **Secure Auth**: Google OAuth2 integration with session-based JWT authentication.
 
 ---
 
 ## 🛠 Tech Stack
 
 ### Frontend
-- **Framework**: [React 18](https://react.dev/) (TypeScript)
-- **Build Tool**: [Vite](https://vitejs.dev/)
-- **Styling**: [TailwindCSS](https://tailwindcss.com/)
-- **UI Components**: Radix UI, Shadcn/UI
-- **Icons**: Lucide React
-- **Routing**: React Router v6
+- **React 18** (TypeScript, Vite)
+- **Styling**: TailwindCSS & Vanilla CSS
+- **UI Libraries**: Radix UI, Shadcn/UI, Lucide React
+- **Notifications**: Sonner (Toasts)
 
 ### Backend
-- **Language**: [Go](https://go.dev/) (v1.24+)
-- **Web Framework**: [Gin Gonic](https://gin-gonic.com/)
-- **Database**: PostgreSQL (using `sqlx` and `lib/pq`)
-- **Authentication**: JWT & Google OAuth2
-- **Logging**: Uber Zap
+- **Go** (v1.24+)
+- **API Framework**: Gin Gonic
+- **Database**: PostgreSQL (sqlx)
+- **Real-time**: Discord Integration (DiscordGo)
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- Go (v1.24 or higher)
-- PostgreSQL Database instance
+- Node.js (v18+)
+- Go (v1.24+)
+- PostgreSQL instance
 
-### Installation & Run
+### Installation & Execution
 
 #### 1. Backend Setup
-Navigate to the backend directory and start the server:
 ```bash
 cd backend
-# Ensure your database credentials are configured in .env
+# Configure your database and OAuth credentials in .env
 go mod download
 go run ./cmd/main.go
 ```
-The backend server will start on `http://localhost:8084`.
+*Runs on `http://localhost:8084`*
 
 #### 2. Frontend Setup
-Navigate to the frontend directory and start the development server:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-The application will run on `http://localhost:3000`.
+*Runs on `http://localhost:3000`*
+
+#### 3. Discord Bot Setup
+```bash
+cd discord-bot-server
+# Configure DISCORD_TOKEN and CHANNEL_ID in .env
+go mod download
+go run ./main.go
+```
+*Runs on `http://localhost:8081`*
 
 ---
 
 ## 📂 Project Structure
 
-```
+```text
 TA-Management-System/
-├── backend/                # Go Backend API
-│   ├── cmd/                # Application entry point
-│   ├── internal/           # Core application code
-│   │   ├── modules/        # Feature modules (Student, Finance, etc.)
-│   │   ├── middlewares/    # Auth & CORS middlewares
-│   │   └── database/       # DB connection logic
+├── backend/                # Go API Server
+│   ├── cmd/                # Entry points
+│   ├── internal/           # Core logic & domain modules
 │   └── ...
-│
-├── frontend/               # React Frontend
+├── frontend/               # React Application
 │   ├── src/
-│   │   ├── components/     # Reusable UI components
-│   │   ├── context/        # Global state (AuthContext)
-│   │   ├── pages/          # Page views by Role (student, professor, finance)
-│   │   ├── services/       # API integration services
-│   │   └── utils/          # Helper functions
+│   │   ├── pages/          # Role-specific views
+│   │   ├── components/     # UI Design system
+│   │   └── services/       # API integration
+│   └── ...
+├── discord-bot-server/     # Discord Integration Service
 │   └── ...
 └── ...
 ```
 
 ---
 
-## 📝 Documentation
-
-For more detailed information, specific documentation files are available:
-- **[ROUTING_DOCUMENTATION.md](./ROUTING_DOCUMENTATION.md)**: Detailed breakdown of frontend and backend routes.
-- **[FRONTEND_AUTH_FIXES.md](./FRONTEND_AUTH_FIXES.md)**: Log of authentication implementation details and fixes.
+## 📝 Support
+For technical issues or feature requests, please contact the development team or submit an issue in the repository.

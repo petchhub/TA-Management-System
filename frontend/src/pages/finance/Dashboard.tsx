@@ -27,7 +27,7 @@ export function Dashboard() {
   // Stats
   const [totalCourses, setTotalCourses] = useState(0);
   const [totalTAs, setTotalTAs] = useState(0);
-  const [currentSemester, setCurrentSemester] = useState<string>("ไม่ระบุ");
+  const [currentSemester, setCurrentSemester] = useState<string>("ยังไม่ได้เลือกภาคการศึกษาปัจจุบัน");
 
   useEffect(() => {
     fetchData();
@@ -77,7 +77,7 @@ export function Dashboard() {
       if (activeSem) {
         setCurrentSemester(`${activeSem.term}/${activeSem.year}`);
       } else {
-        setCurrentSemester("ไม่ระบุ");
+        setCurrentSemester("ยังไม่ได้เลือกภาคการศึกษาปัจจุบัน");
       }
 
     } catch (error) {
@@ -105,6 +105,7 @@ export function Dashboard() {
       value: loading ? "..." : currentSemester,
       icon: Calendar,
       color: "bg-orange-400",
+      onClick: currentSemester === "ยังไม่ได้เลือกภาคการศึกษาปัจจุบัน" ? () => navigate("/finance/semester") : undefined,
     },
   ];
 
@@ -124,14 +125,15 @@ export function Dashboard() {
           return (
             <div
               key={index}
-              className="bg-white rounded-lg shadow p-6"
+              className={`bg-white rounded-lg shadow p-6 ${card.onClick ? 'cursor-pointer hover:shadow-lg transition-all hover:bg-orange-50/50 group' : ''}`}
+              onClick={card.onClick}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-gray-600 text-sm mb-2">
                     {card.title}
                   </p>
-                  <p className="text-3xl font-bold text-gray-900">{card.value}</p>
+                  <p className={`${card.value.length > 20 ? "text-lg" : "text-3xl"} font-bold text-gray-900`}>{card.value}</p>
                 </div>
                 <div className={`${card.color} p-3 rounded-lg shadow-md`}>
                   <Icon className="text-white" size={24} />

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { School, GraduationCap, User, CreditCard } from 'lucide-react';
+import { GraduationCap, User, CreditCard } from 'lucide-react';
 
 /**
  * LoginPage - Handles Google OAuth authentication
@@ -136,8 +136,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 border border-gray-100">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-orange-600 rounded-xl flex items-center justify-center mb-4 shadow-md">
-            <School className="w-8 h-8 text-white" />
+          <div className="mx-auto w-40 h-24 flex items-center justify-center mb-4 rounded-xl overflow-hidden border-white-100 bg-white">
+            <img src="/ta-logo.png" alt="TA Management Logo" className="max-h-full w-auto object-contain rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">TA Management</h1>
           <p className="text-gray-500">ระบบบริหารจัดการผู้ช่วยสอน</p>
@@ -169,6 +169,16 @@ export default function LoginPage() {
                 Sign in with @kmitl.ac.th
               </>
             )}
+          </button>
+
+          <button
+            onClick={() => navigate('/')}
+            className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            กลับไปค้นหาตำแหน่ง TA
           </button>
         </div>
 

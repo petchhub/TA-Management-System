@@ -109,10 +109,10 @@ export default function Courses() {
 
 
   const programs = [
-    "ทั้งหมด",
-    "หลักสูตรอินเตอร์",
-    "หลักสูตรต่อเนื่อง",
-    "หลักสูตรปกติ(ไทย)",
+    { value: "all", label: "ทุกหลักสูตร" },
+    { value: "นานาชาติ", label: "หลักสูตรนานาชาติ" },
+    { value: "ต่อเนื่อง", label: "หลักสูตรต่อเนื่อง" },
+    { value: "ทั่วไป", label: "หลักสูตรปกติ(ไทย)" },
   ];
   const days = [
     "ทั้งหมด",
@@ -258,8 +258,8 @@ export default function Courses() {
               >
                 <option value="all">ทุกหลักสูตร</option>
                 {programs.slice(1).map((prog) => (
-                  <option key={prog} value={prog}>
-                    {prog}
+                  <option key={prog.value} value={prog.value}>
+                    {prog.label}
                   </option>
                 ))}
               </select>
