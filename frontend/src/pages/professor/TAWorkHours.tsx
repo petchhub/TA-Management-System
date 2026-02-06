@@ -276,7 +276,7 @@ export function TAWorkHours() {
   // -- RENDER: Course List --
   if (viewMode === "courses") {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-6 lg:p-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             เลือกรายวิชาเพื่อตรวจสอบชั่วโมงการทำงาน
@@ -389,28 +389,29 @@ export function TAWorkHours() {
         กลับไปหน้ารายวิชา
       </button>
 
-      <div className="mb-8 flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold text-gray-900">
-              {selectedCourse?.courseCode} - {selectedCourse?.courseName}
-            </h1>
+      <div className="mb-6 md:mb-8">
+        {/* Mobile Layout: Stack vertically */}
+        <div className="md:hidden">
+          <div className="mb-4">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-xl font-bold text-gray-900">
+                {selectedCourse?.courseCode} - {selectedCourse?.courseName}
+              </h1>
+            </div>
+            <p className="text-sm text-gray-600">
+              ตรวจสอบชั่วโมงงาน TA (Student ID)
+            </p>
           </div>
-          <p className="text-gray-600">
-            ตรวจสอบชั่วโมงงาน TA (Student ID)
-          </p>
-        </div>
 
-        <div className="flex items-center gap-4">
-          {/* Month Selector */}
-          <div className="flex items-center gap-4 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+          {/* Month Selector - Below course name on mobile */}
+          <div className="flex items-center gap-4 bg-white p-2 rounded-lg shadow-sm border border-gray-200 w-fit">
             <button
               onClick={handlePrevMonth}
               className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors"
             >
               <ChevronLeft size={20} />
             </button>
-            <span className="font-bold text-gray-800 min-w-[150px] text-center">
+            <span className="font-bold text-gray-800 min-w-[150px] text-center text-sm">
               {currentMonth.toLocaleDateString("th-TH", { month: 'long', year: 'numeric' })}
             </span>
             <button
@@ -420,16 +421,51 @@ export function TAWorkHours() {
               <ChevronLeft size={20} className="rotate-180" />
             </button>
           </div>
+        </div>
 
-          {/* Export Button */}
-          <button
-            onClick={handleExportAttendance}
-            disabled={isExporting || taDutiesList.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            <Download size={20} />
-            {isExporting ? 'กำลังส่งออก...' : 'ส่งออกใบเซ็นชื่อ'}
-          </button>
+        {/* Desktop/Tablet Layout: Side by side */}
+        <div className="hidden md:flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {selectedCourse?.courseCode} - {selectedCourse?.courseName}
+              </h1>
+            </div>
+            <p className="text-gray-600">
+              ตรวจสอบชั่วโมงงาน TA (Student ID)
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Month Selector */}
+            <div className="flex items-center gap-4 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+              <button
+                onClick={handlePrevMonth}
+                className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <span className="font-bold text-gray-800 min-w-[150px] text-center">
+                {currentMonth.toLocaleDateString("th-TH", { month: 'long', year: 'numeric' })}
+              </span>
+              <button
+                onClick={handleNextMonth}
+                className="p-1 hover:bg-orange-50 text-gray-600 hover:text-[#E35205] rounded transition-colors"
+              >
+                <ChevronLeft size={20} className="rotate-180" />
+              </button>
+            </div>
+
+            {/* Export Button - Hidden on mobile */}
+            <button
+              onClick={handleExportAttendance}
+              disabled={isExporting || taDutiesList.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              <Download size={20} />
+              {isExporting ? 'กำลังส่งออก...' : 'ส่งออกใบเซ็นชื่อ'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -447,18 +483,18 @@ export function TAWorkHours() {
           <table className="w-full text-sm text-left">
             <thead className="bg-[#E35205] text-white font-bold border-b border-orange-600">
               <tr>
-                <th className="px-6 py-4 sticky left-0 bg-[#E35205] z-10 border-r border-orange-400 min-w-[200px]">
+                <th className="px-3 md:px-6 py-3 md:py-4 sticky left-0 bg-[#E35205] z-10 border-r border-orange-400 min-w-[120px] md:min-w-[200px]">
                   วันที่
                 </th>
                 {taDutiesList.map((data) => (
-                  <th key={data.ta.studentID} className="px-6 py-4 text-center min-w-[150px] border-r border-orange-400 last:border-r-0">
+                  <th key={data.ta.studentID} className="px-3 md:px-6 py-3 md:py-4 text-center min-w-[180px] md:min-w-[150px] border-r border-orange-400 last:border-r-0">
                     <div className="flex flex-col items-center gap-1">
                       {/* TA Name (Thai preferred, fallback to English) */}
-                      <span className="text-sm font-bold">
+                      <span className="text-xs md:text-sm font-bold">
                         {data.ta.studentNameTH || data.ta.studentName || 'N/A'}
                       </span>
                       {/* Student ID */}
-                      <span className="text-sm font-normal opacity-90">
+                      <span className="text-xs md:text-sm font-normal opacity-90">
                         {data.ta.studentID}
                       </span>
                     </div>
@@ -477,7 +513,7 @@ export function TAWorkHours() {
                 filteredDates.map((dateString) => (
                   <tr key={dateString} className="hover:bg-orange-50 transition-colors">
                     {/* Date Column */}
-                    <td className="px-6 py-4 font-medium text-gray-900 sticky left-0 bg-white border-r border-gray-200">
+                    <td className="px-3 md:px-6 py-3 md:py-4 font-medium text-gray-900 sticky left-0 bg-white border-r border-gray-200 text-xs md:text-sm">
                       {new Date(dateString).toLocaleDateString("th-TH", {
                         weekday: 'long',
                         day: 'numeric',

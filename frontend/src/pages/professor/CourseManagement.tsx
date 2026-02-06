@@ -213,7 +213,7 @@ export function CourseManagement() {
 
   if (loading) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-6 lg:p-8">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
@@ -226,7 +226,7 @@ export function CourseManagement() {
 
   if (error) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-6 lg:p-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <div className="flex items-center gap-3">
             <AlertCircle className="text-red-600" size={24} />
@@ -248,7 +248,7 @@ export function CourseManagement() {
 
   if (courses.length === 0) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-6 lg:p-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">จัดการรายวิชา</h1>
           <p className="text-gray-600">
@@ -267,7 +267,7 @@ export function CourseManagement() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-6 lg:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">จัดการรายวิชา</h1>
         <p className="text-gray-600">
@@ -431,7 +431,7 @@ export function CourseManagement() {
                       href="https://discord.gg/2pzUQYrPTs"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-sm transition-colors"
+                      className="hidden md:flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-sm transition-colors"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <MessageCircle size={16} className="text-green-600" />
@@ -441,7 +441,7 @@ export function CourseManagement() {
                     <button
                       onClick={(e) => handleCreateDiscord(course, e)}
                       disabled={discordCreating === course.id}
-                      className="flex items-center gap-2 px-3 py-2 bg-[#5865F2] hover:bg-[#4752C4] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                      className="hidden md:flex items-center gap-2 px-3 py-2 bg-[#5865F2] hover:bg-[#4752C4] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
                     >
                       <MessageCircle size={16} />
                       {discordCreating === course.id ? 'กำลังสร้าง...' : 'สร้างกลุ่ม Discord'}

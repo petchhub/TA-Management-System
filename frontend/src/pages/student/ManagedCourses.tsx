@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, LayoutList, Calendar as CalendarIcon, MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutList, Calendar as CalendarIcon, MessageSquare, X, Clock, MapPin } from "lucide-react";
 import { formatTime } from "../../utils/formatUtils";
 import { useAuth } from "../../context/AuthContext";
 import { getStudentApplications, getAllCourses, Course } from "../../services/courseService";
@@ -47,6 +47,12 @@ export default function ManagedCourses() {
     const [holidays, setHolidays] = useState<Holiday[]>([]);
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'info' | 'error' } | null>(null);
+    const [selectedDayDetails, setSelectedDayDetails] = useState<{
+        day: number;
+        dayName: string;
+        classes: Course[];
+        holiday: Holiday | null;
+    } | null>(null);
 
     // Memoize course colors to ensure they stay consistent for same courseID
     const getCourseColor = (courseId: number | string): CourseColor => {
@@ -142,7 +148,7 @@ export default function ManagedCourses() {
             const isToday = new Date().toDateString() === date.toDateString();
 
             // Find holiday
-            const holiday = holidays.find(h => h.date.startsWith(dateStr));
+            const holiday = holidays.find(h => h.date.startsWith(dateStr)) || null;
 
             // Find courses that have class on this day
             // Backend returns Thai day names, so we match against dayMap (which is now Thai)
@@ -168,10 +174,25 @@ export default function ManagedCourses() {
             });
 
             days.push(
-                <div key={day} className={`min-h-[120px] p-2 border border-gray-100 transition-colors relative 
-                    ${holiday ? (holiday.type === 'official' ? 'bg-red-50 hover:bg-red-100' : 'bg-yellow-50 hover:bg-yellow-100') : 'bg-white hover:bg-gray-50'}
-                    ${isToday ? 'ring-2 ring-orange-500 ring-inset' : ''}
-                `}>
+                <div
+                    key={day}
+                    className={`min-h-[120px] p-2 border border-gray-100 transition-colors relative 
+                        ${holiday ? (holiday.type === 'official' ? 'bg-red-50 hover:bg-red-100' : 'bg-yellow-50 hover:bg-yellow-100') : 'bg-white hover:bg-gray-50'}
+                        ${isToday ? 'ring-2 ring-orange-500 ring-inset' : ''}
+                        ${todaysClasses.length > 0 ? 'md:cursor-default cursor-pointer active:bg-gray-100' : ''}
+                    `}
+                    onClick={() => {
+                        // Only trigger on mobile when there are classes
+                        if (todaysClasses.length > 0 && window.innerWidth < 768) {
+                            setSelectedDayDetails({
+                                day,
+                                dayName,
+                                classes: todaysClasses,
+                                holiday
+                            });
+                        }
+                    }}
+                >
                     <div className="flex justify-between items-start mb-2">
                         <div className={`text-sm font-medium ${isToday ? 'text-orange-600' : 'text-gray-700'}`}>
                             {day}
@@ -369,6 +390,86 @@ export default function ManagedCourses() {
                     course={selectedCourse}
                     onClose={() => setSelectedCourse(null)}
                 />
+            )}
+
+            {/* Mobile Day Details Modal */}
+            {selectedDayDetails && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                        {/* Modal Header */}
+                        <div className="relative p-6 bg-gradient-to-br from-[#E35205] to-orange-600 text-white">
+                            <button
+                                onClick={() => setSelectedDayDetails(null)}
+                                className="absolute right-4 top-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                            <h3 className="text-xl font-bold mb-1">
+                                รายละเอียดสำหรับวันที่ {selectedDayDetails.day}
+                            </h3>
+                            <p className="text-orange-100 opacity-90 capitalize">
+                                {selectedDayDetails.dayName} {new Date(selectedMonth).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
+                            </p>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-6 max-h-[60vh] overflow-y-auto">
+                            {selectedDayDetails.holiday && (
+                                <div className={`mb-6 p-4 rounded-xl border flex items-center gap-3 ${selectedDayDetails.holiday.type === 'official'
+                                        ? 'bg-red-50 border-red-100 text-red-700'
+                                        : 'bg-yellow-50 border-yellow-100 text-yellow-700'
+                                    }`}>
+                                    <MessageSquare size={20} />
+                                    <div>
+                                        <p className="font-bold text-sm">วันหยุด / กิจกรรม</p>
+                                        <p className="font-medium">{selectedDayDetails.holiday.name}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">
+                                    ตารางกิจกรรม ({selectedDayDetails.classes.length})
+                                </h4>
+                                {selectedDayDetails.classes.map((course, idx) => {
+                                    const color = getCourseColor(course.courseID);
+                                    return (
+                                        <div
+                                            key={`${course.courseID}-${idx}`}
+                                            className={`p-4 rounded-xl border-l-4 shadow-sm ${color.bg} ${color.border} ${color.text.replace('text-', 'border-')}`}
+                                            onClick={() => {
+                                                setSelectedCourse(course);
+                                                setSelectedDayDetails(null);
+                                            }}
+                                        >
+                                            <h5 className="font-bold text-lg mb-2">{course.courseName}</h5>
+                                            <div className="space-y-2 text-sm opacity-90">
+                                                <div className="flex items-center gap-2">
+                                                    <Clock size={16} />
+                                                    <span>{formatTime(course.classStart)} - {formatTime(course.classEnd)}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin size={16} />
+                                                    <span>{course.location}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 border-t border-gray-100">
+                            <button
+                                onClick={() => setSelectedDayDetails(null)}
+                                className="w-full py-3 bg-gray-50 hover:bg-gray-100 text-gray-600 font-bold rounded-xl transition-colors"
+                            >
+                                ปิด
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Toast Notification */}

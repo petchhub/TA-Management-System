@@ -65,7 +65,7 @@ export default function CourseCard({ course, onApply }: CourseCardProps) {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-bold text-gray-900">{course.name}</h3>
-                <span className="text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                <span className="hidden md:inline-flex text-sm text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                   กลุ่ม {course.sec}
                 </span>
                 <span className="text-sm text-orange-600 bg-orange-50 px-2 py-0.5 rounded">

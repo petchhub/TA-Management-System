@@ -64,6 +64,7 @@ A comprehensive web application for managing Teaching Assistant (TA) workflows, 
 #### 1. Backend Setup
 ```bash
 cd backend
+cp .env.example .env
 # Configure your database and OAuth credentials in .env
 go mod download
 go run ./cmd/main.go
@@ -81,11 +82,30 @@ npm run dev
 #### 3. Discord Bot Setup
 ```bash
 cd discord-bot-server
-# Configure DISCORD_TOKEN and CHANNEL_ID in .env
+cp .env.example .env
+# Configure BOT_TOKEN and GUILD_ID in .env
 go mod download
 go run ./main.go
 ```
 *Runs on `http://localhost:8081`*
+
+---
+
+## 📱 Mobile Responsiveness
+The system implements a tiered responsive strategy to ensure usability across all devices:
+
+### 🎭 Role-Specific Support
+- **Student, Guest, & Professor**: Full mobile support (`< 768px`) with overlay sidebars and touch-optimized layouts.
+- **Finance**: Tablet-minimum approach (optimized for `≥ 768px`) to maintain the density required for financial data management.
+
+### 🍱 Responsive Features
+- **Adaptive Sidebars**: 
+  - **Mobile**: Overlay menus with smooth backdrop animations.
+  - **Tablet**: Space-saving collapsible navigation.
+  - **Desktop**: Persistent fixed sidebars for power users.
+- **Data Tables**: Smart column scaling (condensing dates, expanding names) to ensure critical information remains readable on small screens.
+- **Interactive Calendar**: Mobile-specific detail popups for schedule activities.
+- **Smart UI**: Context-aware visibility (hiding non-essential controls like Discord links on mobile) to reduce clutter.
 
 ---
 

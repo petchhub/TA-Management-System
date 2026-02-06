@@ -60,8 +60,10 @@ export function ProfessorLayout({ initialPage = 'dashboard' }: ProfessorLayoutPr
                 onNavigate={setCurrentPage}
                 pendingCount={pendingCount}
             />
-            <main className="flex-1 overflow-y-auto">
-                {renderPage()}
+            <main className="flex-1 overflow-y-auto w-full">
+                <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+                    {renderPage()}
+                </div>
             </main>
         </div>
     );
