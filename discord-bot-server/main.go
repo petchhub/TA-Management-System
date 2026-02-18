@@ -22,7 +22,6 @@ func main() {
 		log.Println("Error loading .env file")
 	}
 
-	fmt.Printf("token: %s", os.Getenv("BOT_TOKEN"))
 	dg, err = discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
 	if err != nil {
 		log.Fatalf("error to start discord  session: %v\n", err)

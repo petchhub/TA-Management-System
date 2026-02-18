@@ -46,7 +46,7 @@ func setupServiceTest(t *testing.T, db *sql.DB) *service.CourseServiceImplementa
 
 	// 2. Initialize the Service with the Real Repository
 	// Assuming a constructor like: NewCourseService(repo repository.CourseRepository)
-	svc := service.NewCourseService(repo)
+	svc := service.NewCourseService(repo, nil)
 
 	return &svc
 }

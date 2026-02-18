@@ -43,6 +43,13 @@ func main() {
 	BOTKey := os.Getenv("BOT_HOLIDAYS_KEY")
 	BOTURL := os.Getenv("BOT_HOLIDAYS_URL")
 
+	redisHost := utils.GetenvDefault("REDIS_HOST", "localhost")
+	redisPort := utils.GetenvDefault("REDIS_PORT", "6379")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+
+	redisClient := config.ConnectRedis(redisHost, redisPort, redisPassword)
+	defer redisClient.Close()
+
 	// ====== OAuth2 config ======
 	googleOAuthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
@@ -61,7 +68,7 @@ func main() {
 	authenSvc := authenservice.NewAuthenService(authenRepo, googleOAuthConfig, jwtSecret)
 
 	courseRepo := courserepo.NewCourseRepository(db.DB)
-	courseSvc := courseservice.NewCourseService(courseRepo)
+	courseSvc := courseservice.NewCourseService(courseRepo, redisClient)
 
 	lookupRepo := lookuprepo.NewLookupRepository(db.DB)
 	lookupSvc := lookupservice.NewLookupService(lookupRepo)

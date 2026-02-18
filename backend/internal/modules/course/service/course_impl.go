@@ -5,15 +5,21 @@ import (
 	courseResponse "TA-management/internal/modules/course/dto/response"
 	"TA-management/internal/modules/course/repository"
 	"TA-management/internal/modules/shared/dto/response"
+	"context"
+	"encoding/json"
 	"fmt"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type CourseServiceImplementation struct {
-	repo repository.CourseRepository
+	repo        repository.CourseRepository
+	redisClient *redis.Client
 }
 
-func NewCourseService(repo repository.CourseRepository) CourseServiceImplementation {
-	return CourseServiceImplementation{repo: repo}
+func NewCourseService(repo repository.CourseRepository, redisClient *redis.Client) CourseServiceImplementation {
+	return CourseServiceImplementation{repo: repo, redisClient: redisClient}
 }
 
 func (s CourseServiceImplementation) GetAllJobPost() (*response.RequestDataResponse, error) {
@@ -61,11 +67,34 @@ func (s CourseServiceImplementation) GetAllJobPostByStudentId(studentId int) (*r
 }
 
 func (s CourseServiceImplementation) GetAllCourse() (*response.RequestDataResponse, error) {
+	ctx := context.Background()
+	cacheKey := "course:all"
+
+	// Check cache
+	val, err := s.redisClient.Get(ctx, cacheKey).Result()
+	if err == nil {
+		fmt.Println("from redis")
+		var courses []courseResponse.Course
+		if err := json.Unmarshal([]byte(val), &courses); err == nil {
+			return &response.RequestDataResponse{
+				Data:    courses,
+				Message: "Success",
+			}, nil
+		}
+	}
+
 	courses, err := s.repo.GetAllCourse()
+	fmt.Println("from DB")
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
+
+	// Set cache
+	if data, err := json.Marshal(courses); err == nil {
+		s.redisClient.Set(ctx, cacheKey, data, 10*time.Minute)
+	}
+
 	response := response.RequestDataResponse{
 		Data:    courses,
 		Message: "Success",
@@ -83,6 +112,9 @@ func (s CourseServiceImplementation) CreateCourse(body request.CreateCourse) (re
 		}, err
 	}
 
+	// Invalidate cache
+	s.redisClient.Del(context.Background(), "course:all")
+
 	return response.CreateResponse{
 		Message: "Created successfully!",
 		Id:      id,
@@ -95,6 +127,8 @@ func (s CourseServiceImplementation) UpdateCourse(body request.UpdateCourse) (re
 		fmt.Println(err)
 		return response.GeneralResponse{Message: "Update Failed!"}, err
 	}
+	// Invalidate cache
+	s.redisClient.Del(context.Background(), "course:all")
 	return response.GeneralResponse{Message: "Update Successful"}, err
 }
 
@@ -104,6 +138,8 @@ func (s CourseServiceImplementation) DeleteCourse(id int) (response.GeneralRespo
 		fmt.Println(err)
 		return response.GeneralResponse{Message: "Delete Failed!"}, err
 	}
+	// Invalidate cache
+	s.redisClient.Del(context.Background(), "course:all")
 	return response.GeneralResponse{Message: "Delete Successful"}, err
 }
 
