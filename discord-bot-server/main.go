@@ -190,6 +190,34 @@ func main() {
 	// 	ctx.JSON(200, gin.H{"status": "success"})
 	// })
 
+	r.POST("/cleanup", func(ctx *gin.Context) {
+		var json struct {
+			GuildID string `json:"guildID"`
+		}
+		// Try to bind JSON, but it's optional if we just want to use the env var
+		_ = ctx.BindJSON(&json)
+
+		guildID := json.GuildID
+		if guildID == "" {
+			guildID = os.Getenv("GUILD_ID")
+		}
+
+		if guildID == "" {
+			ctx.JSON(400, gin.H{"error": "Guild ID not found in request or environment"})
+			return
+		}
+
+		log.Printf("Starting semester cleanup for GuildID: %s", guildID)
+		err := bot.CleanupSemester(dg, guildID)
+		if err != nil {
+			log.Printf("Error during cleanup: %v", err)
+			ctx.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(200, gin.H{"status": "Cleanup completed successfully"})
+	})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

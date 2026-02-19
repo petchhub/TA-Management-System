@@ -1,4 +1,4 @@
-import { Users, CheckCircle, Clock, Plus, UserCheck, FileText, BookOpen } from 'lucide-react';
+import { Users, Clock, Plus, UserCheck, FileText, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { CreateTAAnnouncementModal } from './CreateTAAnnouncementModal';
 import { createJobPost, getProfessorApplications, getProfessorCourses, Application } from '../../services/courseService';
@@ -22,7 +22,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   // Stats State
   const [loading, setLoading] = useState(true);
   const [totalApplicants, setTotalApplicants] = useState(0);
-  const [totalApproved, setTotalApproved] = useState(0);
   const [totalCourses, setTotalCourses] = useState(0);
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
         // Stats logic
         setTotalApplicants(apps.length);
-        setTotalApproved(apps.filter(a => a.statusCode === 'APPROVED').length);
 
         // Courses logic: Count of courses
         setTotalCourses(courses.length);
@@ -92,12 +90,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       value: loading ? "..." : totalApplicants.toString(),
       icon: Users,
       color: "bg-orange-500",
-    },
-    {
-      title: 'ผู้ช่วยสอนที่อนุมัติแล้ว',
-      value: loading ? "..." : totalApproved.toString(),
-      icon: CheckCircle,
-      color: "bg-green-600",
     },
     {
       title: 'รายวิชาที่รับผิดชอบ',
