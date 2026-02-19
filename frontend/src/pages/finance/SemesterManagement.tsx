@@ -75,8 +75,8 @@ export function SemesterManagement({ onSemesterChange }: SemesterManagementProps
                 await updateSemester({
                     id: editingId,
                     semester: `${newTerm}/${newYear}`,
-                    startDate: new Date(newStartDate).toISOString(),
-                    endDate: new Date(newEndDate).toISOString()
+                    startDate: `${newStartDate}T00:00:00Z`,
+                    endDate: `${newEndDate}T00:00:00Z`
                 });
 
                 setPopupState({
@@ -91,8 +91,8 @@ export function SemesterManagement({ onSemesterChange }: SemesterManagementProps
                 await addSemester({
                     semester: newTerm.toString(),
                     year: newYear.toString(),
-                    startDate: new Date(newStartDate).toISOString(),
-                    endDate: new Date(newEndDate).toISOString()
+                    startDate: `${newStartDate}T00:00:00Z`,
+                    endDate: `${newEndDate}T00:00:00Z`
                 });
 
                 setPopupState({

@@ -1,9 +1,9 @@
-import { LayoutDashboard, LogOut, Download, Calendar, Mail, BookOpen, GraduationCap, Menu, X } from 'lucide-react';
+import { LayoutDashboard, LogOut, Download, Calendar, Mail, BookOpen, GraduationCap, Menu, X, History } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
-type Page = 'dashboard' | 'semester' | 'work-hours' | 'export' | 'announcement' | 'holidays';
+type Page = 'dashboard' | 'semester' | 'work-hours' | 'export' | 'announcement' | 'holidays' | 'history';
 
 interface FinanceSidebarProps {
     currentPage: Page;
@@ -25,6 +25,7 @@ export function FinanceSidebar({ currentPage, onNavigate }: FinanceSidebarProps)
         { id: 'export' as Page, label: 'Export ข้อมูล', icon: Download },
         { id: 'announcement' as Page, label: 'ส่งประกาศ', icon: Mail },
         { id: 'holidays' as Page, label: 'จัดการวันหยุด', icon: Calendar },
+        { id: 'history' as Page, label: 'ประวัติภาคเรียน', icon: History },
     ];
 
     const handleLogout = async () => {
@@ -41,6 +42,7 @@ export function FinanceSidebar({ currentPage, onNavigate }: FinanceSidebarProps)
             'export': '/finance/export',
             'announcement': '/finance/announcement',
             'holidays': '/finance/holidays',
+            'history': '/finance/history',
         };
         navigate(routeMap[itemId]);
         setIsTabletOpen(false);

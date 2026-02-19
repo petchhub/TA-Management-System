@@ -57,7 +57,54 @@ export const getNextClassDate = (dayName: string, timeString: string): Date => {
     return nextDate;
 };
 
-export const formatTimeRange = (start: string, end: string): string => {
-    const format = (t: string) => t.split(':').slice(0, 2).join(':');
-    return `${format(start)} - ${format(end)}`;
+export const formatTime = (timeStr: string | undefined): string => {
+    if (!timeStr) return '';
+
+    // Handle ISO strings like "0000-01-01T09:00:00Z" or "2024-01-01T09:00:00"
+    if (timeStr.includes('T')) {
+        const parts = timeStr.split('T');
+        if (parts.length >= 2) {
+            const timePart = parts[1].replace('Z', '');
+            return timePart.slice(0, 5);
+        }
+    }
+
+    // Handle "Time only" strings like "09:00", "09:00:00"
+    if (timeStr.includes(':')) {
+        const parts = timeStr.split(':');
+        if (parts.length >= 2) {
+            return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+        }
+    }
+
+    // Handle 4 digits like "0900"
+    if (/^\d{4}$/.test(timeStr)) {
+        return `${timeStr.slice(0, 2)}:${timeStr.slice(2, 4)}`;
+    }
+
+    return timeStr;
+};
+
+export const formatTimeRange = (start: string | undefined, end: string | undefined): string => {
+    if (!start || !end) return '';
+    return `${formatTime(start)} - ${formatTime(end)}`;
+};
+
+export const getThaiDay = (dayEn: string): string => {
+    const mapping: { [key: string]: string } = {
+        'Monday': 'วันจันทร์',
+        'Tuesday': 'วันอังคาร',
+        'Wednesday': 'วันพุธ',
+        'Thursday': 'วันพฤหัสบดี',
+        'Friday': 'วันศุกร์',
+        'Saturday': 'วันเสาร์',
+        'Sunday': 'วันอาทิตย์'
+    };
+    return mapping[dayEn] || dayEn;
+};
+
+export const formatDay = (day: string | undefined): string => {
+    if (!day) return '-';
+    // If it's already Thai or doesn't match English, getThaiDay returns original
+    return getThaiDay(day);
 };

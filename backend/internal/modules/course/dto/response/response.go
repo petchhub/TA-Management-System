@@ -21,29 +21,31 @@ type Course struct {
 }
 
 type JobPost struct {
-	CourseCode    string `json:"courseCode"`
-	CourseName    string `json:"courseName"`
-	CourseProgram string `json:"courseProgram"`
-	TaAllocation  int    `json:"taAllocation"`
-	WorkHour      int    `json:"workHour"`
-	ClassStart    string `json:"classStart"`
-	ClassEnd      string `json:"classEnd"`
-	Location      string `json:"location"`
-	Grade         string `json:"grade"`
-	Task          string `json:"task"`
-	Classday      string `json:"classday"`
-	ProfessorName string `json:"professorName"`
-	Semester      string `json:"semester"`
-	Status        string `json:"status"`
-	StatusID      int    `json:"statusID"`
-	JobPostID     int    `json:"jobPostID"`
-	CourseID      int    `json:"courseID"`
-	Section       string `json:"sec"`
+	CourseCode         string `json:"courseCode"`
+	CourseName         string `json:"courseName"`
+	CourseProgram      string `json:"courseProgram"`
+	TaAllocation       int    `json:"taAllocation"`
+	RemainingPositions int    `json:"remainingPositions"`
+	WorkHour           int    `json:"workHour"`
+	ClassStart         string `json:"classStart"`
+	ClassEnd           string `json:"classEnd"`
+	Location           string `json:"location"`
+	Grade              string `json:"grade"`
+	Task               string `json:"task"`
+	Classday           string `json:"classday"`
+	ProfessorName      string `json:"professorName"`
+	Semester           string `json:"semester"`
+	Status             string `json:"status"`
+	StatusID           int    `json:"statusID"`
+	JobPostID          int    `json:"jobPostID"`
+	CourseID           int    `json:"courseID"`
+	Section            string `json:"sec"`
 }
 
 type Application struct {
 	ApplicationId  int       `json:"applicationId"`
 	CourseID       string    `json:"courseID"`
+	CourseCode     string    `json:"courseCode"`
 	CourseName     string    `json:"courseName"`
 	StudentID      int       `json:"studentID"`
 	StatusID       int       `json:"statusID"`

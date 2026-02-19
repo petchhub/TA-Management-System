@@ -3,6 +3,7 @@ package repository
 import (
 	"TA-management/internal/modules/course/dto/request"
 	"TA-management/internal/modules/course/dto/response"
+	sharedResponse "TA-management/internal/modules/shared/dto/response"
 )
 
 type CourseRepository interface {
@@ -20,6 +21,7 @@ type CourseRepository interface {
 	DeleteJobPost(jobPostId int) error
 	ApplyJobPost(body request.ApplyJobPost) (int, error)
 	GetApplicationByStudentId(studentId int) ([]response.Application, error)
+	GetAllTimeApprovedCoursesByStudentId(studentId int) ([]response.Application, error)
 	GetApplicationByCourseId(courseId int) ([]response.Application, error)
 	GetApplicationDetail(ApplicationId int) (*response.Application, error)
 	GetApplicationTranscriptPdf(ApplicationId int) (*response.PdfFile, error)
@@ -30,4 +32,7 @@ type CourseRepository interface {
 	RejectApplication(rq request.RejectApplication) error
 	UpdateCourseDiscord(courseId int, roleId string, channelId string, channelName string) error
 	GetDiscordRoleByCourseId(courseId int) (string, error)
+	SoftDeleteExpiredData() error
+	GetExpiredSemesters() (*sharedResponse.RequestDataResponse, error)
+	GetCoursesBySemesterID(semesterID int) (*sharedResponse.RequestDataResponse, error)
 }

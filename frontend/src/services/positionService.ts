@@ -13,6 +13,7 @@ export interface PositionResponse {
     courseCode: string;
     courseName: string;
     taAllocation: number;
+    remainingPositions: number;
     workHour: number;
     classStart: string;
     classEnd: string;
@@ -109,7 +110,7 @@ function mapPositionToCourse(position: PositionResponse): Course {
         days: position.classday || "",
         instructor: String(position.professorName || ''),
         semester: position.semester || "",
-        positions: position.taAllocation,
+        positions: position.remainingPositions ?? position.taAllocation,
         hoursPerWeek: position.workHour,
         requirements: requirementsStr,
         description: position.task || '',

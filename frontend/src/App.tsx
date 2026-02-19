@@ -61,6 +61,7 @@ export default function App() {
             <Route path="/finance/export" element={<FinanceLayout initialPage="export" />} />
             <Route path="/finance/holidays" element={<FinanceLayout initialPage="holidays" />} />
             <Route path="/finance/announcement" element={<FinanceLayout initialPage="announcement" />} />
+            <Route path="/finance/history" element={<FinanceLayout initialPage="history" />} />
           </Route>
 
           {/* Catch-all route - Redirect unknown routes to home */}

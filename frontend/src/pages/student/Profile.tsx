@@ -13,10 +13,11 @@ import {
   Save,
   Trash2,
   User,
+  History,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getStudentApplications, Application } from "../../services/courseService";
+import { getStudentApplications, getAllTimeApprovedCoursesByStudentId, Application } from "../../services/courseService";
 import {
   getStudentProfile,
   updateStudentProfile,
@@ -42,6 +43,8 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
+  const [allTimeCourses, setAllTimeCourses] = useState<Application[]>([]);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
@@ -64,11 +67,13 @@ export default function Profile() {
 
       try {
         setLoading(true);
-        const [apps, studentProfile] = await Promise.all([
+        const [apps, studentProfile, allTimeApps] = await Promise.all([
           getStudentApplications(parseInt(user.id)),
           getStudentProfile(parseInt(user.id)),
+          getAllTimeApprovedCoursesByStudentId(parseInt(user.id)),
         ]);
         setApplications(apps);
+        setAllTimeCourses(allTimeApps);
         setProfile(studentProfile);
         setEditData({
           firstnameThai: studentProfile.firstnameThai,
@@ -407,29 +412,34 @@ export default function Profile() {
           <h3 className="text-lg font-semibold text-gray-900 mb-6">สถิติภาพรวม</h3>
 
           <div className="space-y-4">
-            {/* Active Courses */}
+            {/* Active Courses (current semester) */}
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-orange-600" />
                   <span className="text-gray-600">รายวิชาที่ดูแล</span>
                 </div>
+                <span className="text-xs text-gray-400">ภาคการศึกษานี้</span>
               </div>
               <p className="text-3xl font-bold text-gray-900">{assignedCourses.length}</p>
               <p className="text-gray-500 text-sm mt-1">วิชา</p>
             </div>
 
-            {/* Total Applications */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+            {/* All-time TA courses (clickable) */}
+            <button
+              onClick={() => setShowHistoryModal(true)}
+              className="w-full bg-orange-50 rounded-lg p-4 border border-orange-100 hover:bg-orange-100 hover:border-orange-200 transition-colors text-left group"
+            >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-orange-600" />
-                  <span className="text-gray-600">การสมัครทั้งหมด</span>
+                  <History className="w-5 h-5 text-orange-600" />
+                  <span className="text-gray-700 font-medium">รายวิชาที่เคยเป็น TA</span>
                 </div>
+                <span className="text-xs text-orange-500 group-hover:underline">ดูทั้งหมด →</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{applications.length}</p>
-              <p className="text-gray-500 text-sm mt-1">ตำแหน่ง</p>
-            </div>
+              <p className="text-3xl font-bold text-orange-600">{allTimeCourses.length}</p>
+              <p className="text-gray-500 text-sm mt-1">วิชา (ทุกภาคการศึกษา)</p>
+            </button>
 
             {/* Document Status */}
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
@@ -645,6 +655,88 @@ export default function Profile() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* All-time TA History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowHistoryModal(false)}
+          />
+          {/* Panel */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 flex flex-col max-h-[80vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-50 rounded-lg">
+                  <History className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">ประวัติการเป็น TA</h2>
+                  <p className="text-sm text-gray-500">รายวิชาที่ได้รับอนุมัติทุกภาคการศึกษา ({allTimeCourses.length} วิชา)</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Course List */}
+            <div className="overflow-y-auto flex-1">
+              {allTimeCourses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <BookOpen className="w-12 h-12 text-gray-300 mb-3" />
+                  <p className="text-gray-500 font-medium">ยังไม่มีประวัติการเป็น TA</p>
+                  <p className="text-gray-400 text-sm mt-1">รายวิชาที่ได้รับอนุมัติจะแสดงที่นี่</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {allTimeCourses.map((course, idx) => (
+                    <div key={`${course.courseID}-${idx}`} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-orange-50 rounded-lg flex-shrink-0 mt-0.5">
+                          <BookOpen className="w-4 h-4 text-orange-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            {course.courseCode && (
+                              <span className="font-bold text-[#E35205] text-sm">{course.courseCode}</span>
+                            )}
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              อนุมัติแล้ว
+                            </span>
+                          </div>
+                          <p className="font-medium text-gray-900 text-sm leading-snug">{course.courseName}</p>
+                          {course.professorName && (
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              อาจารย์ผู้สอน: {course.professorName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="w-full py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

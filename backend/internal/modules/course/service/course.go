@@ -19,6 +19,7 @@ type CourseService interface {
 	DeleteJobPost(jobPostId int) (response.GeneralResponse, error)
 	ApplyJobPost(body request.ApplyJobPost) (*response.CreateResponse, error)
 	GetApplicationByStudentId(studentId int) (*response.RequestDataResponse, error)
+	GetAllTimeApprovedCoursesByStudentId(studentId int) (*response.RequestDataResponse, error)
 	GetApplicationByCourseId(CourseId int) (*response.RequestDataResponse, error)
 	GetApplicationDetail(ApplicationId int) (*response.RequestDataResponse, error)
 	GetApplicationTranscriptPdf(ApplicationId int) (*courseResponse.PdfFile, error)
@@ -29,4 +30,7 @@ type CourseService interface {
 	GetApplicationByProfessorId(professorId int) (*response.RequestDataResponse, error)
 	RejectApplication(rq request.RejectApplication) (*response.GeneralResponse, error)
 	UpdateCourseDiscord(courseId int, roleId string, channelId string, channelName string) (*response.GeneralResponse, error)
+	SoftDeleteExpiredData() error
+	GetTermHistory() (*response.RequestDataResponse, error)
+	GetHistoryCourses(semesterID int) (*response.RequestDataResponse, error)
 }

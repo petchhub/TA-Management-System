@@ -100,8 +100,7 @@ func (r LookupRepositoryImplementation) GetSemesterDropdown() (*[]response.Looku
 				semester_id, 
 				semester_value
 			FROM semester
-            WHERE end_date >= CURRENT_DATE
-			ORDER BY start_date ASC`
+			ORDER BY start_date DESC`
 
 	rows, err := r.db.Query(query)
 	if err != nil {

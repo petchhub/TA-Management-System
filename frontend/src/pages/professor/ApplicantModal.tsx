@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, FileText, CreditCard, IdCard, Check, XIcon, Eye } from 'lucide-react';
-import { getStudentApplications, Application } from '../../services/courseService';
+import { X, FileText, CreditCard, IdCard, Check, XIcon, Eye, BookOpen } from 'lucide-react';
+import { getStudentApplications, getAllTimeApprovedCoursesByStudentId, Application } from '../../services/courseService';
 import { getStudentTranscriptUrl, getStudentBankAccountUrl, getStudentCardUrl } from '../../services/lookupService';
+import { formatTimeRange, formatDay } from '../../utils/dateUtils';
 
 interface Applicant {
   id: number;
@@ -11,7 +12,10 @@ interface Applicant {
   email: string;
   phone: string;
   course: string;
-  courseId: number; // Added courseId
+  courseId: number;
+  classDay?: string;
+  classStart?: string;
+  classEnd?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   documents: {
     transcript: boolean;
@@ -31,6 +35,7 @@ interface ApplicantModalProps {
 
 export function ApplicantModal({ applicant, onClose, onApprove, onReject }: ApplicantModalProps) {
   const [otherApplications, setOtherApplications] = useState<Application[]>([]);
+  const [taHistory, setTaHistory] = useState<Application[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
 
   useEffect(() => {
@@ -38,13 +43,14 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
       if (!applicant.studentId) return;
       try {
         setLoadingApps(true);
-        // Ensure studentId is parsed as number. TARecruitment passes it as string.
         const studentIdNum = parseInt(applicant.studentId.replace(/\D/g, ''));
         if (!isNaN(studentIdNum)) {
-          const apps = await getStudentApplications(studentIdNum);
-          // Filter out applications for the SAME COURSE (subject) as the current one.
-          // Note: app.courseID from backend might be the ID of the course/subject.
+          const [apps, history] = await Promise.all([
+            getStudentApplications(studentIdNum),
+            getAllTimeApprovedCoursesByStudentId(studentIdNum),
+          ]);
           setOtherApplications(apps.filter(a => a.courseID !== applicant.courseId));
+          setTaHistory(history);
         }
       } catch (error) {
         console.error("Failed to fetch student history:", error);
@@ -111,9 +117,73 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
           </div>
 
           {/* Course */}
+          <div className="p-4 bg-orange-50 rounded-xl border border-orange-100 shadow-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-3 opacity-10 transition-opacity">
+              <BookOpen size={64} className="text-[#E35205]" />
+            </div>
+            <div className="relative">
+              <p className="text-sm font-medium text-orange-600 mb-2 flex items-center gap-2">
+                <BookOpen size={16} />
+                วิชาที่สมัคร
+              </p>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <p className="text-xl font-bold text-gray-900 leading-tight">
+                  {applicant.course}
+                </p>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-orange-200 rounded-lg shrink-0 shadow-sm">
+                  <span className="text-sm text-[#E35205] font-semibold flex items-center gap-1.5">
+                    วัน{formatDay(applicant.classDay)}
+                  </span>
+                  <span className="w-1 h-1 bg-orange-300 rounded-full"></span>
+                  <span className="text-sm text-[#E35205] font-bold">
+                    {applicant.classStart && applicant.classEnd ? formatTimeRange(applicant.classStart, applicant.classEnd) : '-'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Other Applications */}
           <div>
-            <p className="text-sm text-gray-600 mb-1">วิชาที่สมัคร</p>
-            <p className="text-gray-900">{applicant.course}</p>
+            <h3 className="text-gray-900 mb-3 font-medium">ประวัติการสมัครวิชาอื่น</h3>
+            {loadingApps ? (
+              <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
+            ) : otherApplications.length > 0 ? (
+              <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                <table className="w-full text-sm">
+                  <thead className="bg-orange-50 text-gray-600">
+                    <tr>
+                      <th className="px-4 py-2 text-left">วิชา</th>
+                      <th className="px-4 py-2 text-left">วัน-เวลาเรียน</th>
+                      <th className="px-4 py-2 text-left">อาจารย์ผู้สอน</th>
+                      <th className="px-4 py-2 text-left">สถานะ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {otherApplications.map((app) => (
+                      <tr key={app.applicationId}>
+                        <td className="px-4 py-2 text-gray-900">{app.courseName || `Course ID: ${app.courseID}`}</td>
+                        <td className="px-4 py-2 text-[#E35205] font-medium">
+                          วัน{formatDay(app.classDay)} {app.classStart && app.classEnd ? formatTimeRange(app.classStart, app.classEnd) : ''}
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">{app.professorName || 'N/A'}</td>
+                        <td className="px-4 py-2">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${app.statusCode === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                            app.statusCode === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                            {app.statusCode === 'PENDING' ? 'รอพิจารณา' :
+                              app.statusCode === 'APPROVED' ? 'อนุมัติแล้ว' : 'ปฏิเสธ'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm bg-gray-50 p-3 rounded-lg">ไม่มีประวัติการสมัครวิชาอื่น</p>
+            )}
           </div>
 
           {/* Documents */}
@@ -176,42 +246,40 @@ export function ApplicantModal({ applicant, onClose, onApprove, onReject }: Appl
             </div>
           </div>
 
-          {/* Other Applications */}
+          {/* TA History — all-time approved courses */}
           <div>
-            <h3 className="text-gray-900 mb-3">ประวัติการสมัครอื่น</h3>
+            <h3 className="text-gray-900 mb-3">ประวัติการเป็น TA</h3>
             {loadingApps ? (
               <p className="text-gray-500 text-sm">กำลังโหลดข้อมูล...</p>
-            ) : otherApplications.length > 0 ? (
+            ) : taHistory.length > 0 ? (
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600">
+                  <thead className="bg-orange-50 text-gray-600">
                     <tr>
-                      <th className="px-4 py-2 text-left">วิชา</th>
+                      <th className="px-4 py-2 text-left">รหัสวิชา</th>
+                      <th className="px-4 py-2 text-left">ชื่อวิชา</th>
+                      <th className="px-4 py-2 text-left">วัน-เวลาเรียน</th>
                       <th className="px-4 py-2 text-left">อาจารย์ผู้สอน</th>
-                      <th className="px-4 py-2 text-left">สถานะ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {otherApplications.map((app) => (
-                      <tr key={app.applicationId}>
-                        <td className="px-4 py-2 text-gray-900">{app.courseName || `Course ID: ${app.courseID}`}</td>
-                        <td className="px-4 py-2 text-gray-700">{app.professorName || 'N/A'}</td>
-                        <td className="px-4 py-2">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${app.statusCode === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                            app.statusCode === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                            {app.statusCode === 'PENDING' ? 'รอพิจารณา' :
-                              app.statusCode === 'APPROVED' ? 'อนุมัติแล้ว' : 'ปฏิเสธ'}
-                          </span>
+                    {taHistory.map((course, idx) => (
+                      <tr key={`${course.courseID}-${idx}`} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 font-medium text-[#E35205]">
+                          {course.courseCode || '-'}
                         </td>
+                        <td className="px-4 py-2 text-gray-900">{course.courseName || '-'}</td>
+                        <td className="px-4 py-2 text-[#E35205] font-medium">
+                          {formatDay(course.classDay)} {course.classStart && course.classEnd ? formatTimeRange(course.classStart, course.classEnd) : ''}
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">{course.professorName || 'N/A'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <p className="text-gray-500 text-sm bg-gray-50 p-3 rounded-lg">ไม่มีประวัติการสมัครวิชาอื่น</p>
+              <p className="text-gray-500 text-sm bg-gray-50 p-3 rounded-lg">ไม่มีประวัติการเป็น TA</p>
             )}
           </div>
         </div>

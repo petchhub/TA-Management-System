@@ -150,7 +150,7 @@ export function StudentCourseDetailModal({ course, onClose }: StudentCourseDetai
                                         window.open(`http://localhost:8081/join-course/${course.discordRoleID}`, '_blank');
                                     } else {
                                         setToast({
-                                            message: 'ยังไม่มีลิงก์ Discord สำหรับวิชานี้ กรุณาติดต่ออาจารย์ผู้สอนเพื่อขอให้สร้างกลุ่ม',
+                                            message: 'ยังไม่มีลิงก์ Discord สำหรับรายวิชานี้ กรุณาติดต่อผู้สอนประจำวิชา',
                                             type: 'info'
                                         });
                                         setTimeout(() => setToast(null), 5000);
@@ -181,8 +181,8 @@ export function StudentCourseDetailModal({ course, onClose }: StudentCourseDetai
                 {toast && (
                     <div className="fixed top-4 right-4 z-50 animate-slide-in-from-top">
                         <div className={`flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg max-w-md ${toast.type === 'info'
-                                ? 'bg-blue-50 border border-blue-200 text-blue-800'
-                                : 'bg-red-50 border border-red-200 text-red-800'
+                            ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                            : 'bg-red-50 border border-red-200 text-red-800'
                             }`}>
                             <MessageSquare size={20} className="flex-shrink-0 mt-0.5" />
                             <div className="flex-1">

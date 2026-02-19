@@ -41,6 +41,7 @@ export interface Application {
     studentID: number;
     statusID: number;
     courseID: number; // Backend sends int for course_ID/job_post_ID in this specific endpoint
+    courseCode?: string;
     statusCode: string;
     createdDate: string;
     // Optional fields that might be missing or need future backend support
@@ -739,6 +740,33 @@ export async function getStudentApplications(studentId: number): Promise<Applica
         return result.data || [];
     } catch (error) {
         console.error(`Error fetching applications for student ${studentId}:`, error);
+        return [];
+    }
+}
+
+/**
+ * Fetch ALL approved TA courses across every semester for a specific student (for all-time stats/history popup)
+ * @param studentId - The ID of the student
+ * @returns Promise with list of approved applications across all semesters
+ */
+export async function getAllTimeApprovedCoursesByStudentId(studentId: number): Promise<Application[]> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/course/application/student/${studentId}/alltime`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch all-time courses for student ${studentId}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result.data || [];
+    } catch (error) {
+        console.error(`Error fetching all-time approved courses for student ${studentId}:`, error);
         return [];
     }
 }

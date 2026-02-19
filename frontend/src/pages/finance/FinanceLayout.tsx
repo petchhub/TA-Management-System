@@ -8,8 +8,9 @@ import { CourseExport } from './CourseExport';
 import { HolidayCalendar } from './HolidayCalendar';
 import { EmailAnnouncement } from './EmailAnnouncement';
 import { SemesterManagement } from './SemesterManagement';
+import { TermHistory } from './TermHistory';
 
-type Page = 'dashboard' | 'semester' | 'work-hours' | 'export' | 'holidays' | 'announcement';
+type Page = 'dashboard' | 'semester' | 'work-hours' | 'export' | 'holidays' | 'announcement' | 'history';
 
 interface FinanceLayoutProps {
     initialPage?: Page;
@@ -64,6 +65,8 @@ export function FinanceLayout({ initialPage = 'dashboard' }: FinanceLayoutProps)
                 return <HolidayCalendar />;
             case 'announcement':
                 return <EmailAnnouncement />;
+            case 'history':
+                return <TermHistory />;
             default:
                 return <Dashboard />;
         }

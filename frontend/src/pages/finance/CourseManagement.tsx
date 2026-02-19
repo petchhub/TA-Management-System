@@ -177,9 +177,9 @@ export function CourseManagement() {
             programTypeId: program?.id.toString() || "",
             workingDay: classDay?.value || "",
             classDayId: classDay?.id.toString() || "",
-            // Extract HH:MM from ISO string 2024-01-01T09:00:00Z
-            startTime: course.classStart.split('T')[1] ? course.classStart.split('T')[1].substring(0, 5) : course.classStart.substring(0, 5),
-            endTime: course.classEnd.split('T')[1] ? course.classEnd.split('T')[1].substring(0, 5) : course.classEnd.substring(0, 5),
+            // Extract HH:MM from ISO string 2024-01-01T09:00:00Z or HH:mm:ss
+            startTime: formatTime(course.classStart),
+            endTime: formatTime(course.classEnd),
             semesterId: semester?.id.toString() || "",
         });
         setIsModalOpen(true);

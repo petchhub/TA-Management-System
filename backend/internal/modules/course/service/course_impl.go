@@ -207,6 +207,18 @@ func (s CourseServiceImplementation) GetApplicationByStudentId(studentId int) (*
 
 }
 
+func (s CourseServiceImplementation) GetAllTimeApprovedCoursesByStudentId(studentId int) (*response.RequestDataResponse, error) {
+	applications, err := s.repo.GetAllTimeApprovedCoursesByStudentId(studentId)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	return &response.RequestDataResponse{
+		Data:    applications,
+		Message: "GET success",
+	}, nil
+}
+
 func (s CourseServiceImplementation) GetApplicationByCourseId(courseId int) (*response.RequestDataResponse, error) {
 	applications, err := s.repo.GetApplicationByCourseId(courseId)
 	if err != nil {
@@ -315,4 +327,24 @@ func (s CourseServiceImplementation) UpdateCourseDiscord(courseId int, roleId st
 	return &response.GeneralResponse{
 		Message: "Update Discord Successful",
 	}, nil
+}
+
+func (s CourseServiceImplementation) SoftDeleteExpiredData() error {
+	return s.repo.SoftDeleteExpiredData()
+}
+
+func (s CourseServiceImplementation) GetTermHistory() (*response.RequestDataResponse, error) {
+	result, err := s.repo.GetExpiredSemesters()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (s CourseServiceImplementation) GetHistoryCourses(semesterID int) (*response.RequestDataResponse, error) {
+	result, err := s.repo.GetCoursesBySemesterID(semesterID)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

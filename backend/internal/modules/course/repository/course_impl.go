@@ -27,6 +27,10 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 				c.course_code, 
 				c.course_name, 
 				j.ta_allocation, 
+				GREATEST(j.ta_allocation - (
+					SELECT COUNT(*) FROM ta_application ta
+					WHERE ta.job_post_ID = j.id AND ta.status_ID = 5
+				), 0) AS remaining_positions,
 				c.work_hour,
 				c.class_start,
 				c.class_end,
@@ -55,7 +59,7 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 			LEFT JOIN grades AS g
 				ON j.grade_ID = g.grade_ID
 			WHERE j.status_ID = $1
-			AND s.is_active = TRUE`
+			AND CURRENT_DATE BETWEEN s.start_date AND s.end_date`
 
 	rows, err := r.db.Query(query, constants.OpenStatusID)
 	if err != nil {
@@ -74,6 +78,7 @@ func (r CourseRepositoryImplementation) GetAllJobPost() ([]response.JobPost, err
 			&course.CourseCode,
 			&course.CourseName,
 			&course.TaAllocation,
+			&course.RemainingPositions,
 			&course.WorkHour,
 			&course.ClassStart,
 			&course.ClassEnd,
@@ -133,8 +138,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostAllStatus() ([]response.Job
 				ON j.status_ID = st.status_ID
 			LEFT JOIN grades AS g
 				ON j.grade_ID = g.grade_ID
-			WHERE j.deleted_date IS NULL
-			AND s.is_active = TRUE`
+			WHERE j.deleted_date IS NULL`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -185,6 +189,10 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				c.course_code, 
 				c.course_name, 
 				j.ta_allocation, 
+				GREATEST(j.ta_allocation - (
+					SELECT COUNT(*) FROM ta_application ta
+					WHERE ta.job_post_ID = j.id AND ta.status_ID = 5
+				), 0) AS remaining_positions,
 				c.work_hour,
 				c.class_start,
 				c.class_end,
@@ -216,9 +224,10 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 				SELECT 1 
 				FROM ta_application as ta
 				WHERE ta.job_post_ID = j.id
-				AND ta.student_ID = $1)
+				AND ta.student_ID = $1
+				AND ta.status_ID != 4)
 			AND j.status_id = $2
-			AND s.is_active = TRUE
+			AND CURRENT_DATE BETWEEN s.start_date AND s.end_date
 			`
 
 	rows, err := r.db.Query(query, studentId, constants.OpenStatusID)
@@ -238,6 +247,7 @@ func (r CourseRepositoryImplementation) GetAllJobPostByStudentId(studentId int) 
 			&course.CourseCode,
 			&course.CourseName,
 			&course.TaAllocation,
+			&course.RemainingPositions,
 			&course.WorkHour,
 			&course.ClassStart,
 			&course.ClassEnd,
@@ -289,8 +299,7 @@ func (r CourseRepositoryImplementation) GetAllCourse() ([]response.Course, error
 				ON c.course_program_ID = cp.course_program_ID
 			LEFT JOIN semester AS s
 				ON c.semester_ID = s.semester_ID
-			WHERE c.deleted_date IS NULL
-			AND s.is_active = TRUE`
+			WHERE c.deleted_date IS NULL`
 
 	rows, err := r.db.Query(query)
 	if err != nil {
@@ -362,7 +371,7 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 				ON c.semester_ID = s.semester_ID
 			WHERE c.professor_ID=$1
 			AND c.deleted_date IS NULL
-			AND s.is_active = TRUE`
+			AND CURRENT_DATE BETWEEN s.start_date AND s.end_date`
 
 	rows, err := r.db.Query(query, professorId)
 	if err != nil {
@@ -757,19 +766,23 @@ func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response
 
 func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) (int, error) {
 
-	//check student cannot make duplicate apply on same job_post
-	var count int
-	queryCheck := `SELECT COUNT(*) FROM ta_application 
+	// check student status on this job
+	var existingStatusID int
+	var existingID int
+	queryCheck := `SELECT id, status_id FROM ta_application 
 					WHERE job_post_id = $1
 					AND student_id = $2`
 
-	err := r.db.QueryRow(queryCheck, body.JobPostID, body.StudentID).Scan(&count)
-	if err != nil {
+	err := r.db.QueryRow(queryCheck, body.JobPostID, body.StudentID).Scan(&existingID, &existingStatusID)
+	if err != nil && err != sql.ErrNoRows {
 		return 0, err
 	}
 
-	if count > 0 {
-		return 0, fmt.Errorf("student:%d already apply to this job", body.StudentID)
+	if err == nil {
+		// If application exists, only allow re-application if status is Rejected (4)
+		if existingStatusID != constants.RejectedStatusID {
+			return 0, fmt.Errorf("student:%d already apply to this job with status:%d", body.StudentID, existingStatusID)
+		}
 	}
 
 	//check ta allocation
@@ -851,24 +864,37 @@ func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) 
 
 	statusId := constants.PendingStatusID
 	var applicationId int
-	query = `INSERT INTO ta_application(
-				student_ID, 
-				status_ID, 
-				job_post_ID,
-				grade,
-				purpose,
-				created_date)
-			VALUES($1, $2, $3, $4, $5, $6 )
-			RETURNING id`
-
-	err = tx.QueryRow(query,
-		body.StudentID,
-		statusId,
-		body.JobPostID,
-		body.Grade,
-		body.Purpose,
-		time.Now(),
-	).Scan(&applicationId)
+	if existingID != 0 {
+		// Update existing rejected application back to pending
+		applicationId = existingID
+		query = `UPDATE ta_application SET 
+					status_ID = $1, 
+					grade = $2, 
+					purpose = $3, 
+					reject_reason = NULL,
+					created_date = $4
+				WHERE id = $5`
+		_, err = tx.Exec(query, statusId, body.Grade, body.Purpose, time.Now(), existingID)
+	} else {
+		// Insert new application
+		query = `INSERT INTO ta_application(
+					student_ID, 
+					status_ID, 
+					job_post_ID,
+					grade,
+					purpose,
+					created_date)
+				VALUES($1, $2, $3, $4, $5, $6 )
+				RETURNING id`
+		err = tx.QueryRow(query,
+			body.StudentID,
+			statusId,
+			body.JobPostID,
+			body.Grade,
+			body.Purpose,
+			time.Now(),
+		).Scan(&applicationId)
+	}
 
 	if err != nil {
 		tx.Rollback()
@@ -914,11 +940,14 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 					ON ta.job_post_ID = tp.id
 				LEFT JOIN courses AS c
 					ON tp.course_ID = c.course_ID
+				LEFT JOIN semester AS s
+					ON c.semester_ID = s.semester_ID
 				LEFT JOIN professors AS p
 					ON c.professor_ID = p.professor_ID
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
-				WHERE student_ID = $1`
+				WHERE student_ID = $1
+					AND CURRENT_DATE BETWEEN s.start_date AND s.end_date`
 
 	rows, err := r.db.Query(query, studentId)
 	if err != nil {
@@ -963,6 +992,85 @@ func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int)
 		applications = append(applications, application)
 	}
 
+	return applications, nil
+}
+
+// GetAllTimeApprovedCoursesByStudentId returns all APPROVED courses across ALL semesters for a student.
+func (r CourseRepositoryImplementation) GetAllTimeApprovedCoursesByStudentId(studentId int) ([]response.Application, error) {
+	query := `SELECT
+					DISTINCT ON (c.course_ID)
+					ta.id,
+					ta.student_ID,
+					ta.status_ID,
+					tp.id,
+					tp.course_ID,
+					ta.created_date,
+					st.status_value,
+					c.course_name,
+					c.course_code,
+					c.class_day,
+					c.class_start,
+					c.class_end,
+					CONCAT(p.prefix, ' ', p.firstname_thai, ' ', p.lastname_thai) AS professor_name,
+					tp.location,
+					ta.reject_reason
+				FROM ta_application AS ta
+				LEFT JOIN ta_job_posting AS tp
+					ON ta.job_post_ID = tp.id
+				LEFT JOIN courses AS c
+					ON tp.course_ID = c.course_ID
+				LEFT JOIN professors AS p
+					ON c.professor_ID = p.professor_ID
+				LEFT JOIN status AS st
+					ON ta.status_ID = st.status_ID
+				LEFT JOIN semester AS s
+					ON c.semester_ID = s.semester_ID
+				WHERE ta.student_ID = $1
+					AND st.status_value = 'APPROVED'
+					AND s.end_date < CURRENT_DATE
+				ORDER BY c.course_ID, ta.created_date DESC`
+
+	rows, err := r.db.Query(query, studentId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var applications []response.Application
+	for rows.Next() {
+		var application response.Application
+		var professorName string
+		var jobPostID *int
+		var rejectReason *string
+		err := rows.Scan(
+			&application.ApplicationId,
+			&application.StudentID,
+			&application.StatusID,
+			&jobPostID,
+			&application.CourseID,
+			&application.CreatedDate,
+			&application.StatusCode,
+			&application.CourseName,
+			&application.CourseCode,
+			&application.Classday,
+			&application.ClassStart,
+			&application.ClassEnd,
+			&professorName,
+			&application.Location,
+			&rejectReason,
+		)
+		if err != nil {
+			return nil, err
+		}
+		application.ProfessorName = professorName
+		if jobPostID != nil {
+			application.JobPostID = *jobPostID
+		}
+		if rejectReason != nil {
+			application.RejectReason = *rejectReason
+		}
+		applications = append(applications, application)
+	}
 	return applications, nil
 }
 
@@ -1254,7 +1362,10 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 					stu.phone_number,
 					CASE WHEN ts.transcript_ID IS NOT NULL THEN true ELSE false END as has_transcript,
 					CASE WHEN ba.bank_account_ID IS NOT NULL THEN true ELSE false END as has_bank_account,
-					CASE WHEN sc.student_card_ID IS NOT NULL THEN true ELSE false END as has_student_card
+					CASE WHEN sc.student_card_ID IS NOT NULL THEN true ELSE false END as has_student_card,
+					c.class_day,
+					c.class_start,
+					c.class_end
 				FROM ta_application AS ta 
 				LEFT JOIN status AS st
 					ON ta.status_ID = st.status_ID
@@ -1262,6 +1373,8 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 					ON ta.job_post_ID = jp.id
 				LEFT JOIN courses AS c
 					ON jp.course_ID = c.course_ID
+				LEFT JOIN semester AS s
+					ON c.semester_ID = s.semester_ID
 				LEFT JOIN students AS stu
 					ON ta.student_id = stu.student_id
 				LEFT JOIN transcript_storage ts
@@ -1270,7 +1383,8 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 					ON ta.student_ID = sc.student_ID
 				LEFT JOIN bank_account_storage ba
 					ON ta.student_ID = ba.student_ID
-				WHERE c.professor_ID = $1`
+				WHERE c.professor_ID = $1
+					AND CURRENT_DATE BETWEEN s.start_date AND s.end_date`
 
 	rows, err := r.db.Query(query, professorId)
 	if err != nil {
@@ -1303,6 +1417,9 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 			&application.HasTranscript,
 			&application.HasBankAccount,
 			&application.HasStudentCard,
+			&application.Classday,
+			&application.ClassStart,
+			&application.ClassEnd,
 		)
 		if err != nil {
 			return nil, err

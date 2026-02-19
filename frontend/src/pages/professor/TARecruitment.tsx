@@ -31,7 +31,10 @@ interface Applicant {
   email: string;
   phone: string;
   course: string;
-  courseId: number; // Added courseId
+  courseId: number;
+  classDay?: string;
+  classStart?: string;
+  classEnd?: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
   documents: {
     transcript: boolean;
@@ -96,6 +99,9 @@ export function TARecruitment() {
         phone: app.phoneNumber || "-", // Now using real phone number from backend
         course: app.courseName ? `${app.courseName}` : "Unknown Course",
         courseId: app.courseID || 0, // Map courseID
+        classDay: app.classDay,
+        classStart: app.classStart,
+        classEnd: app.classEnd,
         status: (app.statusCode as any) || "PENDING",
         documents: {
           transcript: app.hasTranscript || false, // Real data from backend

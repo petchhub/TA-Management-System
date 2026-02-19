@@ -456,7 +456,7 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose, on
                         type="file"
                         accept=".pdf"
                         onChange={(e) => setFormData(prev => ({ ...prev, transcript: e.target.files?.[0] || null }))}
-                        required={!existingFiles.transcript}
+                        required={!existingFiles.transcript && !formData.transcript}
                         className="hidden"
                         id="transcript-upload"
                       />
@@ -473,7 +473,9 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose, on
                                 <FileText className="w-8 h-8 text-primary-600" />
                               </div>
                               <div>
-                                <p className="font-semibold text-gray-900">{formData.transcript.name}</p>
+                                <p className="font-semibold text-gray-900 truncate max-w-[250px]" title={formData.transcript.name}>
+                                  {formData.transcript.name}
+                                </p>
                                 <p className="text-sm text-gray-600 mt-1">{formatFileSize(formData.transcript.size)}</p>
                                 <p className="text-xs text-gray-500 mt-2">คลิกเพื่อเปลี่ยนไฟล์</p>
                               </div>
@@ -573,7 +575,9 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose, on
                                     <FileText className="w-6 h-6 text-primary-600" />
                                   </div>
                                   <div className="flex-1 min-w-0 pr-2">
-                                    <p className="font-semibold text-left text-gray-900 text-sm mb-1">{formData.bankAccount.name}</p>
+                                    <p className="font-semibold text-left text-gray-900 text-sm mb-1 truncate max-w-[120px]" title={formData.bankAccount.name}>
+                                      {formData.bankAccount.name}
+                                    </p>
                                     <p className="text-xs text-left text-gray-600">{formatFileSize(formData.bankAccount.size)}</p>
                                   </div>
                                 </div>
@@ -671,7 +675,9 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose, on
                                     <FileText className="w-6 h-6 text-primary-600" />
                                   </div>
                                   <div className="flex-1 min-w-0 pr-16">
-                                    <p className="font-semibold text-left text-gray-900 text-sm mb-1">{formData.studentCard.name}</p>
+                                    <p className="font-semibold text-left text-gray-900 text-sm mb-1 truncate max-w-[120px]" title={formData.studentCard.name}>
+                                      {formData.studentCard.name}
+                                    </p>
                                     <p className="text-xs text-left text-gray-600">{formatFileSize(formData.studentCard.size)}</p>
                                   </div>
                                 </div>
@@ -751,21 +757,21 @@ export default function ApplicationModal({ isOpen, courseId, course, onClose, on
                     <p className="text-gray-600 mb-2">เอกสารแนบ</p>
                     <div className="space-y-1">
                       {formData.transcript && (
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <FileText className="w-4 h-4" />
-                          <span>Transcript: {formData.transcript.name}</span>
+                        <div className="flex items-center gap-2 text-gray-900 pr-4">
+                          <FileText className="w-4 h-4 shrink-0" />
+                          <span className="truncate" title={formData.transcript.name}>Transcript: {formData.transcript.name}</span>
                         </div>
                       )}
                       {formData.bankAccount && (
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <FileText className="w-4 h-4" />
-                          <span>Bank Account: {formData.bankAccount.name}</span>
+                        <div className="flex items-center gap-2 text-gray-900 pr-4">
+                          <FileText className="w-4 h-4 shrink-0" />
+                          <span className="truncate" title={formData.bankAccount.name}>Bank Account: {formData.bankAccount.name}</span>
                         </div>
                       )}
                       {formData.studentCard && (
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <FileText className="w-4 h-4" />
-                          <span>Student Card: {formData.studentCard.name}</span>
+                        <div className="flex items-center gap-2 text-gray-900 pr-4">
+                          <FileText className="w-4 h-4 shrink-0" />
+                          <span className="truncate" title={formData.studentCard.name}>Student Card: {formData.studentCard.name}</span>
                         </div>
                       )}
                     </div>

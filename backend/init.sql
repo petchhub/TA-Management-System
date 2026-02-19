@@ -184,6 +184,7 @@ CREATE TABLE ta_courses(
     student_ID INT,
     course_ID INT,
     created_date TIMESTAMP,
+    deleted_date TIMESTAMP,
     CONSTRAINT FK_student_ID
         FOREIGN KEY (student_ID)
         REFERENCES students(student_ID),
@@ -191,6 +192,7 @@ CREATE TABLE ta_courses(
         FOREIGN KEY (course_ID)
         REFERENCES courses(course_ID)
 );
+
 
 CREATE TABLE ta_duty_historys(
     id SERIAL PRIMARY KEY,

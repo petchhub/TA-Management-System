@@ -41,6 +41,7 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 
 		r.POST("/apply/:jobPostId", c.applyJobPost)
 		r.GET("/application/student/:studentId", c.getApplicationByStudentId)
+		r.GET("/application/student/:studentId/alltime", c.getApplicationAllTimeByStudentId)
 		r.GET("/application/course/:courseId", c.getApplicationBycourseId)
 		r.GET("/application/professor/:professorId", c.getApplicationByProfessorId)
 		r.GET("/application/:applilcationId", c.getApplicationDetail)
@@ -51,6 +52,9 @@ func InitializeController(courseService service.CourseService, r *gin.RouterGrou
 
 		r.POST("/application/approve/:applicationId", c.approveApplication)
 		r.POST("/application/reject/:applicationId", c.rejectApplication)
+
+		r.GET("/history", c.getTermHistory)
+		r.GET("/history/:semesterId", c.getHistoryCourses)
 	}
 }
 
@@ -300,6 +304,20 @@ func (controller CourseController) getApplicationByStudentId(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, result)
 }
 
+func (controller CourseController) getApplicationAllTimeByStudentId(ctx *gin.Context) {
+	id, ok := utils.ValidateParam(ctx, "studentId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validate Param Failed."})
+		return
+	}
+	result, err := controller.service.GetAllTimeApprovedCoursesByStudentId(id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, result)
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
+}
+
 func (controller CourseController) getApplicationByProfessorId(ctx *gin.Context) {
 	id, ok := utils.ValidateParam(ctx, "professorId")
 	if !ok {
@@ -467,6 +485,29 @@ func (controller CourseController) updateCourseDiscord(ctx *gin.Context) {
 	result, err := controller.service.UpdateCourseDiscord(courseId, rq.RoleID, rq.ChannelID, rq.ChannelName)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller CourseController) getTermHistory(ctx *gin.Context) {
+	result, err := controller.service.GetTermHistory()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		return
+	}
+	ctx.JSON(http.StatusOK, result)
+}
+
+func (controller CourseController) getHistoryCourses(ctx *gin.Context) {
+	semesterID, ok := utils.ValidateParam(ctx, "semesterId")
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Validation Param Failed"})
+		return
+	}
+	result, err := controller.service.GetHistoryCourses(semesterID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
 		return
 	}
 	ctx.JSON(http.StatusOK, result)

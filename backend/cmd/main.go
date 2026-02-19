@@ -89,6 +89,14 @@ func main() {
 	c.AddFunc("@weekly", func() {
 		lookupSvc.SyncOfficialHoliday(BOTKey, BOTURL)
 	})
+	c.AddFunc("0 0 * * *", func() {
+		log.Info("🗂️ Running semester cleanup cron...")
+		if err := courseSvc.SoftDeleteExpiredData(); err != nil {
+			log.Info("❌ Semester cleanup failed: " + err.Error())
+		} else {
+			log.Info("✅ Semester cleanup completed successfully")
+		}
+	})
 	c.Start()
 
 	go func() {
