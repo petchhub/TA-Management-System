@@ -357,18 +357,18 @@ func (s CourseServiceImplementation) ApproveApplication(applicationId int) (*res
 
 	courseId, studentId, jobPostId, err := s.repo.GetApproveApplicationData(applicationId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fail1 : %v", err)
 	}
 
 	//check ta allocation
 	taAllocation, err := s.repo.GetTaAllocation(jobPostId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fail2 : %v", err)
 	}
 
 	allocationCount, err := s.repo.CountTaAllocation(jobPostId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fail3 : %v", err)
 	}
 
 	if allocationCount >= taAllocation {

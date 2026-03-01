@@ -143,7 +143,7 @@ func createDummyApplication(t *testing.T, db *sql.DB, studentID int, jobPostID i
 
 	// Use the same status ID your service uses
 	// If you don't have access to constants here, use the raw ID (e.g., 1)
-	statusId := 1
+	statusId := constants.PendingStatusID
 
 	// We use a dummy grade and purpose for the setup
 	grade := "A"
@@ -409,7 +409,12 @@ func TestApproveApplication_Integration(t *testing.T) {
 				cleanDB(t, testDB, "ta_application", "ta_job_posting", "courses", "ta_courses")
 				courseID := createDummyCourse(t, testDB)
 				jonPostID := createDummyJobPost(t, testDB, courseID, 1)
-				return createDummyApplication(t, testDB, 1, jonPostID)
+				appID := createDummyApplication(t, testDB, 1, jonPostID)
+
+				var exists bool
+				testDB.QueryRow("SELECT EXISTS(SELECT 1 FROM ta_application WHERE id=$1)", appID).Scan(&exists)
+				fmt.Printf("DEBUG: AppID %d exists after setup: %v\n", appID, exists)
+				return appID
 			},
 		},
 		{
