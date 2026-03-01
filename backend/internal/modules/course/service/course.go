@@ -11,7 +11,7 @@ type CourseService interface {
 	GetAllJobPostAllStatus() (*response.RequestDataResponse, error)
 	GetAllJobPostByStudentId(studentId int) (*response.RequestDataResponse, error)
 	GetAllCourse() (*response.RequestDataResponse, error)
-	CreateCourse(body request.CreateCourse) (response.CreateResponse, error)
+	CreateCourse(body request.CreateCourse) (*response.CreateResponse, error)
 	UpdateCourse(body request.UpdateCourse) (response.GeneralResponse, error)
 	DeleteCourse(courseId int) (response.GeneralResponse, error)
 	CreateJobPost(body request.CreateJobPost) (response.CreateResponse, error)

@@ -71,15 +71,17 @@ func (s CourseServiceImplementation) GetAllCourse() (*response.RequestDataRespon
 	cacheKey := "course:all"
 
 	// Check cache
-	val, err := s.redisClient.Get(ctx, cacheKey).Result()
-	if err == nil {
-		fmt.Println("from redis")
-		var courses []courseResponse.Course
-		if err := json.Unmarshal([]byte(val), &courses); err == nil {
-			return &response.RequestDataResponse{
-				Data:    courses,
-				Message: "Success",
-			}, nil
+	if s.redisClient != nil {
+		val, err := s.redisClient.Get(ctx, cacheKey).Result()
+		if err == nil {
+			fmt.Println("from redis")
+			var courses []courseResponse.Course
+			if err := json.Unmarshal([]byte(val), &courses); err == nil {
+				return &response.RequestDataResponse{
+					Data:    courses,
+					Message: "Success",
+				}, nil
+			}
 		}
 	}
 
@@ -91,8 +93,10 @@ func (s CourseServiceImplementation) GetAllCourse() (*response.RequestDataRespon
 	}
 
 	// Set cache
-	if data, err := json.Marshal(courses); err == nil {
-		s.redisClient.Set(ctx, cacheKey, data, 10*time.Minute)
+	if s.redisClient != nil {
+		if data, err := json.Marshal(courses); err == nil {
+			s.redisClient.Set(ctx, cacheKey, data, 10*time.Minute)
+		}
 	}
 
 	response := response.RequestDataResponse{
@@ -103,19 +107,28 @@ func (s CourseServiceImplementation) GetAllCourse() (*response.RequestDataRespon
 	return &response, nil
 }
 
-func (s CourseServiceImplementation) CreateCourse(body request.CreateCourse) (response.CreateResponse, error) {
+func (s CourseServiceImplementation) CreateCourse(body request.CreateCourse) (*response.CreateResponse, error) {
+	count, err := s.repo.IsCourseExist(body)
+	if err != nil {
+		return nil, err
+	}
+
+	if count > 0 {
+		return nil, fmt.Errorf("already have this course")
+	}
+
 	id, err := s.repo.CreateCourse(body)
 	if err != nil {
 		fmt.Println(err)
-		return response.CreateResponse{
-			Message: "Create Failed!",
-		}, err
+		return nil, err
 	}
 
 	// Invalidate cache
-	s.redisClient.Del(context.Background(), "course:all")
+	if s.redisClient != nil {
+		s.redisClient.Del(context.Background(), "course:all")
+	}
 
-	return response.CreateResponse{
+	return &response.CreateResponse{
 		Message: "Created successfully!",
 		Id:      id,
 	}, nil
@@ -128,7 +141,9 @@ func (s CourseServiceImplementation) UpdateCourse(body request.UpdateCourse) (re
 		return response.GeneralResponse{Message: "Update Failed!"}, err
 	}
 	// Invalidate cache
-	s.redisClient.Del(context.Background(), "course:all")
+	if s.redisClient != nil {
+		s.redisClient.Del(context.Background(), "course:all")
+	}
 	return response.GeneralResponse{Message: "Update Successful"}, err
 }
 
@@ -139,7 +154,9 @@ func (s CourseServiceImplementation) DeleteCourse(id int) (response.GeneralRespo
 		return response.GeneralResponse{Message: "Delete Failed!"}, err
 	}
 	// Invalidate cache
-	s.redisClient.Del(context.Background(), "course:all")
+	if s.redisClient != nil {
+		s.redisClient.Del(context.Background(), "course:all")
+	}
 	return response.GeneralResponse{Message: "Delete Successful"}, err
 }
 
@@ -184,10 +201,76 @@ func (s CourseServiceImplementation) DeleteJobPost(jobPostId int) (response.Gene
 }
 
 func (s CourseServiceImplementation) ApplyJobPost(body request.ApplyJobPost) (*response.CreateResponse, error) {
-	id, err := s.repo.ApplyJobPost(body)
+	//check student status on this job
+	ok, err := s.repo.CheckStudentJobpostStatus(body)
 	if err != nil {
 		return nil, err
 	}
+	if !ok {
+		return nil, fmt.Errorf("already apply to this jobpost")
+	}
+
+	taAllocation, err := s.repo.GetTaAllocation(*body.JobPostID)
+	if err != nil {
+		return nil, err
+	}
+
+	allocationCount, err := s.repo.CountTaAllocation(*body.JobPostID)
+	if err != nil {
+		return nil, err
+	}
+
+	if allocationCount >= taAllocation {
+		return nil, fmt.Errorf("ta allocation is full")
+	}
+
+	tx, err := s.repo.StartDBTx()
+	if err != nil {
+		return nil, err
+	}
+
+	defer s.repo.RollbackTx(tx)
+	if body.TranscriptBytes != nil {
+		err = s.repo.UpsertTranscript(tx, body)
+		if err != nil {
+			s.repo.RollbackTx(tx)
+			return nil, err
+		}
+	}
+
+	if body.BankAccountBytes != nil {
+		err = s.repo.UpsertBankAccount(tx, body)
+		if err != nil {
+			s.repo.RollbackTx(tx)
+			return nil, err
+		}
+	}
+
+	if body.StudentCardBytes != nil {
+		err = s.repo.UpsertStudentCard(tx, body)
+		if err != nil {
+			s.repo.RollbackTx(tx)
+			return nil, err
+		}
+	}
+
+	err = s.repo.UpdateStudentData(tx, body)
+	if err != nil {
+		s.repo.RollbackTx(tx)
+		return nil, err
+	}
+
+	id, err := s.repo.InsertApplication(tx, body)
+	if err != nil {
+		s.repo.RollbackTx(tx)
+		return nil, err
+	}
+
+	err = s.repo.CommitTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &response.CreateResponse{
 		Message: "Apply course successfully",
 		Id:      id,
@@ -271,11 +354,61 @@ func (s CourseServiceImplementation) GetApplicationStudentCardPdf(applicationId 
 }
 
 func (s CourseServiceImplementation) ApproveApplication(applicationId int) (*response.GeneralResponse, error) {
-	err := s.repo.ApproveApplication(applicationId)
+
+	courseId, studentId, jobPostId, err := s.repo.GetApproveApplicationData(applicationId)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
+
+	//check ta allocation
+	taAllocation, err := s.repo.GetTaAllocation(jobPostId)
+	if err != nil {
+		return nil, err
+	}
+
+	allocationCount, err := s.repo.CountTaAllocation(jobPostId)
+	if err != nil {
+		return nil, err
+	}
+
+	if allocationCount >= taAllocation {
+		return nil, fmt.Errorf("ta allocation is full")
+	}
+
+	tx, err := s.repo.StartDBTx()
+	if err != nil {
+		return nil, err
+	}
+	defer s.repo.RollbackTx(tx)
+
+	err = s.repo.UpdateApplicationStatus(tx, applicationId)
+	if err != nil {
+		s.repo.RollbackTx(tx)
+		return nil, err
+	}
+
+	err = s.repo.InsertTaCourse(tx, studentId, courseId)
+	if err != nil {
+		s.repo.RollbackTx(tx)
+		return nil, err
+	}
+
+	err = s.repo.CommitTx(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	NewCount, err := s.repo.CountTaAllocation(jobPostId)
+	if err != nil {
+		return nil, err
+	}
+	if NewCount == taAllocation {
+		err = s.repo.UpdateJobPostStatus(jobPostId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &response.GeneralResponse{
 		Message: "Approved application Successful",
 	}, nil

@@ -5,7 +5,6 @@ import (
 	"TA-management/internal/modules/course/dto/request"
 	"TA-management/internal/modules/course/dto/response"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -415,6 +414,52 @@ func (r CourseRepositoryImplementation) GetProfessorCourse(professorId int) ([]r
 
 func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) (int, error) {
 
+	query := `INSERT INTO courses(
+	course_code, 
+	course_name,
+	professor_ID, 
+	course_program_ID, 
+	course_program, 
+	sec, 
+	semester_ID, 
+	semester, 
+	class_day_ID, 
+	class_day, 
+	class_start, 
+	class_end,
+	work_hour,
+	created_date) 
+	values ($1,$2,$3, $4, $5 ,$6 ,$7 ,$8 ,$9 ,$10 ,$11 ,$12, $13, $14)
+	RETURNING course_ID`
+
+	var lastInsertId int
+
+	err := r.db.QueryRow(query,
+		body.CourseCode,
+		body.CourseName,
+		body.ProfessorID,
+		body.CourseProgramID,
+		body.CourseProgram,
+		body.Sec,
+		body.SemesterID,
+		body.Semester,
+		body.ClassdayID,
+		body.Classday,
+		body.ClassStart,
+		body.ClassEnd,
+		body.WorkHour,
+		time.Now(),
+	).Scan(&lastInsertId)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return lastInsertId, nil
+
+}
+
+func (r CourseRepositoryImplementation) IsCourseExist(body request.CreateCourse) (int, error) {
 	queryCheck := `SELECT COUNT(*) FROM courses 
 					WHERE course_code=$1 
 					AND course_program_ID=$2 
@@ -436,64 +481,7 @@ func (r CourseRepositoryImplementation) CreateCourse(body request.CreateCourse) 
 		return 0, fmt.Errorf("failed to scan duplicate check result:%w", err)
 	}
 
-	if count > 0 {
-		return 0, errors.New("course already exists")
-	}
-
-	tx, err := r.db.Begin()
-	if err != nil {
-		return 0, err
-	}
-
-	query := `INSERT INTO courses(
-	course_code, 
-	course_name,
-	professor_ID, 
-	course_program_ID, 
-	course_program, 
-	sec, 
-	semester_ID, 
-	semester, 
-	class_day_ID, 
-	class_day, 
-	class_start, 
-	class_end,
-	work_hour,
-	created_date) 
-	values ($1,$2,$3, $4, $5 ,$6 ,$7 ,$8 ,$9 ,$10 ,$11 ,$12, $13, $14)
-	RETURNING course_ID`
-
-	var lastInsertId int
-
-	err = tx.QueryRow(query,
-		body.CourseCode,
-		body.CourseName,
-		body.ProfessorID,
-		body.CourseProgramID,
-		body.CourseProgram,
-		body.Sec,
-		body.SemesterID,
-		body.Semester,
-		body.ClassdayID,
-		body.Classday,
-		body.ClassStart,
-		body.ClassEnd,
-		body.WorkHour,
-		time.Now(),
-	).Scan(&lastInsertId)
-
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	return lastInsertId, nil
-
+	return count, nil
 }
 
 func (r CourseRepositoryImplementation) UpdateCourse(body request.UpdateCourse) error {
@@ -764,8 +752,38 @@ func (r CourseRepositoryImplementation) GetJobPostByID(jobPostId int) (*response
 	return &course, nil
 }
 
-func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) (int, error) {
+func (r CourseRepositoryImplementation) InsertApplication(tx *sql.Tx, body request.ApplyJobPost) (int, error) {
 
+	statusId := constants.PendingStatusID
+	var applicationId int
+	// Insert new application
+	query := `INSERT INTO ta_application(
+					student_ID, 
+					status_ID, 
+					job_post_ID,
+					grade,
+					purpose,
+					created_date)
+				VALUES($1, $2, $3, $4, $5, $6 )
+				RETURNING id`
+	err := tx.QueryRow(query,
+		body.StudentID,
+		statusId,
+		body.JobPostID,
+		body.Grade,
+		body.Purpose,
+		time.Now(),
+	).Scan(&applicationId)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed on insert to ta_application: %v", err)
+	}
+
+	return applicationId, nil
+
+}
+
+func (r CourseRepositoryImplementation) CheckStudentJobpostStatus(body request.ApplyJobPost) (bool, error) {
 	// check student status on this job
 	var existingStatusID int
 	var existingID int
@@ -775,147 +793,106 @@ func (r CourseRepositoryImplementation) ApplyJobPost(body request.ApplyJobPost) 
 
 	err := r.db.QueryRow(queryCheck, body.JobPostID, body.StudentID).Scan(&existingID, &existingStatusID)
 	if err != nil && err != sql.ErrNoRows {
-		return 0, err
+		return false, err
 	}
 
 	if err == nil {
 		// If application exists, only allow re-application if status is Rejected (4)
 		if existingStatusID != constants.RejectedStatusID {
-			return 0, fmt.Errorf("student:%d already apply to this job with status:%d", body.StudentID, existingStatusID)
+			return false, fmt.Errorf("student:%d already apply to this job with status:%d", body.StudentID, existingStatusID)
 		}
 	}
+
+	return true, nil
+}
+
+func (r CourseRepositoryImplementation) GetTaAllocation(jobPostID int) (int, error) {
 
 	//check ta allocation
 	var taAllocation int
 	query := `SELECT ta_allocation FROM ta_job_posting WHERE id = $1`
-	err = r.db.QueryRow(query, body.JobPostID).Scan(&taAllocation)
+	err := r.db.QueryRow(query, jobPostID).Scan(&taAllocation)
 	if err != nil {
 		return 0, err
 	}
 
+	return taAllocation, nil
+}
+
+func (r CourseRepositoryImplementation) CountTaAllocation(jobPostID int) (int, error) {
+
+	//count ta allocation
 	allocationQuery := `SELECT COUNT(*) FROM ta_application WHERE job_post_id = $1 AND status_id = $2`
 	allocationCount := 0
-	err = r.db.QueryRow(allocationQuery, body.JobPostID, constants.ApprovedStatusID).Scan(&allocationCount)
+	err := r.db.QueryRow(allocationQuery, jobPostID, constants.ApprovedStatusID).Scan(&allocationCount)
 	if err != nil {
 		return 0, err
 	}
 
-	if allocationCount >= taAllocation {
-		return 0, fmt.Errorf("ta allocation is full")
-	}
+	return allocationCount, nil
+}
 
-	tx, err := r.db.Begin()
-	if err != nil {
-		return 0, err
-	}
+func (r CourseRepositoryImplementation) UpsertTranscript(tx *sql.Tx, body request.ApplyJobPost) error {
 
-	if body.TranscriptBytes != nil {
-		query := `INSERT INTO transcript_storage(file_bytes,file_name,student_ID) 
+	query := `INSERT INTO transcript_storage(file_bytes,file_name,student_ID) 
 					VALUES($1, $2, $3) 
 					ON CONFLICT (student_ID)
 					DO UPDATE SET
 						file_bytes = EXCLUDED.file_bytes,
 						file_name = EXCLUDED.file_name;`
-		_, err = tx.Exec(query, body.TranscriptBytes, body.TranscriptName, body.StudentID)
-		if err != nil {
-			tx.Rollback()
-			return 0, fmt.Errorf("failed on upsert to transcript file : %v", err)
-		}
-
+	_, err := tx.Exec(query, body.TranscriptBytes, body.TranscriptName, body.StudentID)
+	if err != nil {
+		return err
 	}
 
-	if body.BankAccountBytes != nil {
-		query := `INSERT INTO bank_account_storage(file_bytes,file_name, student_ID) 
-					VALUES($1, $2, $3)
-					ON CONFLICT(student_ID)
-					DO UPDATE SET
-						file_bytes = EXCLUDED.file_bytes,
-						file_name = EXCLUDED.file_name; `
-		_, err = tx.Exec(query, body.BankAccountBytes, body.BankAccountName, body.StudentID)
-		if err != nil {
-			tx.Rollback()
-			return 0, fmt.Errorf("failed on upsert to bank account file : %v", err)
-		}
+	return nil
+}
 
-	}
+func (r CourseRepositoryImplementation) UpsertBankAccount(tx *sql.Tx, body request.ApplyJobPost) error {
 
-	if body.StudentCardBytes != nil {
-		query := `INSERT INTO student_card_storage(file_bytes,file_name, student_ID) 
+	query := `INSERT INTO bank_account_storage(file_bytes,file_name,student_ID) 
 					VALUES($1, $2, $3) 
-					ON CONFLICT(student_ID)
+					ON CONFLICT (student_ID)
 					DO UPDATE SET
 						file_bytes = EXCLUDED.file_bytes,
 						file_name = EXCLUDED.file_name;`
-		_, err = tx.Exec(query, body.StudentCardBytes, body.StudentCardName, body.StudentID)
-		if err != nil {
-			tx.Rollback()
-			return 0, fmt.Errorf("failed on upsert to student card file : %v", err)
-		}
+	_, err := tx.Exec(query, body.TranscriptBytes, body.TranscriptName, body.StudentID)
+	if err != nil {
+		return err
 	}
+
+	return nil
+}
+
+func (r CourseRepositoryImplementation) UpsertStudentCard(tx *sql.Tx, body request.ApplyJobPost) error {
+
+	query := `INSERT INTO student_card_storage(file_bytes,file_name,student_ID) 
+					VALUES($1, $2, $3) 
+					ON CONFLICT (student_ID)
+					DO UPDATE SET
+						file_bytes = EXCLUDED.file_bytes,
+						file_name = EXCLUDED.file_name;`
+	_, err := tx.Exec(query, body.TranscriptBytes, body.TranscriptName, body.StudentID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r CourseRepositoryImplementation) UpdateStudentData(tx *sql.Tx, body request.ApplyJobPost) error {
 
 	updateStudentQuery := `UPDATE students SET 
-							firstname_thai = $1, 
-							lastname_thai = $2 
-							WHERE student_ID=$3`
-	_, err = r.db.Exec(updateStudentQuery, body.FirstnameThai, body.LastnameThai, body.StudentID)
+							phone_number = $1,
+							firstname_thai = $2, 
+							lastname_thai = $3 
+							WHERE student_ID=$4`
+	_, err := tx.Exec(updateStudentQuery, body.PhoneNumber, body.FirstnameThai, body.LastnameThai, body.StudentID)
 	if err != nil {
-		return 0, fmt.Errorf("failed on update student data : %v", err)
+		return err
 	}
 
-	statusId := constants.PendingStatusID
-	var applicationId int
-	if existingID != 0 {
-		// Update existing rejected application back to pending
-		applicationId = existingID
-		query = `UPDATE ta_application SET 
-					status_ID = $1, 
-					grade = $2, 
-					purpose = $3, 
-					reject_reason = NULL,
-					created_date = $4
-				WHERE id = $5`
-		_, err = tx.Exec(query, statusId, body.Grade, body.Purpose, time.Now(), existingID)
-	} else {
-		// Insert new application
-		query = `INSERT INTO ta_application(
-					student_ID, 
-					status_ID, 
-					job_post_ID,
-					grade,
-					purpose,
-					created_date)
-				VALUES($1, $2, $3, $4, $5, $6 )
-				RETURNING id`
-		err = tx.QueryRow(query,
-			body.StudentID,
-			statusId,
-			body.JobPostID,
-			body.Grade,
-			body.Purpose,
-			time.Now(),
-		).Scan(&applicationId)
-	}
-
-	if err != nil {
-		tx.Rollback()
-		return 0, fmt.Errorf("failed on insert to ta_application: %v", err)
-	}
-
-	query = "UPDATE students SET phone_number = $1, firstname_thai = $2, lastname_thai = $3 WHERE student_ID = $4"
-	_, err = tx.Exec(query, body.PhoneNumber, body.FirstnameThai, body.LastnameThai, body.StudentID)
-	if err != nil {
-		tx.Rollback()
-		return 0, fmt.Errorf("failed on update to students: %v", err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		tx.Rollback()
-		return 0, fmt.Errorf("failed on commit transaction")
-	}
-
-	return applicationId, nil
-
+	return nil
 }
 
 func (r CourseRepositoryImplementation) GetApplicationByStudentId(studentId int) ([]response.Application, error) {
@@ -1226,13 +1203,37 @@ func (r CourseRepositoryImplementation) GetApplicationStudentCardPdf(Application
 	return &applicationPdf, nil
 }
 
-func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) error {
+func (r CourseRepositoryImplementation) UpdateApplicationStatus(tx *sql.Tx, ApplicationId int) error {
 
-	tx, err := r.db.Begin()
+	//update status on ta_application
+	approveStatus := constants.ApprovedStatusID
+	query := `UPDATE ta_application SET status_ID = $1 WHERE id = $2`
+
+	_, err := tx.Exec(query, approveStatus, ApplicationId)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed update ta_application: %v", err)
 	}
 
+	return nil
+}
+
+func (r CourseRepositoryImplementation) InsertTaCourse(tx *sql.Tx, studentID, courseID int) error {
+
+	//Insert new ta_course
+	query := `INSERT INTO ta_courses(
+				student_ID,
+				course_ID,
+				created_date)
+				VALUES($1, $2, $3)`
+	_, err := tx.Exec(query, studentID, courseID, time.Now())
+	if err != nil {
+		return fmt.Errorf("failed to Insert new ta_course : %v", err)
+	}
+
+	return nil
+}
+
+func (r CourseRepositoryImplementation) GetApproveApplicationData(applicationID int) (int, int, int, error) {
 	//get courseId,studentId
 	pendingStatus := 3
 	var courseId int
@@ -1247,101 +1248,38 @@ func (r CourseRepositoryImplementation) ApproveApplication(ApplicationId int) er
 					ON ta.job_post_ID = jp.id
 				WHERE ta.id =$1 AND ta.status_id =$2`
 
-	err = tx.QueryRow(query,
-		ApplicationId,
+	err := r.db.QueryRow(query,
+		applicationID,
 		pendingStatus).Scan(&courseId, &jobPostId, &studentId)
 	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed get courseId : %v", err)
+		return 0, 0, 0, err
 	}
 
-	//check ta allocation
-	var taAllocation int
-	query = `SELECT ta_allocation FROM ta_job_posting WHERE id = $1`
-	err = r.db.QueryRow(query, jobPostId).Scan(&taAllocation)
+	return courseId, studentId, jobPostId, nil
+
+}
+
+func (r CourseRepositoryImplementation) UpdateJobPostStatus(jobPostId int) error {
+
+	query := `UPDATE ta_job_posting SET status_id = $1 WHERE id = $2`
+	_, err := r.db.Exec(query, constants.SuccessFulStatusID, jobPostId)
 	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed get ta allocation : %v", err)
-	}
-
-	allocationQuery := `SELECT COUNT(*) FROM ta_application WHERE job_post_id = $1 AND status_id = $2`
-	allocationCount := 0
-	err = r.db.QueryRow(allocationQuery, jobPostId, constants.ApprovedStatusID).Scan(&allocationCount)
-	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed get allocation count : %v", err)
-	}
-
-	if allocationCount >= taAllocation {
-		tx.Rollback()
-		return fmt.Errorf("ta allocation is full")
-	}
-
-	//update status on ta_application
-	approveStatus := constants.ApprovedStatusID
-	query = `UPDATE ta_application SET status_ID = $1 WHERE id = $2`
-
-	_, err = tx.Exec(query, approveStatus, ApplicationId)
-	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed update ta_application: %v", err)
-	}
-
-	//Insert new ta_course
-	query = `INSERT INTO ta_courses(
-				student_ID,
-				course_ID,
-				created_date)
-				VALUES($1, $2, $3)`
-	_, err = tx.Exec(query, studentId, courseId, time.Now())
-	if err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to Insert new ta_course : %v", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed on commit transaction")
-	}
-	//check ta allocation
-	allocationQuery = `SELECT COUNT(*) FROM ta_application WHERE job_post_id = $1 AND status_id = $2`
-	allocationCount = 0
-	err = r.db.QueryRow(allocationQuery, jobPostId, constants.ApprovedStatusID).Scan(&allocationCount)
-	if err != nil {
-		return fmt.Errorf("failed get allocation count : %v", err)
-	}
-
-	if allocationCount == taAllocation {
-		query = `UPDATE ta_job_posting SET status_id = $1 WHERE id = $2`
-		_, err = r.db.Exec(query, constants.SuccessFulStatusID, jobPostId)
-		if err != nil {
-			return fmt.Errorf("failed update ta_job_posting: %v", err)
-		}
+		return fmt.Errorf("failed update ta_job_posting: %v", err)
 	}
 
 	return nil
 }
 
 func (r CourseRepositoryImplementation) RejectApplication(rq request.RejectApplication) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-
 	// update status on ta_application
 	rejectStatus := constants.RejectedStatusID
 	query := `UPDATE ta_application SET status_ID = $1, reject_reason = $2 WHERE id = $3`
 
-	_, err = tx.Exec(query, rejectStatus, rq.RejectReason, rq.ApplicationId)
+	_, err := r.db.Exec(query, rejectStatus, rq.RejectReason, rq.ApplicationId)
 	if err != nil {
-		tx.Rollback()
 		return fmt.Errorf("failed update ta_application: %v", err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed on commit transaction")
-	}
 	return nil
 }
 
@@ -1431,4 +1369,24 @@ func (r CourseRepositoryImplementation) GetApplicationByProfessorId(professorId 
 	}
 
 	return applications, nil
+}
+
+func (r CourseRepositoryImplementation) StartDBTx() (*sql.Tx, error) {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (r CourseRepositoryImplementation) CommitTx(tx *sql.Tx) error {
+	return tx.Commit()
+}
+
+func (r CourseRepositoryImplementation) RollbackTx(tx *sql.Tx) error {
+	if tx != nil {
+		return tx.Rollback()
+	}
+	return nil
 }
