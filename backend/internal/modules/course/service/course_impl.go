@@ -6,9 +6,7 @@ import (
 	"TA-management/internal/modules/course/repository"
 	"TA-management/internal/modules/shared/dto/response"
 	"context"
-	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -67,23 +65,23 @@ func (s CourseServiceImplementation) GetAllJobPostByStudentId(studentId int) (*r
 }
 
 func (s CourseServiceImplementation) GetAllCourse() (*response.RequestDataResponse, error) {
-	ctx := context.Background()
-	cacheKey := "course:all"
+	// ctx := context.Background()
+	// cacheKey := "course:all"
 
 	// Check cache
-	if s.redisClient != nil {
-		val, err := s.redisClient.Get(ctx, cacheKey).Result()
-		if err == nil {
-			fmt.Println("from redis")
-			var courses []courseResponse.Course
-			if err := json.Unmarshal([]byte(val), &courses); err == nil {
-				return &response.RequestDataResponse{
-					Data:    courses,
-					Message: "Success",
-				}, nil
-			}
-		}
-	}
+	// if s.redisClient != nil {
+	// 	val, err := s.redisClient.Get(ctx, cacheKey).Result()
+	// 	if err == nil {
+	// 		fmt.Println("from redis")
+	// 		var courses []courseResponse.Course
+	// 		if err := json.Unmarshal([]byte(val), &courses); err == nil {
+	// 			return &response.RequestDataResponse{
+	// 				Data:    courses,
+	// 				Message: "Success",
+	// 			}, nil
+	// 		}
+	// 	}
+	// }
 
 	courses, err := s.repo.GetAllCourse()
 	fmt.Println("from DB")
@@ -93,11 +91,11 @@ func (s CourseServiceImplementation) GetAllCourse() (*response.RequestDataRespon
 	}
 
 	// Set cache
-	if s.redisClient != nil {
-		if data, err := json.Marshal(courses); err == nil {
-			s.redisClient.Set(ctx, cacheKey, data, 10*time.Minute)
-		}
-	}
+	// if s.redisClient != nil {
+	// 	if data, err := json.Marshal(courses); err == nil {
+	// 		s.redisClient.Set(ctx, cacheKey, data, 10*time.Minute)
+	// 	}
+	// }
 
 	response := response.RequestDataResponse{
 		Data:    courses,
