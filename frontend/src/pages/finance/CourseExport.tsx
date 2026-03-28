@@ -42,6 +42,7 @@ import {
   getStudentCardUrl
 } from "../../services/lookupService";
 
+import { API_BASE_URL } from "../../config/env";
 
 interface AvailableMonth {
   monthID: number;
@@ -273,7 +274,7 @@ export function CourseExport() {
       setLoadingMonths(true);
       const courseID = selectedCourses[0];
       // Reuse lookup service or fetch directly
-      const response = await fetch(`http://localhost:8084/TA-management/lookup/available-months?month=${courseID}`, {
+      const response = await fetch(`${API_BASE_URL}/lookup/available-months?month=${courseID}`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error("Failed to fetch months");
@@ -375,7 +376,7 @@ export function CourseExport() {
       }));
 
       try {
-        const response = await fetch("http://localhost:8084/TA-management/ta_duty/export-payment-report", {
+        const response = await fetch(`${API_BASE_URL}/ta_duty/export-payment-report`, {
           method: "POST",
           credentials: "include",
           headers: {
@@ -449,7 +450,7 @@ export function CourseExport() {
     try {
       setLoadingSignatureMonths(true);
       const courseID = selectedCourses[0];
-      const response = await fetch(`http://localhost:8084/TA-management/lookup/available-months?month=${courseID}`, {
+      const response = await fetch(`${API_BASE_URL}/lookup/available-months?month=${courseID}`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error("Failed to fetch months");
@@ -529,7 +530,7 @@ export function CourseExport() {
       }));
 
       try {
-        const response = await fetch("http://localhost:8084/TA-management/ta_duty/export-signature-sheet", {
+        const response = await fetch(`${API_BASE_URL}/ta_duty/export-signature-sheet`, {
           method: "POST",
           credentials: "include",
           headers: {

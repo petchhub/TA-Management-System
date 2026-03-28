@@ -1,9 +1,9 @@
 /**
  * Lookup Service - API integration for fetching static/lookup data
  */
+import { API_BASE_URL as BASE_URL } from '../config/env';
 
-const API_BASE_URL = 'http://localhost:8084/TA-management/lookup';
-
+const API_BASE_URL = `${BASE_URL}/lookup`;
 export interface LookupItem {
     id: number;
     value: string;

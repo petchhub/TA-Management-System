@@ -13,6 +13,7 @@ import { getTADutyRoadmap, markDutyAsDone, DutyChecklistItem } from "../../servi
 import { formatTime } from "../../utils/formatUtils";
 import { ConfirmationModal } from "../../components/ConfirmationModal";
 import { Toast, ToastType } from "../../components/Toast";
+import { API_BASE_URL } from "../../config/env";
 
 interface TADutyData {
   ta: Application;
@@ -240,7 +241,7 @@ export function TAWorkHours() {
 
     setIsExporting(true);
     try {
-      const response = await fetch("http://localhost:8084/TA-management/ta_duty/export-signature-sheet", {
+      const response = await fetch(`${API_BASE_URL}/ta_duty/export-signature-sheet`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

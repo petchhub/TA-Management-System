@@ -5,7 +5,9 @@ import {
     Search, ArrowUpDown, BookOpen
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:8084/TA-management';
+import { API_BASE_URL } from '../../config/env';
+
+const API_BASE = API_BASE_URL;
 
 interface SemesterHistory {
     semesterID: number;

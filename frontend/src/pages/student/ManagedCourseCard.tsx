@@ -1,6 +1,7 @@
 import { Calendar, Clock, MapPin, User, BookOpen } from "lucide-react";
 import { Course } from "../../services/courseService";
 import { formatTime } from "../../utils/formatUtils";
+import { DISCORD_BOT_URL } from "../../config/env";
 
 interface ManagedCourseCardProps {
     course: Course;
@@ -70,7 +71,7 @@ export default function ManagedCourseCard({ course, onClick, onDiscordError }: M
                         e.stopPropagation();
                         // Use discordRoleID to construct the join link
                         if (course.discordRoleID) {
-                            window.open(`http://localhost:8081/join-course/${course.discordRoleID}`, '_blank');
+                            window.open(`${DISCORD_BOT_URL}/join-course/${course.discordRoleID}`, '_blank');
                         } else {
                             if (onDiscordError) {
                                 onDiscordError('ยังไม่มีลิงก์ Discord สำหรับรายวิชานี้ กรุณาติดต่อผู้สอนประจำวิชา');

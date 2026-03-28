@@ -1,9 +1,7 @@
 /**
  * Position Service - API integration for TA position search and applications
  */
-
-const API_BASE_URL = 'http://localhost:8084/TA-management';
-
+import { API_BASE_URL } from '../config/env';
 /**
  * Backend response structure for course/position
  */

@@ -2,7 +2,9 @@
  * Course Service - API integration for course management
  */
 
-export const API_BASE_URL = 'http://localhost:8084/TA-management';
+import { API_BASE_URL as ENV_API_BASE_URL, DISCORD_BOT_URL } from '../config/env';
+
+export const API_BASE_URL = ENV_API_BASE_URL;
 
 export interface Course {
     courseID: number;

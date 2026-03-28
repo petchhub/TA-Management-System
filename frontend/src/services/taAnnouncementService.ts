@@ -1,7 +1,5 @@
 import { TAAnnouncementData } from '../pages/professor/CreateTAAnnouncementModal';
-
-const API_BASE_URL = 'http://localhost:8084/TA-management';
-
+// import { API_BASE_URL } from '../config/env';
 /**
  * API Service for TA Announcements
  * This is a mockup implementation that will be replaced with actual backend calls
@@ -60,7 +58,7 @@ export async function createTAAnnouncement(data: TAAnnouncementData): Promise<TA
                     status: 'open',
                     createdAt: new Date().toISOString(),
                     createdBy: 'current-professor-id', // This would come from auth context
-                });
+                } as unknown as TAAnnouncementResponse);
             }, 500); // Simulate network delay
         });
     } catch (error) {

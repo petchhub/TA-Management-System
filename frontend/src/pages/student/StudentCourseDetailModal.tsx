@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, MapPin, FileText, User, Calendar, Clock, BookOpen, MessageSquare } from 'lucide-react';
 import { Course, getApplicationsForCourse } from '../../services/courseService';
 import { formatTime } from '../../utils/formatUtils';
+import { DISCORD_BOT_URL } from '../../config/env';
 
 interface StudentCourseDetailModalProps {
     course: Course;
@@ -147,7 +148,7 @@ export function StudentCourseDetailModal({ course, onClose }: StudentCourseDetai
                             <button
                                 onClick={() => {
                                     if (course.discordRoleID) {
-                                        window.open(`http://localhost:8081/join-course/${course.discordRoleID}`, '_blank');
+                                        window.open(`${DISCORD_BOT_URL}/join-course/${course.discordRoleID}`, '_blank');
                                     } else {
                                         setToast({
                                             message: 'ยังไม่มีลิงก์ Discord สำหรับรายวิชานี้ กรุณาติดต่อผู้สอนประจำวิชา',

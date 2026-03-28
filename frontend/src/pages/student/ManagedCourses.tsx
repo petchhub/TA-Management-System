@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getStudentApplications, getAllCourses, Course } from "../../services/courseService";
 import ManagedCourseCard from "./ManagedCourseCard";
 import { StudentCourseDetailModal } from "./StudentCourseDetailModal";
+import { API_BASE_URL } from "../../config/env";
 
 interface Holiday {
     id: number;
@@ -74,7 +75,7 @@ export default function ManagedCourses() {
     const fetchHolidays = async () => {
         try {
             const [year, month] = selectedMonth.split('-').map(Number);
-            const response = await fetch(`http://localhost:8084/TA-management/lookup/holiday?month=${month}&year=${year}`, {
+            const response = await fetch(`${API_BASE_URL}/lookup/holiday?month=${month}&year=${year}`, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {

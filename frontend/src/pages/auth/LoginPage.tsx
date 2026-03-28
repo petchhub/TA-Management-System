@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { GraduationCap, User, CreditCard } from 'lucide-react';
-
+import { API_BASE_URL } from '../../config/env';
 /**
  * LoginPage - Handles Google OAuth authentication
  * Initiates login flow and processes OAuth callback
@@ -49,7 +49,7 @@ export default function LoginPage() {
           setError(null);
 
           // Fetch user data from backend /auth/me endpoint
-          const response = await fetch('http://localhost:8084/TA-management/auth/me', {
+          const response = await fetch(`${API_BASE_URL}/auth/me`, {
             credentials: 'include',
           });
 
@@ -110,7 +110,7 @@ export default function LoginPage() {
       setError(null);
 
       // Request OAuth URL from backend
-      const response = await fetch('http://localhost:8084/TA-management/auth/google', {
+      const response = await fetch(`${API_BASE_URL}/auth/google`, {
         method: 'GET',
         credentials: 'include',
       });

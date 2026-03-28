@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Plus, Trash2, Edit2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { API_BASE_URL } from '../../config/env';
 
 interface Holiday {
   id: number;
@@ -20,7 +21,7 @@ export function HolidayCalendar() {
   const fetchHolidays = async () => {
     try {
       const [year, month] = selectedMonth.split('-').map(Number);
-      const response = await fetch(`http://localhost:8084/TA-management/lookup/holiday?month=${month}&year=${year}`, {
+      const response = await fetch(`${API_BASE_URL}/lookup/holiday?month=${month}&year=${year}`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -47,7 +48,7 @@ export function HolidayCalendar() {
           nameThai: newHoliday.name,
           type: 'special',
         };
-        const response = await fetch('http://localhost:8084/TA-management/lookup/holiday', {
+        const response = await fetch(`${API_BASE_URL}/lookup/holiday`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -68,7 +69,7 @@ export function HolidayCalendar() {
   const deleteHoliday = async (id: number) => {
     if (confirm('คุณต้องการลบวันหยุดนี้หรือไม่?')) {
       try {
-        const response = await fetch(`http://localhost:8084/TA-management/lookup/holiday/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/lookup/holiday/${id}`, {
           method: 'DELETE',
           credentials: 'include',
         });
